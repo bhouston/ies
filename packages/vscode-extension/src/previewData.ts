@@ -2,7 +2,7 @@ import { parseLDT, LDTParseError } from 'ies-core';
 import type { UpdateMessage } from './protocol.js';
 
 /** Source text and labels are transported as data, never interpolated into webview HTML. */
-export function createPreviewUpdate(text: string, format: 'ies' | 'ldt'): UpdateMessage {
+export function createPreviewUpdate(text: string, format: 'ies' | 'ldt', fileName?: string): UpdateMessage {
   let lampSetLabels: string[] = [];
   if (format === 'ldt') {
     try {
@@ -15,5 +15,5 @@ export function createPreviewUpdate(text: string, format: 'ies' | 'ldt'): Update
       if (!(error instanceof LDTParseError)) throw error;
     }
   }
-  return { type: 'update', text, format, lampSetLabels };
+  return { type: 'update', text, format, lampSetLabels, ...(fileName === undefined ? {} : { fileName }) };
 }

@@ -34,7 +34,7 @@
   "type": "module",
   "main": "./dist/extension.cjs",
   "scripts": {
-    "build": "tsc --noEmit && node scripts/build.mjs",
+    "build": "tsc --noEmit && tailwindcss -i src/preview/preview.css -o media/preview.css --minify && node scripts/build.mjs",
     "package": "pnpm build && vsce package --no-dependencies"
   },
   "dependencies": {
@@ -42,10 +42,16 @@
     "ies-viewer": "workspace:*"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.27.3",
-    "ovsx": "^1.2.0"
+    "ovsx": "^1.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.18"
   },
   "contributes": {
     "commands": [

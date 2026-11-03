@@ -1,4 +1,4 @@
-import { mkdir, copyFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { build } from 'esbuild';
 
 await mkdir('dist', { recursive: true });
@@ -14,7 +14,8 @@ await build({
   sourcemap: true,
 });
 await build({
-  entryPoints: ['src/preview/index.ts'],
+  entryPoints: ['src/preview/index.tsx'],
+  jsx: 'automatic',
   outfile: 'media/preview.js',
   bundle: true,
   platform: 'browser',
@@ -23,4 +24,3 @@ await build({
   minify: true,
   define: { 'process.env.NODE_ENV': '"production"' },
 });
-await copyFile('styles/preview.css', 'media/preview.css');

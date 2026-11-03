@@ -36,7 +36,9 @@ try {
     `
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { parseIES, parsePhotometry, sampleIntensity, serializeIES, serializeLDT } from 'ies-core';
+import { parseIES, parsePhotometry, sampleIntensity, serializeIES, serializeLDT, inspectPhotometry, validatePhotometry } from 'ies-core';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import * as viewer from 'ies-viewer';
 import * as react from 'ies-viewer/react';
 import * as graphs from 'ies-viewer/graphs';
@@ -46,6 +48,15 @@ assert.ok(Object.keys(viewer).length > 0);
 assert.ok(react.LightViewer);
 assert.ok(react.IntensityGraph);
 assert.ok(react.IsoluxGraph);
+assert.ok(react.ViewerSettingsPanel);
+assert.ok(react.PhotometryInfoPanel);
+assert.match(readFileSync(new URL(import.meta.resolve('ies-viewer/styles.css')), 'utf8'), /tailwindcss/);
+const styles = await import(new URL('./elementStyles.js', import.meta.resolve('ies-viewer')).href);
+assert.ok(styles.ELEMENT_STYLES.length > 100);
+const sourceText = readFileSync(process.argv[2], 'utf8');
+const validation = validatePhotometry(sourceText, 'ies');
+const inspection = inspectPhotometry(sourceText, 'ies');
+assert.match(renderToStaticMarkup(createElement(react.PhotometryInfoPanel, { inspection, validation })), /Integrated luminaire flux/);
 assert.ok(graphs.buildIntensityCurves(profile, { principalPlanes: true }).curves.length === 2);
 const ground = graphs.buildIsoluxGrid(profile, { resolution: 5 });
 assert.ok(Number.isFinite(ground.maximum));

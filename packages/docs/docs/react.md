@@ -85,4 +85,19 @@ Changing a source cancels its previous fetch and suppresses stale completions an
 
 ### Scene settings
 
-`LightViewer` also accepts `showWall`, `wallDistance`, `floorDistance`, `toneMapping` and `exposure` props. These update the current renderer without reloading the source. `onSettingsChange({ settings, previousSettings })` observes effective changes. Defaults are a visible wall, 2-meter wall/floor distances, ACES tone mapping and exposure 1. The built-in gear overlay belongs to the custom element; React integrations can build controls around these props.
+`LightViewer` also accepts `showWall`, `wallDistance`, `floorDistance`, `toneMapping` and `exposure` props. These update the current renderer without reloading the source. `onSettingsChange({ settings, previousSettings })` observes effective changes. Defaults are a visible wall, 2-meter wall/floor distances, ACES tone mapping and exposure 1. The built-in gear overlay uses the same `ViewerSettingsPanel` React component as the custom element. `settingsPanel="closed"` (default), `"open"` or `"hidden"` controls its initial display. Source changes retain the current renderer and user-selected scene settings; changing provided scene props applies only those values. Omitted props leave the current panel setting intact; removing a previously provided prop keeps its current value and lets the panel control it.
+
+## Shared viewer styling
+
+```tsx
+import 'ies-viewer/styles.css';
+import { LightViewer, ViewerSettingsPanel } from 'ies-viewer/react';
+
+<LightViewer src="/luminaire.ies" settingsPanel="closed" />;
+```
+
+The compiled stylesheet supplies Tailwind utilities and the shared theme tokens. A `.dark` ancestor uses the dark palette. Applications already compiling Tailwind v4 can instead import `ies-viewer/styles/viewer.css` into their Tailwind entry. `ViewerSettingsPanel` is independently reusable with `settings`, `mode`, `onChange`, `onModeChange` and optional `onError` props. Its component is shared with the element, so controls do not drift between embedding surfaces. See [Styling and themes](./styling.md).
+
+## Shared inspection UI
+
+`PhotometryInfoPanel` and `ValidationChecks` are exported from `ies-viewer/react`. They render the shared core inspection and validation models used by the CLI. Import the compiled `ies-viewer/styles.css`, or include `ies-viewer/styles/viewer.css` in a Tailwind v4 entry stylesheet, then override the documented theme tokens for your host. The VS Code preview maps those tokens to editor colors.

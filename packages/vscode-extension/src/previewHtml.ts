@@ -29,11 +29,7 @@ export function getPreviewHtml(cspSource: string, scriptUri: string, styleUri: s
 <link rel="stylesheet" href="${escapeAttribute(styleUri)}">
 </head>
 <body>
-<main aria-label="IES and LDT photometric preview">
-<label id="lamp-selection" hidden>Alternative lamp configuration <select id="lamp-set" aria-label="Alternative lamp configuration"></select></label>
-<light-viewer aria-label="Light on a floor and wall"></light-viewer>
-<p id="status" role="status">Loading photometric profile…</p>
-</main>
+<div id="root"></div>
 <script type="module" src="${escapeAttribute(scriptUri)}"></script>
 </body>
 </html>`;

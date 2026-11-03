@@ -91,3 +91,9 @@ viewer.addEventListener('settingschange', (event) => console.log(event.detail.se
 ```
 
 The `settings` property returns a copy. Assigning a partial settings object validates it atomically, reflects the attributes and updates the controls. The bubbling, composed `settingschange` event supplies `{ settings, previousSettings }` once per effective change. Removing and reinserting the element preserves settings. The imperative controller offers `getSettings()`, `setSettings(patch)` and `settingschange` listeners. Its existing `height` option remains an alias for `floorDistance`, and `setExposure()` remains supported. Floor distance changes move the fixture above the fixed ground; wall distance moves the receiver behind it. The camera preserves its orbit direction while fitting distance changes.
+
+## Shared React and Tailwind styling
+
+The options overlay uses the shared React `ViewerSettingsPanel`, styled by the same Tailwind utilities and tokens as the extension and React viewer. The standalone `light-viewer.js` bundle contains React and its compiled stylesheet; it fetches no UI scripts, styles or fonts. Bundler users importing `ies-viewer/element` must supply the React and React DOM peer dependencies, but do not need a CSS loader: the built element imports an SSR-safe stylesheet string module.
+
+UI colors inherit host custom properties such as `--popover`, `--popover-foreground`, `--foreground`, `--input`, `--border` and `--ring`. Unspecified values use dark standalone fallbacks. These properties pass through the shadow boundary, so VS Code themes update the controls without rebuilding them. The rendering background stays black. See [Styling and themes](./styling.md).

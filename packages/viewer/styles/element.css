@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+@import './viewer.css';
+@source '../src/react';
+
+/* Shared utilities inherit host tokens. Do not redefine --popover/--foreground
+   on :host: that would mask values inherited from VS Code or the embedding app. */
+:host {
+  display: block;
+  height: 480px;
+  position: relative;
+  min-width: 0;
+  background: #000;
+}
+.viewport {
+  width: 100%;
+  height: 100%;
+}
+.viewport canvas {
+  display: block;
+}
+.viewer-controls-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.viewer-controls-root[hidden],
+.settings-ui[hidden],
+.settings-panel[hidden] {
+  display: none;
+}
+.status {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  color: var(--foreground, #e5e7eb);
+  font: 13px var(--viewer-font-family, var(--vscode-font-family, system-ui, sans-serif));
+  pointer-events: none;
+}

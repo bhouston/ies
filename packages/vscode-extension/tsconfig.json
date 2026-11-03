@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
-    "lib": ["ES2024", "DOM"]
+    "lib": ["ES2024", "DOM"],
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.test.tsx"]
 }

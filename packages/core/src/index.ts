@@ -297,3 +297,12 @@ export type {
   ConversionWarning,
   SerializeLDTOptions,
 } from './photometry.js';
+
+export {
+  inputFormat,
+  ldtDiagnostics,
+  validatePhotometry,
+  inspectPhotometry,
+  inspectParsedPhotometry,
+} from './inspection.js';
+export type { InputFormat, PhotometryDiagnostic, PhotometryInspection } from './inspection.js';

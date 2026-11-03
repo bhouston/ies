@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { iesSource } from '../../core/test/iesSource.js';
 import { ldtSource } from '../test/photometryFixtures.js';
@@ -14,9 +15,12 @@ const controllers: {
   dispose: ReturnType<typeof vi.fn>;
 }[] = [];
 const flush = async () => {
-  for (let i = 0; i < 12; i++) await Promise.resolve();
+  await act(async () => {
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+  });
 };
 beforeEach(() => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   controllers.length = 0;
   mocks.createLightViewer.mockImplementation((_host: HTMLElement, options: Partial<ViewerSettings>) => {
     let settings = resolveViewerSettings(options);
@@ -32,8 +36,11 @@ beforeEach(() => {
     return controller;
   });
 });
-afterEach(() => {
-  document.body.replaceChildren();
+afterEach(async () => {
+  await act(async () => {
+    document.body.replaceChildren();
+    await Promise.resolve();
+  });
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
@@ -41,11 +48,21 @@ function element() {
   return document.createElement('light-viewer') as LightViewerElement;
 }
 function mount(value: LightViewerElement) {
-  document.body.append(value);
+  act(() => {
+    document.body.append(value);
+  });
   return value;
 }
 function input(value: LightViewerElement, name: string) {
   return value.shadowRoot!.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+}
+
+function changeNumber(viewer: LightViewerElement, name: string, value: string) {
+  const target = input(viewer, name);
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(target, value);
+    target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+  });
 }
 
 describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () => {
@@ -93,7 +110,9 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     viewer.settings = { floorDistance: 4, showWall: false, toneMapping: 'agx' };
     mount(viewer);
     await flush();
-    viewer.remove();
+    act(() => {
+      viewer.remove();
+    });
     expect(controllers[0]!.dispose).toHaveBeenCalledOnce();
     mount(viewer);
     await flush();
@@ -121,20 +140,32 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     const viewer = mount(element()),
       root = viewer.shadowRoot!,
       gear = root.querySelector<HTMLButtonElement>('[aria-label="Viewer options"]')!,
-      panel = root.querySelector<HTMLDivElement>('[role="region"]')!;
+      panel = root.querySelector<HTMLElement>('section[aria-label="Viewer options"]')!;
     expect(gear.getAttribute('aria-expanded')).toBe('false');
     expect(panel.hidden).toBe(true);
-    gear.click();
+    act(() => {
+      gear.click();
+    });
     expect(viewer.getAttribute('settings-panel')).toBe('open');
     expect(panel.hidden).toBe(false);
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
     expect(panel.hidden).toBe(true);
     expect(root.activeElement).toBe(gear);
-    gear.click();
-    root.querySelector('.viewport')!.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    act(() => {
+      gear.click();
+    });
+    act(() => {
+      root.querySelector('.viewport')!.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    });
     expect(panel.hidden).toBe(true);
-    gear.click();
-    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    act(() => {
+      gear.click();
+    });
+    act(() => {
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
     expect(panel.hidden).toBe(true);
   });
   it('binds all controls, reflects attributes and emits a single composed settings event', () => {
@@ -142,21 +173,21 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       events: CustomEvent[] = [];
     viewer.addEventListener('settingschange', (event) => events.push(event as CustomEvent));
     const wall = input(viewer, 'showWall');
-    wall.checked = false;
-    wall.dispatchEvent(new Event('change'));
+    act(() => {
+      wall.click();
+    });
     expect(viewer.settings.showWall).toBe(false);
     expect(viewer.getAttribute('show-wall')).toBe('false');
     expect(events).toHaveLength(1);
     expect(events[0]!.bubbles && events[0]!.composed).toBe(true);
-    input(viewer, 'wallDistance').value = '3.5';
-    input(viewer, 'wallDistance').dispatchEvent(new Event('change'));
-    input(viewer, 'floorDistance').value = '4';
-    input(viewer, 'floorDistance').dispatchEvent(new Event('change'));
+    changeNumber(viewer, 'wallDistance', '3.5');
+    changeNumber(viewer, 'floorDistance', '4');
     const tone = viewer.shadowRoot!.querySelector<HTMLSelectElement>('[name="toneMapping"]')!;
-    tone.value = 'neutral';
-    tone.dispatchEvent(new Event('change'));
-    input(viewer, 'exposure').value = '0';
-    input(viewer, 'exposure').dispatchEvent(new Event('change'));
+    act(() => {
+      tone.value = 'neutral';
+      tone.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    changeNumber(viewer, 'exposure', '0');
     expect(viewer.settings).toEqual({
       showWall: false,
       wallDistance: 3.5,
@@ -171,9 +202,11 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     viewer.data = iesSource();
     mount(viewer);
     await flush();
-    viewer.setAttribute('floor-distance', '5');
-    viewer.setAttribute('tone-mapping', 'reinhard');
-    viewer.setAttribute('settings-panel', 'hidden');
+    act(() => {
+      viewer.setAttribute('floor-distance', '5');
+      viewer.setAttribute('tone-mapping', 'reinhard');
+      viewer.setAttribute('settings-panel', 'hidden');
+    });
     await flush();
     expect(input(viewer, 'floorDistance').value).toBe('5');
     expect(viewer.settings.toneMapping).toBe('reinhard');
@@ -187,7 +220,9 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     }).toThrow();
     expect(viewer.settings).toEqual(DEFAULT_VIEWER_SETTINGS);
     expect(controllers[0]!.setSettings).not.toHaveBeenCalled();
-    viewer.settings = { exposure: 250, wallDistance: 7 };
+    act(() => {
+      viewer.settings = { exposure: 250, wallDistance: 7 };
+    });
     viewer.data = ldtSource();
     await flush();
     expect(viewer.settings.exposure).toBe(250);

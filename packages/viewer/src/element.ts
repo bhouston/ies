@@ -7,7 +7,8 @@ import {
   viewerSettingFromAttribute,
   type ViewerSettings,
 } from './settings.js';
-import { SettingsPanel, SETTINGS_PANEL_CSS, type SettingsPanelMode } from './settingsPanel.js';
+import { SettingsPanel, type SettingsPanelMode } from './settingsPanel.js';
+import { ELEMENT_STYLES } from './elementStyles.js';
 import { createLightViewer, type LightViewerController } from './viewer.js';
 import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat } from './source.js';
 
@@ -100,9 +101,7 @@ export class LightViewerElement extends ElementBase {
     if (!this.shadowRoot) {
       const root = this.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
-      style.textContent =
-        ':host{display:block;height:480px;background:#000;position:relative;min-width:0} .viewport{width:100%;height:100%} .status{position:absolute;bottom:8px;left:12px;color:#fff;font:13px system-ui;pointer-events:none} canvas{display:block}' +
-        SETTINGS_PANEL_CSS;
+      style.textContent = ELEMENT_STYLES;
       this.#host = document.createElement('div');
       this.#host.className = 'viewport';
       this.#status = document.createElement('div');

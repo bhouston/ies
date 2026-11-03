@@ -4,6 +4,7 @@ export interface UpdateMessage {
   text: string;
   format?: 'ies' | 'ldt';
   lampSetLabels?: string[];
+  fileName?: string;
 }
 
 export function isReadyMessage(message: unknown): boolean {
@@ -18,6 +19,7 @@ export function isUpdateMessage(message: unknown): message is UpdateMessage {
     message.type === 'update' &&
     'text' in message &&
     typeof message.text === 'string' &&
+    (!('fileName' in message) || typeof message.fileName === 'string') &&
     (!('format' in message) || message.format === 'ies' || message.format === 'ldt') &&
     (!('lampSetLabels' in message) ||
       (Array.isArray(message.lampSetLabels) && message.lampSetLabels.every((value) => typeof value === 'string')))
