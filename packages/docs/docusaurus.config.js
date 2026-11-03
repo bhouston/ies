@@ -7,6 +7,7 @@ module.exports = {
   tagline: 'See how a luminaire really lights a room.',
   url: process.env.SITE_URL ?? 'https://ies-tools.ben3d.ca',
   baseUrl: process.env.BASE_URL ?? '/',
+  favicon: 'img/icon.png',
   organizationName: 'bhouston',
   projectName: 'ies-tools',
   onBrokenLinks: 'throw',
@@ -25,6 +26,7 @@ module.exports = {
   themeConfig: {
     navbar: {
       title: 'ies-tools',
+      logo: { alt: 'ies-tools polar candela chart', src: 'img/icon.png' },
       items: [
         { to: '/docs/cli/reference', label: 'CLI', position: 'left' },
         { to: '/docs/react', label: 'React', position: 'left' },
