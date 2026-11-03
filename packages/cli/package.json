@@ -1,0 +1,42 @@
+{
+  "name": "ies-cli",
+  "version": "0.1.0",
+  "description": "Validate, inspect, convert and preview IES photometric files.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhouston/ies.git",
+    "directory": "packages/cli"
+  },
+  "bin": {
+    "ies": "./bin/cli.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "media",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/build-viewer.mjs",
+    "dev": "tsc -w",
+    "start": "node bin/cli.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ies-core": "workspace:*",
+    "ies-viewer": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

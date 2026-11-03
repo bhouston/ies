@@ -1,0 +1,82 @@
+{
+  "name": "ies-vscode-extension",
+  "displayName": "IES Light Viewer",
+  "version": "0.1.0",
+  "description": "Preview IES photometric lighting profiles on a floor and wall with an interactive 3D viewer.",
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "3d",
+    "ies",
+    "lighting",
+    "photometry",
+    "preview"
+  ],
+  "homepage": "https://bhouston.github.io/ies/",
+  "bugs": {
+    "url": "https://github.com/bhouston/ies/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Ben Houston",
+    "url": "https://ben3d.ca"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bhouston/ies.git",
+    "directory": "packages/vscode-extension"
+  },
+  "publisher": "benhouston3d",
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "scripts": {
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "package": "pnpm build && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "ies-viewer": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.27.3",
+    "ovsx": "^1.2.0"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "ies.openPreview",
+        "title": "IES: Open Light Preview"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "ies.lightPreview",
+        "displayName": "IES Light Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.ies"
+          },
+          {
+            "filenamePattern": "*.IES"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "ies.openPreview",
+          "when": "resourceExtname =~ /\\.ies/i",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  }
+}

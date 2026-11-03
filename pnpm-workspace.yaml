@@ -1,6 +1,7 @@
 packages:
   - packages/*
 allowBuilds:
+  core-js: false
   esbuild: true
   keytar: true
-  "@vscode/vsce-sign": true
+  '@vscode/vsce-sign': true

@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": { "composite": true, "tsBuildInfoFile": "./dist/.tsbuildinfo" },
+  "references": [{ "path": "../core" }],
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+}
