@@ -51,18 +51,18 @@ Catch parsing errors in your application to present invalid file feedback. The d
 
 The Three.js scene has a black background, floor, wall and a downward-facing luminaire above the floor. Orbit with a drag and zoom with the scroll wheel. The renderer samples the Type C intensity table and applies inverse-square falloff and receiver cosine. This is a direct diffuse preview; it does not compute room interreflection or fixture geometry shadows. WebGL2 is required.
 
-## IntensityGraph
+## IntensityGraph and IsoluxGraph
 
-| Prop                 | Values and meaning                                                 |
-| -------------------- | ------------------------------------------------------------------ |
-| `profile`            | Required parsed profile                                            |
-| `axis`               | `vertical` (default) or `horizontal`, selecting the angle to sweep |
-| `angle`              | Fixed angle for the other axis, in degrees; default 0              |
-| `projection`         | `polar` (default), `cartesian`, or `topology`                      |
-| `upAxis`             | `x`, `y` (default), or `z` for the projected intensity topology    |
-| `className`, `style` | SVG styling                                                        |
+`IntensityGraph` supports complete opposed-plane polar cuts, principal-plane overlays, labeled Cartesian curves and filled or wireframe intensity topology. Existing `axis`, `angle` and `upAxis` props remain available. `IsoluxGraph` computes a ground-plane lux heatmap and contours with configurable mounting height, extent and fixture aiming.
 
-The topology is an SVG projection of the full angular candela surface. Polar and Cartesian views show a configurable slice. Intensity values are in candela. Graphs are SVG and can render without a GPU; the 3D scene needs a real hardware GPU.
+```tsx
+<IntensityGraph profile={profile} principalPlanes />;
+<IntensityGraph profile={profile} projection="cartesian" planes={[0, 45, 90]} />;
+<IntensityGraph profile={profile} projection="topology" surface="both" upAxis="z" />;
+<IsoluxGraph profile={profile} mountingHeight={3} extent={[12, 8]} aimAngle={30} />;
+```
+
+Import both components from `ies-viewer/react`. See [Photometric graphs](./graphs.md) for the complete prop reference, coordinate conventions and pure Node-compatible `ies-viewer/graphs` APIs. The SVG graphs require no GPU; the 3D light scene requires a real hardware GPU.
 
 ## IES and EULUMDAT sources
 

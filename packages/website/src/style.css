@@ -189,3 +189,9 @@ p[role='alert'] {
     min-height: 440px;
   }
 }
+
+.controls .check {
+  flex-direction: row;
+  align-items: center;
+  grid-column: 1 / -1;
+}

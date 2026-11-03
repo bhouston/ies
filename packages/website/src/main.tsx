@@ -7,7 +7,8 @@ import {
   type IESProfile,
   type PhotometricDocument,
 } from 'ies-core';
-import { LightViewer, IntensityGraph } from 'ies-viewer/react';
+import { LightViewer } from 'ies-viewer/react';
+import { GraphPanel } from './GraphPanel.js';
 import './style.css';
 
 function App() {
@@ -20,11 +21,7 @@ function App() {
   const loadRevision = useRef(0);
   const [name, setName] = useState('No file selected');
   const [error, setError] = useState('');
-  const [axis, setAxis] = useState<'vertical' | 'horizontal'>('vertical');
-  const [angle, setAngle] = useState(0);
   const [exposure, setExposure] = useState(1);
-  const [projection, setProjection] = useState<'polar' | 'cartesian' | 'topology'>('polar');
-  const [upAxis, setUpAxis] = useState<'x' | 'y' | 'z'>('y');
   const load = async (file?: File) => {
     if (!file) return;
     const revision = ++loadRevision.current;
@@ -125,69 +122,19 @@ function App() {
           )}
         </section>
         <aside>
-          <h2>Intensity distribution</h2>
-          <p className="muted">Candela · Type C photometry</p>
-          <div className="controls">
-            <label>
-              View
-              <select value={projection} onChange={(event) => setProjection(event.target.value as typeof projection)}>
-                <option value="polar">Polar slice</option>
-                <option value="cartesian">Cartesian slice</option>
-                <option value="topology">3D topology</option>
-              </select>
-            </label>
-            <label>
-              Sweep
-              <select
-                value={axis}
-                onChange={(event) => {
-                  setAxis(event.target.value as typeof axis);
-                  setAngle(0);
-                }}
-              >
-                <option value="vertical">Vertical</option>
-                <option value="horizontal">Horizontal</option>
-              </select>
-            </label>
-            <label>
-              Fixed plane: {angle}°
-              <input
-                type="range"
-                min="0"
-                max={axis === 'vertical' ? 360 : 180}
-                step="1"
-                value={angle}
-                onChange={(event) => setAngle(Number(event.target.value))}
-              />
-            </label>
-            {projection === 'topology' && (
-              <label>
-                Up axis
-                <select value={upAxis} onChange={(event) => setUpAxis(event.target.value as typeof upAxis)}>
-                  <option value="x">X</option>
-                  <option value="y">Y</option>
-                  <option value="z">Z</option>
-                </select>
-              </label>
-            )}
-          </div>
-          {profile ? (
-            <>
-              <IntensityGraph profile={profile} axis={axis} angle={angle} projection={projection} upAxis={upAxis} />
-              <dl>
-                {Object.entries(profile.metadata)
-                  .filter(([, value]) => value)
-                  .slice(0, 8)
-                  .map(([key, value]) => (
-                    <div key={key}>
-                      <dt>{key}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ))}
-              </dl>
-            </>
-          ) : (
-            <p className="muted">The polar plot and topology appear here.</p>
+          <GraphPanel profile={profile} />
+          {profile && (
+            <dl>
+              {Object.entries(profile.metadata)
+                .filter(([, value]) => value)
+                .slice(0, 8)
+                .map(([key, value]) => (
+                  <div key={key}>
+                    <dt>{key}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+            </dl>
           )}
         </aside>
       </div>

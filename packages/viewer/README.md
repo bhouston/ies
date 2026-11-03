@@ -15,13 +15,15 @@ viewer.load(iesText);
 ```
 
 ```tsx
-import { LightViewer, IntensityGraph } from 'ies-viewer/react';
+import { LightViewer, IntensityGraph, IsoluxGraph } from 'ies-viewer/react';
 <LightViewer src="/fixture.ies" exposure={1} onLoad={setProfile} />;
 <IntensityGraph profile={profile} axis="vertical" angle={90} projection="polar" />;
-<IntensityGraph profile={profile} projection="topology" upAxis="z" />;
+<IntensityGraph profile={profile} projection="topology" upAxis="z" surface="both" />;
+<IntensityGraph profile={profile} principalPlanes />;
+<IsoluxGraph profile={profile} mountingHeight={3} extent={10} aimAngle={30} />;
 ```
 
-React accepts `document`, `profile`, `text`, `iesText`, or `src` in that precedence order and emits `onLoad(profile, { document, sourceFormat })` / `onError(error)`. Existing one-argument load callbacks remain compatible. `style` and `className` control the container; default height is 480 pixels. Graph `axis` is `vertical` (sweep 0–180°, fixed azimuth) or `horizontal` (sweep 0–360°, fixed vertical angle). `angle` is the fixed angle in degrees. `projection` is `polar`, `cartesian`, or `topology`; topology shows the full candela surface with `upAxis` `x`, `y`, or `z`.
+React accepts `document`, `profile`, `text`, `iesText`, or `src` in that precedence order and emits `onLoad(profile, { document, sourceFormat })` / `onError(error)`. Existing one-argument load callbacks remain compatible. `style` and `className` control the container; default height is 480 pixels. Graph `axis` is `vertical` (complete opposed-plane −180–180° cut at a fixed azimuth) or `horizontal` (sweep 0–360°, fixed vertical angle). `angle` is the fixed angle in degrees. `projection` is `polar`, `cartesian`, or `topology`; topology shows the full candela surface with `upAxis` `x`, `y`, or `z`.
 
 ```html
 <script type="module" src="https://unpkg.com/ies-viewer/dist/light-viewer.js"></script>
@@ -39,3 +41,5 @@ Installed Three.js **0.186.1** native-loader limitation: its symmetry expansion 
 Raw IES and LDT sources are detected automatically; optional `format: 'ies' | 'ldt'` hints force a parser. React `lampSetIndex`, custom-element `lamp-set-index`, and imperative load options select a **zero-based** LDT alternative configuration. Multiple sets require an explicit choice and are never added together. The demo and VS Code preview provide selectors.
 
 Set the custom element's `photometryText` (`data`/`iesText` aliases) for raw text, or `photometry` for a native-source `PhotometricDocument`. Its `load` event preserves `profile` and additionally carries `document` and `sourceFormat`. The imperative viewer adds `loadDocument`, `setDocument`, and a readonly `document` while keeping `load`'s compatible-profile return value. Both source formats share the same absolute-candela renderer without serializing/reparsing an IES intermediary. Source changes cancel stale requests and disposal releases the GPU boundary.
+
+`planes` overlays selected cuts; `principalPlanes` shows C0–C180 and C90–C270. Topology supports filled/wireframe rendering and orthographic/perspective projection with configurable view angles. `IsoluxGraph` computes actual ground lux using the measured distribution, inverse-square falloff and receiver cosine, with height, fixture aim/azimuth and contours. Fixture aiming and the optional `lampTilt` correction are separate. Pure calculation/geometry helpers are exported from `ies-viewer/graphs` without React or Three.js dependencies. See [the graph documentation](https://bhouston.github.io/ies/graphs) for defaults, bounds and coordinates.

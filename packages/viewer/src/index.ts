@@ -6,3 +6,4 @@ export { createCandelaTexture } from './texture.js';
 
 export { createPhotometrySourceLoader, parseLampSetIndex } from './source.js';
 export type { PhotometryFormat, PhotometrySource, PhotometryLoadInfo, PhotometryFetch } from './source.js';
+export * from './graphs.js';
