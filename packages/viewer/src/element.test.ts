@@ -247,7 +247,16 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       viewer.setAttribute('charts', 'true');
     });
     const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['3D view', 'Polar', 'Cartesian', 'Topology', 'Isolux']);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      '3D view',
+      'Polar',
+      'Cartesian',
+      'Topology',
+      'Isolux',
+      'Cone',
+      'Luminance',
+      'Intensity table',
+    ]);
     expect(root.querySelector('.viewport')!.classList.contains('with-tabs')).toBe(true);
     expect(root.querySelector('[role="tabpanel"]')).toBeNull();
     for (const tab of tabs.slice(1)) {

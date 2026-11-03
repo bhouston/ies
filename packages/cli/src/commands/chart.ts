@@ -1,6 +1,7 @@
 import { defineCommand } from 'yargs-file-commands';
 import { imageOptions, runImageCommand } from '../images.js';
 import { inputOptions } from '../options.js';
+import { CHART_TYPES } from '../chart.js';
 
 export const command = defineCommand({
   command: 'chart <file>',
@@ -10,9 +11,9 @@ export const command = defineCommand({
       .option('output', { type: 'string', alias: 'o', demandOption: true, describe: 'Output .svg or .png file' })
       .option('type', {
         type: 'string',
-        choices: ['polar', 'cartesian', 'topology', 'isolux'] as const,
+        choices: CHART_TYPES,
         default: 'polar',
-        describe: 'Chart type',
+        describe: 'Chart type; cone, luminance and intensity-table are Type C tables',
       })
       .option('width', { type: 'number', default: 900, describe: 'Image width in pixels; maximum 8192' })
       .option('height', { type: 'number', default: 700, describe: 'Image height in pixels; maximum 8192' })
@@ -35,6 +36,22 @@ export const command = defineCommand({
       .option('mounting-height', { type: 'number', default: 2, describe: 'Isolux mounting height in meters' })
       .option('extent', { type: 'number', default: 10, describe: 'Isolux ground extent in meters' })
       .option('resolution', { type: 'number', default: 61, describe: 'Isolux grid resolution (2–201)' })
-      .option('json', { type: 'boolean', describe: 'Print a JSON output report' }),
+      .option('max-distance', {
+        type: 'number',
+        default: 5,
+        describe: 'Cone diagram distances 1…N in meters (integer 1–50)',
+      })
+      .option('unit', {
+        type: 'string',
+        choices: ['cd', 'cd/klm'] as const,
+        default: 'cd',
+        describe: 'Intensity table unit; cd/klm needs a declared lamp flux',
+      })
+      .option('max-columns', { type: 'number', describe: 'Intensity table: keep at most N evenly spaced C columns' })
+      .option('max-rows', { type: 'number', describe: 'Intensity table: keep at most N evenly spaced γ rows' })
+      .option('json', {
+        type: 'boolean',
+        describe: 'Print a JSON output report; table chart types include their values',
+      }),
   handler: (argv) => runImageCommand('chart', imageOptions('chart', argv)),
 });

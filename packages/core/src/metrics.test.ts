@@ -144,6 +144,10 @@ describe('principal-plane beam and field estimates', () => {
       fieldAngleDegrees: 120,
       beamAngleStatus: 'ok',
       fieldAngleStatus: 'ok',
+      beamLeftDegrees: -30,
+      beamRightDegrees: 30,
+      fieldLeftDegrees: -60,
+      fieldRightDegrees: 60,
     });
     expect(computePhotometricMetrics(profile).beamAngles.map((cut) => cut.horizontalDegrees)).toEqual([0, 90]);
   });
@@ -161,9 +165,12 @@ describe('principal-plane beam and field estimates', () => {
     const cut = getBeamAngles(profile);
     expect(cut.peakDirectionDegrees).toBe(30);
     expect(cut.beamAngleDegrees).toBeCloseTo(24.375, 10);
+    expect(cut.beamRightDegrees! - cut.beamLeftDegrees!).toBeCloseTo(24.375, 10);
+    expect(cut.beamLeftDegrees).toBeGreaterThan(0);
   });
   it('returns null and an explicit status for multiple disconnected lobes', () => {
     const profile = parseIES(iesSource({ vertical: [0, 15, 30, 60, 90], values: [[100, 0, 100, 0, 0]] }));
+    expect(getBeamAngles(profile).beamLeftDegrees).toBeUndefined();
     expect(getBeamAngles(profile)).toMatchObject({
       beamAngleDegrees: null,
       beamAngleStatus: 'multiple-lobes',

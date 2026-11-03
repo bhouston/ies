@@ -19,6 +19,14 @@ export interface BeamAngles {
   fieldAngleDegrees: number | null;
   beamAngleStatus: BeamAngleStatus;
   fieldAngleStatus: BeamAngleStatus;
+  /** Signed vertical angle of the 50% crossing before the peak; negative is in the C+180 plane. Set when the beam status is ok. */
+  beamLeftDegrees?: number;
+  /** Signed vertical angle of the 50% crossing after the peak. Set when the beam status is ok. */
+  beamRightDegrees?: number;
+  /** Signed vertical angle of the 10% crossing before the peak; negative is in the C+180 plane. Set when the field status is ok. */
+  fieldLeftDegrees?: number;
+  /** Signed vertical angle of the 10% crossing after the peak. Set when the field status is ok. */
+  fieldRightDegrees?: number;
 }
 
 export interface PhotometricMetrics {
@@ -109,7 +117,9 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
   let peakIndex = 0;
   for (let i = 1; i < intensities.length; i++) if (intensities[i]! > intensities[peakIndex]!) peakIndex = i;
   const peak = intensities[peakIndex] ?? 0;
-  const width = (fraction: number): { angle: number | null; status: BeamAngleStatus } => {
+  const width = (
+    fraction: number,
+  ): { angle: number | null; status: BeamAngleStatus; left?: number; right?: number } => {
     if (peak <= 0) return { angle: null, status: 'no-light' };
     const threshold = peak * fraction;
     const crossing = (direction: -1 | 1): number | null => {
@@ -132,7 +142,7 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
     ) {
       return { angle: null, status: 'multiple-lobes' };
     }
-    return { angle: right - left, status: 'ok' };
+    return { angle: right - left, status: 'ok', left, right };
   };
   const beam = width(0.5);
   const field = width(0.1);
@@ -144,6 +154,8 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
     fieldAngleDegrees: field.angle,
     beamAngleStatus: beam.status,
     fieldAngleStatus: field.status,
+    ...(beam.status === 'ok' && { beamLeftDegrees: beam.left, beamRightDegrees: beam.right }),
+    ...(field.status === 'ok' && { fieldLeftDegrees: field.left, fieldRightDegrees: field.right }),
   };
 }
 

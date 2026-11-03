@@ -144,6 +144,9 @@ describe('image command arguments', () => {
     ['chart', [fixture, '-o', 'x.svg', '--mounting-height', '0']],
     ['chart', [fixture, '-o', 'x.svg', '--extent', '-1']],
     ['chart', [fixture, '-o', 'x.svg', '--resolution', '1.5']],
+    ['chart', [fixture, '-o', 'x.svg', '--max-distance', '0']],
+    ['chart', [fixture, '-o', 'x.svg', '--max-columns', '1']],
+    ['chart', [fixture, '-o', 'x.svg', '--unit', 'lm']],
     ['render', [fixture, '-o', 'x.png', '--type', 'polar']],
     ['chart', [fixture, '-o', 'x.svg', '--browser', 'chrome']],
     ['render', [fixture, fixture, '-o', 'x.png']],
@@ -182,7 +185,7 @@ describe('exclusive image outputs', () => {
 });
 
 describe('shared graph exports', () => {
-  it.each(['polar', 'cartesian', 'topology', 'isolux'] as const)(
+  it.each(['polar', 'cartesian', 'topology', 'isolux', 'cone', 'luminance', 'intensity-table'] as const)(
     'exports the shared %s graph as standalone SVG and sized PNG',
     async (type) => {
       const text = await readFile(fixture, 'utf8');
@@ -194,6 +197,20 @@ describe('shared graph exports', () => {
       expect(metadata).toMatchObject({ width: 420, height: 300, format: 'png' });
     },
   );
+  it('reports table chart values in --json and honors table options', async () => {
+    const directory = await temporary();
+    const run = (...args: string[]) =>
+      JSON.parse(execFileSync(process.execPath, [bin, 'chart', fixture, ...args, '--json'], { encoding: 'utf8' }));
+    const cone = run('-o', join(directory, 'cone.svg'), '--type', 'cone', '--max-distance', '3');
+    expect(cone).toMatchObject({ type: 'cone', format: 'svg' });
+    expect(cone.values.rows).toHaveLength(3);
+    const table = run('-o', join(directory, 'table.png'), '--type', 'intensity-table', '--max-columns', '4');
+    expect(table).toMatchObject({ type: 'intensity-table', format: 'png' });
+    expect(table.values.cPlanes.length).toBeLessThanOrEqual(4);
+    const luminance = run('-o', join(directory, 'luminance.svg'), '--type', 'luminance');
+    expect(luminance.values.gammas).toEqual([45, 50, 55, 60, 65, 70, 75, 80, 85]);
+    expect(run('-o', join(directory, 'polar.svg')).values).toBeUndefined();
+  });
   it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
     const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
     native.lampSets[0]!.lampCount = 1;

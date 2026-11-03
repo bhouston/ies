@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { parseIES, type IESProfile } from '@ies-tools/core';
 import {
+  buildConeDiagram,
   buildIntensityCurves,
+  buildIntensityTable,
   buildIntensityTopology,
+  buildLuminanceTable,
+  heatColor,
   buildIsoluxGrid,
   extractContours,
   groundIlluminance,
@@ -293,5 +297,103 @@ describe('Graph input validation', () => {
     expect(() => extractContours({ ...grid, xs: [0, 0] }, [1])).toThrow('strictly increasing');
     expect(() => extractContours(grid, [2, 1])).toThrow('levels');
     expect(() => extractContours(grid, [Infinity])).toThrow('Contour level');
+  });
+});
+
+const fine = Array.from({ length: 361 }, (_, i) => i / 4);
+const cosine = (power: number, peak = 1000) => fine.map((g) => peak * Math.cos((g * Math.PI) / 180) ** power);
+describe('Cone diagram', () => {
+  it('follows the inverse-square law below a Lambertian source with known beam and field widths', () => {
+    const cone = buildConeDiagram(profile({ vertical: fine, values: [cosine(1)] }));
+    expect(cone.rows.map((row) => row.distance)).toEqual([1, 2, 3, 4, 5]);
+    for (const row of cone.rows) {
+      expect(row.illuminance).toBeCloseTo(1000 / row.distance ** 2, 9);
+      // cos γ = 0.5 at exactly 60°, a measured knot.
+      expect(row.beamDiameters[0]).toBeCloseTo(2 * Math.sqrt(3) * row.distance, 9);
+      expect(row.beamDiameters[1]).toBeCloseTo(2 * Math.sqrt(3) * row.distance, 9);
+      // cos γ = 0.1 at 84.26°; linear knots near 90° stay within 0.1%.
+      expect(row.fieldDiameters[0]! / (2 * row.distance * Math.tan(Math.acos(0.1)))).toBeCloseTo(1, 2);
+    }
+  });
+  it('turns the analytic cosⁿ 50% crossing into its diameter', () => {
+    const n = 8,
+      crossing = Math.acos(0.5 ** (1 / n));
+    const cone = buildConeDiagram(profile({ vertical: fine, values: [cosine(n)] }), { distances: [2.5] });
+    expect(cone.rows[0]!.beamDiameters[0]! / (2 * 2.5 * Math.tan(crossing))).toBeCloseTo(1, 3);
+  });
+  it('adds per-side crossings of asymmetric beams and omits widths at or beyond 90°', () => {
+    const narrow = cosine(8),
+      wide = cosine(1);
+    const cone = buildConeDiagram(
+      profile({ vertical: fine, horizontal: [0, 90, 180, 270, 360], values: [narrow, narrow, wide, narrow, narrow] }),
+      { maxDistance: 1 },
+    );
+    const [c0] = cone.planes;
+    expect(c0.beam.beamLeftDegrees).toBeCloseTo(-60, 6);
+    const expected = Math.tan(Math.acos(0.5 ** (1 / 8))) + Math.tan(Math.PI / 3);
+    expect(cone.rows[0]!.beamDiameters[0]! / expected).toBeCloseTo(1, 3);
+    const flat = buildConeDiagram(isotropic);
+    expect(flat.rows[0]!.beamDiameters).toEqual([null, null]);
+    expect(() => buildConeDiagram(isotropic, { maxDistance: 0 })).toThrow('Maximum distance');
+    expect(() => buildConeDiagram(isotropic, { distances: [-1] })).toThrow('Distance');
+    expect(() => buildConeDiagram({ ...isotropic, photometricType: 2 })).toThrow('Type C');
+  });
+});
+
+describe('Glare-angle luminance table', () => {
+  it('divides intensity by the projected rectangular opening area', () => {
+    const table = buildLuminanceTable({
+      ...isotropic,
+      units: 'meters',
+      dimensions: { width: 0.2, length: 0.5, height: 0.1 },
+    });
+    expect(table.gammas).toEqual([45, 50, 55, 60, 65, 70, 75, 80, 85]);
+    expect(table.cPlanes).toEqual([0, 45, 90, 135, 180, 225, 270, 315]);
+    expect(table.intensity.flat().every((cd) => cd === 100)).toBe(true);
+    const at = (g: number, c: number) => table.luminance![table.gammas.indexOf(g)]![table.cPlanes.indexOf(c)]!;
+    const rad = Math.PI / 180;
+    // Bottom 0.2 × 0.5; side from C0 is width × height, from C90 length × height.
+    expect(at(60, 0)).toBeCloseTo(100 / (0.1 * Math.cos(60 * rad) + 0.02 * Math.sin(60 * rad)), 9);
+    expect(at(60, 90)).toBeCloseTo(100 / (0.1 * Math.cos(60 * rad) + 0.05 * Math.sin(60 * rad)), 9);
+  });
+  it('converts feet, treats negative width as circular and reports zero area', () => {
+    const circular = buildLuminanceTable(
+      { ...isotropic, units: 'feet', dimensions: { width: -1, length: -1, height: 0 } },
+      { gammas: [60], cPlanes: [0] },
+    );
+    const diameter = 0.3048;
+    expect(circular.opening.shape).toBe('circular');
+    expect(circular.bottomArea).toBeCloseTo((Math.PI * diameter ** 2) / 4, 12);
+    expect(circular.luminance![0]![0]).toBeCloseTo(100 / (circular.bottomArea * 0.5), 9);
+    const none = buildLuminanceTable({ ...isotropic, dimensions: { width: 0, length: 0, height: 0 } });
+    expect(none.luminance).toBeNull();
+    expect(none.intensity).toHaveLength(9);
+  });
+});
+
+describe('Intensity table', () => {
+  const grid = profile({
+    vertical: [0, 30, 60, 90],
+    horizontal: [0, 45, 90, 135, 180],
+    values: [0, 1, 2, 3, 4].map((h) => [400, 300, 200, h * 10]),
+  });
+  it('tabulates measured γ rows and C columns in cd or cd/klm', () => {
+    const table = buildIntensityTable(grid);
+    expect(table).toMatchObject({ unit: 'cd', gammas: [0, 30, 60, 90], cPlanes: [0, 45, 90, 135, 180], maximum: 400 });
+    expect(table.values[3]).toEqual([0, 10, 20, 30, 40]);
+    // Absolute photometry has no declared lamp flux; stays in candela.
+    expect(buildIntensityTable(grid, { unit: 'cd/klm' }).unit).toBe('cd');
+    const relative = buildIntensityTable({ ...grid, lampCount: 2, lumensPerLamp: 1000 }, { unit: 'cd/klm' });
+    expect(relative).toMatchObject({ unit: 'cd/klm', maximum: 200 });
+  });
+  it('thins large grids while keeping the first and last angles', () => {
+    const table = buildIntensityTable(grid, { maxColumns: 3, maxRows: 2 });
+    expect(table.cPlanes).toEqual([0, 90, 180]);
+    expect(table.gammas).toEqual([0, 90]);
+    expect(() => buildIntensityTable(grid, { maxColumns: 1 })).toThrow('Maximum columns');
+  });
+  it('shares the clamped heat colormap', () => {
+    expect(heatColor(-1)).toBe(heatColor(0));
+    expect(heatColor(2)).toBe('hsl(40 80% 65%)');
   });
 });
