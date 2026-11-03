@@ -29,6 +29,12 @@ EULUMDAT files with multiple alternative lamp configurations show a configuratio
 
 File text, format hints and configuration labels travel as validated structured messages. Labels are assigned through `textContent`, so manufacturer or lamp descriptions cannot become HTML or scripts. Source loading uses the shared parser and in-memory profile, with no intermediate IES serialization.
 
+## Text editor language features
+
+In the text editor, the extension reports diagnostics through one `ies-tools` diagnostic collection, so each error or warning is underlined at its source token and listed in the Problems panel with its code. Diagnostics refresh 250 ms after an edit and clear when the file closes. Hovering a token shows its field name and description from the core field map, the Outline view lists one symbol per header field with repeated arrays collapsed (for example **Vertical angles (37)**), and a CodeLens on line 0 summarizes integrated flux, peak intensity, C0/C90 beam angles and efficacy next to an **Open Light Preview** link. Files with errors show the error count instead, linking to the Problems panel.
+
+The features apply to `.ies`, `.IES`, `.ldt` and `.LDT` files, matched by language ID or file pattern. Parse results are cached per document version. They are read-only and supported in untrusted workspaces. Turn them off with `iesTools.validation.enabled`, `iesTools.hover.enabled` and `iesTools.codeLens.enabled`; `iesTools.validation.strict` reports warnings as errors. Ranges and descriptions come from `describePhotometrySource` in `@ies-tools/core`.
+
 ## File information and validation
 
 The right-hand panel shares the core inspection/validation model with `ies inspect` and `ies validate`. It includes format/version, coordinate type, source and lamp descriptions, power, peak candela, declared and integrated flux, efficacy, principal-plane beam/field estimates, angular counts, dimensions, tilt, generation provenance and every metadata keyword. Native LDT alternative configurations remain separate and require a selection for calculated output.
