@@ -1,17 +1,25 @@
 ---
-sidebar_position: 3
+sidebar_position: 6
+sidebar_label: React
 ---
 
 # React components
 
 ![The light viewer: a floodlight lighting the floor and wall, with the beam gizmo, chart tabs and settings button](/img/light-viewer.png)
 
-Install `@ies-tools/viewer`, `three`, `react` and `react-dom` after publication. The React exports live at `@ies-tools/viewer/react`; the core package is usable separately in Node and browsers.
+`@ies-tools/viewer/react` provides the 3D light viewer, every photometric chart, and the file information panel as React components.
+
+```sh
+npm install @ies-tools/viewer @ies-tools/core three react react-dom
+```
+
+## Show a file the user picks
 
 ```tsx
 import { useState } from 'react';
 import { parsePhotometry, type PhotometricDocument } from '@ies-tools/core';
 import { LightViewer, IntensityGraph } from '@ies-tools/viewer/react';
+import '@ies-tools/viewer/styles.css';
 
 export function Photometry() {
   const [document, setDocument] = useState<PhotometricDocument>();
@@ -33,75 +41,121 @@ export function Photometry() {
 }
 ```
 
-Catch parsing errors in your application to present invalid file feedback. The demo in `packages/website` includes error handling and controls for exposure and graph settings. It uses Vite, React and the React Compiler.
+`parsePhotometry` throws for invalid files, so catch the error to show your own message. It also throws for an LDT file with several lamp configurations until you choose one; see [Lamp configurations](#lamp-configurations).
 
 ## LightViewer
 
-| Prop                 | Meaning                                                                                        |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| `document`           | Shared `PhotometricDocument` preserving native IES/LDT provenance; highest precedence          |
-| `profile`            | Parsed compatible `IESProfile`, taking precedence over text and URL sources                    |
-| `text`               | Raw IES or EULUMDAT source text; format is detected automatically                              |
-| `iesText`            | Compatibility alias for raw text                                                               |
-| `src`                | URL fetched with cancellation when the component unmounts or the source changes                |
-| `format`             | Optional explicit `ies` or `ldt` input hint                                                    |
-| `lampSetIndex`       | Zero-based LDT alternative configuration; required when several lamp sets exist                |
-| `exposure`           | Nonnegative display exposure, default 1                                                        |
-| `onLoad`             | Called with `(profile, { document, sourceFormat })`; existing one-argument handlers still work |
-| `onError`            | Called with an Error; errors are also shown in the component                                   |
-| `className`, `style` | Wrapper styling; default height is 480 pixels                                                  |
-
-The Three.js scene has a black background, floor, wall and a downward-facing luminaire above the floor. Orbit with a drag and zoom with the scroll wheel. The renderer samples the Type C intensity table and applies inverse-square falloff and receiver cosine. This is a direct diffuse preview; it does not compute room interreflection or fixture geometry shadows. WebGL2 is required.
-
-## IntensityGraph and IsoluxGraph
-
-`IntensityGraph` supports complete opposed-plane polar cuts, principal-plane overlays, labeled Cartesian curves and filled or wireframe intensity topology. Existing `axis`, `angle` and `upAxis` props remain available. `IsoluxGraph` computes a ground-plane lux heatmap and contours with configurable mounting height, extent and fixture aiming.
+`LightViewer` shows the luminaire lighting a floor and wall against a black background. Drag to orbit and scroll to zoom. It needs hardware WebGL2 and Type C photometry.
 
 ```tsx
-<IntensityGraph profile={profile} principalPlanes />;
-<IntensityGraph profile={profile} projection="cartesian" planes={[0, 45, 90]} />;
-<IntensityGraph profile={profile} projection="topology" surface="both" upAxis="z" />;
-<IsoluxGraph profile={profile} mountingHeight={3} extent={[12, 8]} aimAngle={30} />;
+<LightViewer src="/lights/luminaire.ies" />
 ```
 
-Import both components from `@ies-tools/viewer/react`. See [Photometric graphs](./graphs.md) for the complete prop reference, coordinate conventions and the pure chart data APIs in `@ies-tools/core`. The SVG graphs require no GPU; the 3D light scene requires a real hardware GPU.
+Give it one source. If you pass more than one, the first in this order wins: `document`, `profile`, `text`, `iesText`, `src`.
 
-## IES and EULUMDAT sources
+| Prop                 | Meaning                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| `document`           | A `PhotometricDocument` from `parsePhotometry`, keeping the original file's details |
+| `profile`            | A parsed `IESProfile`                                                               |
+| `text`               | Raw IES or LDT text; the format is detected                                         |
+| `iesText`            | Alias for `text`                                                                    |
+| `src`                | URL to fetch; changing it or unmounting cancels the request                         |
+| `format`             | Force `ies` or `ldt` for `text` and `src`                                           |
+| `lampSetIndex`       | Zero-based LDT lamp configuration; needed when there are several                    |
+| `onLoad`             | Called with `(profile, { document, sourceFormat })`                                 |
+| `onError`            | Called with an `Error`; the message is also shown in the viewer                     |
+| `className`, `style` | Wrapper styling; the default height is 480 pixels                                   |
 
-`LightViewer` selects sources in this order: `document`, `profile`, `text`, `iesText`, then `src`. `document` passes the normalized profile directly to the renderer and retains native source data; it never serializes LDT into IES text to display it. Supplying only a compatible `profile` retains the legacy IES API but cannot recover native LDT geometry or provenance that the caller has discarded.
+### Scene settings
+
+These props set the scene. They update the view without reloading the file.
+
+| Prop               | Meaning                                                                      | Default  |
+| ------------------ | ---------------------------------------------------------------------------- | -------- |
+| `showWall`         | Show the back wall                                                           | `true`   |
+| `wallDistance`     | Distance from the light to the wall in metres                                | `2`      |
+| `floorDistance`    | Height of the light above the floor in metres                                | `2`      |
+| `toneMapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`           | `aces`   |
+| `exposure`         | Display brightness, 0 or above                                               | `1`      |
+| `helper`           | Blue lines showing the beam's extent                                         | `true`   |
+| `settingsPanel`    | Gear panel: `closed`, `open` or `hidden`                                     | `closed` |
+| `onSettingsChange` | Called with `{ settings, previousSettings }` when the user changes a setting |          |
+
+If you leave a setting prop out, the user controls it from the gear panel.
+
+The scene shows direct light only: it doesn't compute reflections between surfaces or shadows from the luminaire's body.
+
+## Charts
+
+All charts draw SVG and work without a GPU. They take a Type C `profile`.
+
+```tsx
+import {
+  ConeDiagramGraph,
+  IntensityGraph,
+  IntensityTableGraph,
+  IsoluxGraph,
+  LuminanceTableGraph,
+} from '@ies-tools/viewer/react';
+
+<IntensityGraph profile={profile} principalPlanes />;
+<IntensityGraph profile={profile} projection="cartesian" planes={[0, 45, 90]} logScale />;
+<IntensityGraph profile={profile} projection="topology" surface="both" upAxis="z" />;
+<IsoluxGraph profile={profile} mountingHeight={3} extent={[12, 8]} aimAngle={30} />;
+<ConeDiagramGraph profile={profile} maxDistance={6} />;
+<LuminanceTableGraph profile={profile} />;
+<IntensityTableGraph profile={profile} unit="cd/klm" maxColumns={12} />;
+```
+
+See [Charts](./graphs.md) for what each one shows and its props.
+
+## File information panel
+
+`PhotometryInfoPanel` and `ValidationChecks` show a file's properties and validation results, the same as the VS Code information panel. They take the inspection and validation results from `@ies-tools/core`.
+
+```tsx
+import { inspectParsedPhotometry, validatePhotometry } from '@ies-tools/core';
+import { PhotometryInfoPanel } from '@ies-tools/viewer/react';
+import '@ies-tools/viewer/styles.css';
+
+export function FileInfo({ text, strict }: { text: string; strict: boolean }) {
+  const validation = validatePhotometry(text, 'ies', strict);
+  const inspection = validation.profile ? inspectParsedPhotometry(validation.profile) : null;
+  return <PhotometryInfoPanel inspection={inspection} validation={validation} strict={strict} />;
+}
+```
+
+Pass `onStrictChange` to show a **Strict validation** checkbox, and `fileName` or `fileSize` to show them in the panel. See the [API reference](./api/react/index.md) for every prop.
+
+## Lamp configurations
+
+An LDT file can hold several alternative lamp configurations. They are never added together. Single-configuration files need no choice. For several, either pass `lampSetIndex` (counting from 0) to `LightViewer`, or let the user pick:
+
+```tsx
+import { parseLDT, parsePhotometry } from '@ies-tools/core';
+
+const native = parseLDT(text);
+// Show native.lampSets to the user, then:
+const document = parsePhotometry(text, 'ldt', { lampSetIndex: chosenIndex });
+```
 
 ```tsx
 <LightViewer
   src="/lights/luminaire.ldt"
   format="ldt"
   lampSetIndex={1}
-  onLoad={(profile, info) => {
-    console.log(profile.candelaValues, info.sourceFormat, info.document.source);
-  }}
+  onLoad={(profile, info) => console.log(info.sourceFormat, info.document.source)}
 />
 ```
 
-Lamp sets in LDT are alternative configurations, not values to add together. Single-set files need no selection. For multiple sets, pass an explicit zero-based `lampSetIndex`, or parse the native file with `parseLDT` and provide a selector before calling `parsePhotometry`. The browser demo shows this flow. The simple upload example above deliberately reports an error for a multi-configuration file until your application supplies a choice.
+## Styling
 
-Changing a source cancels its previous fetch and suppresses stale completions and errors. Unmounting also cancels loading and releases the viewer. Format hints and selected lamp configurations participate in the same lifecycle. The supported rendering coordinates remain Type C for both source formats.
-
-### Scene settings
-
-`LightViewer` also accepts `showWall`, `wallDistance`, `floorDistance`, `toneMapping`, `exposure` and `helper` props. These update the current renderer without reloading the source. `onSettingsChange({ settings, previousSettings })` observes effective changes. Defaults are a visible wall, 2-meter wall/floor distances, ACES tone mapping and exposure 1. The built-in gear overlay uses the same `ViewerSettingsPanel` React component as the custom element. `settingsPanel="closed"` (default), `"open"` or `"hidden"` controls its initial display. Source changes retain the current renderer and user-selected scene settings; changing provided scene props applies only those values. Omitted props leave the current panel setting intact; removing a previously provided prop keeps its current value and lets the panel control it.
-
-## Shared viewer styling
+Import the compiled stylesheet once for the settings panel and information panel:
 
 ```tsx
 import '@ies-tools/viewer/styles.css';
-import { LightViewer, ViewerSettingsPanel } from '@ies-tools/viewer/react';
-
-<LightViewer src="/luminaire.ies" settingsPanel="closed" />;
 ```
 
-The compiled stylesheet supplies Tailwind utilities and the shared theme tokens. A `.dark` ancestor uses the dark palette. Applications already compiling Tailwind v4 can instead import `@ies-tools/viewer/styles/viewer.css` into their Tailwind entry. `ViewerSettingsPanel` is independently reusable with `settings`, `mode`, `onChange`, `onModeChange` and optional `onError` props. Its component is shared with the element, so controls do not drift between embedding surfaces. See [Styling and themes](./styling.md).
+A `.dark` ancestor switches to the dark palette. To match your app's colours, or to use your own Tailwind v4 build, see [Styling and themes](./styling.md). `ViewerSettingsPanel`, the gear panel's contents, is also exported for use on its own.
 
-## Shared inspection UI
-
-`PhotometryInfoPanel` and `ValidationChecks` are exported from `@ies-tools/viewer/react`. They render the shared core inspection and validation models used by the CLI. Import the compiled `@ies-tools/viewer/styles.css`, or include `@ies-tools/viewer/styles/viewer.css` in a Tailwind v4 entry stylesheet, then override the documented theme tokens for your host. The VS Code preview maps those tokens to editor colors.
-
-See the [@ies-tools/viewer/react API reference](./api/react/index.md) for every component and prop, generated from the source's TSDoc comments.
+See the [`@ies-tools/viewer/react` API reference](./api/react/index.md) for every component and prop.

@@ -1,134 +1,182 @@
 ---
-sidebar_position: 5
+sidebar_position: 7
+sidebar_label: Core library
 ---
 
 # Core library
 
-```ts
-import { parseIES, sampleIntensity, summarizeIES } from '@ies-tools/core';
-const profile = parseIES(iesText);
-const candela = sampleIntensity(profile, 30, 90);
-const summary = summarizeIES(profile); // format/version, coordinate type, source descriptions and stats
+`@ies-tools/core` parses, validates, measures and converts IES and EULUMDAT files. It has no dependencies and runs in Node and the browser, with no DOM or GPU needed.
+
+```sh
+npm install @ies-tools/core
 ```
 
-`parseIES` supports LM-63-1986, IESNA91, LM-63-1995 , LM-63-2002 and LM-63-2019. It validates numeric data, dimensions, angle counts, ranges and table size. Metadata is preserved, including continuation lines. External TILT files are rejected with a clear error; embedded TILT data is preserved.
+This page covers common tasks. The [API reference](./api/core/index.md) documents every export.
 
-`candelaValues` is horizontal-major and contains absolute intensities with candela and ballast multipliers applied. The ballast-lamp factor is applied only to 1986/1991 files; the second field is reserved in 1995/2002 and is provenance in 2019. Dimensions retain the file's units and signed shape encoding. A negative lumens-per-lamp value of -1 denotes absolute photometry.
-
-`sampleIntensity(profile, verticalDegrees, horizontalDegrees, tiltDegrees = 0)` returns candela with bilinear interpolation. Vertical zero points down; 180 points up. Horizontal angles wrap around 360 degrees. Axial, quadrant, bilateral and full Type C symmetry are supported. Missing vertical coverage is dark. Embedded lamp-tilt factors are interpolated at the fourth argument, clamped to their measured range.
-
-Type A/B files can be parsed and inspected, but intensity sampling and rendering support Type C only and reject other types explicitly. The viewer is a direct-light visualization, not a full architectural lighting simulation.
-
-## LM-63-2019 interpretation
-
-The current edition uses the exact `IES:LM-63-2019` header. The 2025 reaffirmation of the standard does not introduce an `IES:LM-63-2025` header. The second number on the ballast/power line is the **file generation type**, for example `1.10100`. `profile.fileGenerationType` preserves this numeric provenance value, while the compatibility field `ballastLampPhotometricFactor` continues to expose the raw number. It never scales 2019 candela. Values in the reserved position of 1995/2002 files are also ignored for intensity; a non-unity value produces a validation warning.
-
-The older ballast-lamp photometric factor scales intensity only in 1986/1991 files. Candela and ballast multipliers still apply once. Embedded TILT factors remain separate from the stored table and are interpolated when sampling or computing metrics at a specified lamp tilt.
-
-Sources: the [ANSI overview of the 2019 changes](https://blog.ansi.org/ansi/standard-file-photometric-data-ies-lm-63-19/) explains the provenance field and removal of external tilt references; the [IES standard listing](https://store.ies.org/product/approved-method-ies-standard-file-format-for-the-electronic-transfer-of-photometric-data-and-related-information/) identifies the reaffirmed edition. [Lighting Analysts' original workshop](https://www.agi32.com/Downloads/TechnicalDocs/Thinking%20Photometrically%20II.pdf) describes removal of the ballast-lamp factor in 1995.
-
-## Structured validation
+## Parse and inspect a file
 
 ```ts
-import { validateIES, diagnoseIES } from '@ies-tools/core';
-const result = validateIES(iesText, { strict: true });
+import { parsePhotometry, sampleIntensity, summarizeIES } from '@ies-tools/core';
+
+const document = parsePhotometry(text); // IES or LDT, detected from the content
+const candela = sampleIntensity(document.profile, 30, 90); // γ = 30°, C = 90°
+const summary = summarizeIES(document.profile);
+```
+
+`parsePhotometry` returns a `PhotometricDocument` with a `profile` (the distribution in absolute candela), the luminaire `geometry` in metres, and the original file's fields in `source`. See [Conversion](./conversion.md) for details. For IES only, `parseIES(text)` returns the profile directly.
+
+Supported files:
+
+- IES LM-63-1986, IESNA91, LM-63-1995, LM-63-2002 and LM-63-2019, with embedded `TILT` data. Files that reference an external `TILT` file are rejected.
+- EULUMDAT `.ldt`, with all five symmetry types and multiple lamp configurations.
+
+Parse errors throw `IESParseError` or `LDTParseError`, with a `code`, an optional `field` and an optional source `range`.
+
+### Sample intensity
+
+`sampleIntensity(profile, verticalDegrees, horizontalDegrees, tiltDegrees = 0)` returns candela in any direction, interpolated between measured angles.
+
+- Vertical 0° points straight down and 180° straight up. Horizontal angles wrap at 360°.
+- Values are absolute candela, with the file's multipliers applied.
+- Directions outside the measured range are dark.
+- The optional fourth argument applies the file's embedded lamp-tilt correction at that angle.
+
+Sampling, metrics and charts need Type C photometry. Type A and B files can be parsed and inspected; Type C-only functions reject them with a clear error.
+
+### Inspect a file
+
+`inspectPhotometry` returns the same model the CLI's `ies inspect` and the VS Code information panel show: metadata, lamp configurations, statistics and diagnostics.
+
+```ts
+import { inspectPhotometry } from '@ies-tools/core';
+
+const info = inspectPhotometry(text, 'ldt', 0); // zero-based lamp configuration
+console.log(info.manufacturer, info.integratedFluxLumens, info.lampSets.length);
+```
+
+For an LDT file with several lamp configurations, statistics are `null` until you pass a configuration index.
+
+### LM-63-2019 files
+
+In LM-63-2019, the second number on the ballast line is the **file generation type**, such as `1.10100`. It is kept as `profile.fileGenerationType` and never scales intensity. The older ballast-lamp factor only scales intensity in 1986 and 1991 files.
+
+## Validate a file
+
+```ts
+import { validateIES } from '@ies-tools/core';
+
+const result = validateIES(text, { strict: true });
 for (const diagnostic of result.diagnostics) {
   console.log(diagnostic.code, diagnostic.severity, diagnostic.field, diagnostic.message);
 }
-// result.profile is null only when parsing failed; warnings preserve the usable profile.
-const existingProfileDiagnostics = diagnoseIES(profile);
+// result.profile is null only when parsing failed.
 ```
 
-Diagnostics carry stable `code`, `severity` (`error`, `warning`, `info`), human-readable `message`, optional `field` and, when parsed from text, an optional source `range`. Invalid numeric tokens, counts, ranges, angle ordering, scaled overflow and malformed tables are hard parse errors. Metadata omissions remain warnings so existing files stay readable: `[TEST]`, `[TESTLAB]`, `[ISSUEDATE]` and `[MANUFAC]` are checked for 2002/2019 files. Earlier versions do not inherit these requirements. [Lighting Analysts' manufacturer guidelines](https://www.agi32.com/Downloads/Photometry/Manufacturers%20Guidelines%2010-29-14.pdf) distinguish required 2002 keywords from earlier recommendations.
+Each diagnostic has a stable `code`, a `severity` (`error`, `warning` or `info`), a `message` and, where it applies, the `field`.
 
-`strict: true` makes warnings fail validation while retaining their original severity. Informational unsupported-coordinate notices do not invalidate otherwise readable Type A/B files. Additional warnings identify partial vertical coverage, mismatched 360° endpoint rows, non-unity reserved fields and malformed generation-code encodings. This is a supported subset of LM-63 checks, not a complete standards certification or assessment of laboratory accreditation.
+- **Errors** are problems that stop the file being read: invalid numbers, counts, ranges, angle order or table size.
+- **Warnings** are problems that leave the file usable, such as missing `[TEST]`, `[TESTLAB]`, `[ISSUEDATE]` or `[MANUFAC]` keywords in 2002 and 2019 files.
+- **`strict: true`** makes warnings fail validation as well.
 
-`parseIES` keeps its throwing behavior. `IESParseError` now includes the same `code`, optional `field` and optional source `range` used by validation results.
+For either format, use `validatePhotometry(text, 'ies' | 'ldt', strict, lampSetIndex?)`. To check a profile you've already built, use `diagnoseIES(profile)`.
 
-## Source locations and field descriptions
+These checks cover the common LM-63 rules. They are not a full standards certification.
 
-Diagnostics and parse errors parsed from text carry an optional `range: { line, start, end }`: a 0-based line with UTF-16 column offsets and an exclusive end, the convention editors such as VS Code use. Lines split on CRLF, CR or LF, and a leading byte-order mark is not counted. Ranges point at the offending token, the whole header line for count and table-size errors, the first out-of-order angle, the format line for version and required-metadata issues, and the end of the file for truncated data. `IESParseError` and `LDTParseError` expose the same `range`. Diagnostics for profiles built in memory have no range. Tracking positions adds no measurable parsing cost.
+### Source locations
 
-`describePhotometrySource(text, format, strict?)` is the opt-in field map for editors and other tooling. It returns `{ valid, profile, diagnostics, fields }` and never throws for malformed photometry. `fields` lists `{ line, start, end, name, description }` in document order: the IES format line, each `[KEYWORD]` line (LM-63 keywords are described, `_`-prefixed keywords are user-defined), TILT and its embedded block, every numeric header field (including the edition-dependent second ballast field), each angle (`Vertical angle #3 (degrees)`) and each candela value (`Candela at horizontal 45°, vertical 30° (before multiplier)`). For EULUMDAT, it describes every line in the DIAL layout (company, Ityp, Isym with its 0–4 meanings, Mc, Dc, Ng, Dg, dimensions, lamp sets, direct ratios), C and γ angles and the intensities in cd/klm. Elements of a repeated array share one `name`. For an invalid file, `fields` covers the text read before the error, alongside the located diagnostic.
+Diagnostics from text carry `range: { line, start, end }`: a 0-based line, with UTF-16 column offsets and an exclusive end, as VS Code and most editors expect. The range points at the token that caused the problem, or at the whole line for count and table-size errors.
+
+For editor tooling, `describePhotometrySource` also describes every field in the file. It never throws for malformed files.
 
 ```ts
 import { describePhotometrySource } from '@ies-tools/core';
+
 const { diagnostics, fields } = describePhotometrySource(text, 'ies');
+// fields: { line, start, end, name, description }[] in document order
 const hovered = fields.find((field) => field.line === 9 && field.start <= 4 && 4 < field.end);
 ```
 
-The name and description tables (`IES_KEYWORDS`, `IES_HEADER`, `LDT_LINES` and related exports) are exported for reuse.
+Field names and descriptions cover the IES format line, keywords, `TILT`, each header number, each angle and each candela value, and every line of an EULUMDAT file. The tables behind them (`IES_KEYWORDS`, `IES_HEADER`, `LDT_LINES` and related exports) are exported too.
 
-## Flux, efficacy and angular widths
-
-```ts
-import { calculateLuminousFlux, computePhotometricMetrics, getBeamAngles } from '@ies-tools/core';
-const lumens = calculateLuminousFlux(profile); // default lamp tilt 0°
-const tiltedLumens = calculateLuminousFlux(profile, 30);
-const metrics = computePhotometricMetrics(profile);
-const c0cut = getBeamAngles(profile, 0);
-```
-
-Flux integrates `I(theta, phi) * sin(theta) dtheta dphi` in radians. The implementation integrates the same piecewise bilinear angular interpolant as the intensity sampler, using exact polar integrals and actual azimuth interval widths. Irregular grids are supported. Axial, quadrant and bilateral measurements expand their measured symmetry; full azimuth data close the omitted seam when necessary. Duplicate 0°/360° rows are interval endpoints and do not add an extra bin. Unmeasured vertical angles are dark. No nominal lamp flux, light-output ratio or already-applied multiplier rescales this result.
-
-The returned `integratedFluxLumens` is an angular-table estimate of luminaire output, not a substitute for a laboratory flux measurement. `declaredLampFluxLumens` is lamp count times the per-lamp rating, or null for the `-1` absolute-photometry sentinel. Those values describe different quantities and can differ. `luminousEfficacyLumensPerWatt` divides integrated output by declared input watts and is null for zero input power. `metricsTiltDegrees` records the applied embedded lamp-tilt correction.
-
-`calculateLuminousFlux` accepts the `PhotometricGrid` structural subset: photometric type, horizontal and vertical angles, absolute horizontal-major candela, and optional embedded tilt. This lets format converters reuse the integration without fabricating IES metadata. Input grids should already satisfy the parser's numeric and angular constraints.
-
-Beam estimates use complete opposed-plane cuts C0–C180 and C90–C270 by default. Each cut reports the dominant measured peak direction, peak candela, and full angular widths between interpolated 50%-peak (**beam**) and 10%-peak (**field**) crossings. A custom cut is available through `getBeamAngles(profile, horizontalDegrees)`. `beamLeftDegrees`/`beamRightDegrees` and `fieldLeftDegrees`/`fieldRightDegrees` give each crossing as a signed vertical angle (negative = the opposite C-plane, C+180°), and are present whenever both crossings bracket the peak. Off-axis peaks retain their measured signed vertical direction; cuts are not automatically rotated to a nominal optical axis. The [IES beam-angle](https://ies.org/definitions/beam-angle/) and [field-angle definitions](https://ies.org/definitions/field-angle/) describe the threshold convention.
-
-Widths are null with `no-light`, `no-crossing`, or `multiple-lobes` status when the data cannot support a single bounded estimate. Missing hemispheres never invent zero-intensity threshold crossings. These principal-plane estimates are not certified manufacturer beam angles, global maximum/minimum beam widths, or a general optical-axis finder. Type A/B summaries return `metricsSupported: false`, null integrated metrics, an empty beam array and an explicit reason; low-level Type C metric functions reject those types.
-
-## Flux breakdown, LOR, DFF and CIE flux code
+## Photometric metrics
 
 ```ts
-import { calculateFluxBreakdown } from '@ies-tools/core';
-const { total, downward, upward, cumulative } = calculateFluxBreakdown(profile, tiltDegrees);
-// cumulative[g]: flux from γ = 0 to γ = g degrees, g = 0…180
+import { computePhotometricMetrics, getBeamAngles } from '@ies-tools/core';
+
+const metrics = computePhotometricMetrics(profile); // optional second argument: lamp tilt in degrees
+console.log(metrics.integratedFluxLumens, metrics.luminousEfficacyLumensPerWatt);
+
+const c0 = getBeamAngles(profile, 0); // beam and field angles in the C0–C180 plane
+console.log(c0.beamAngleDegrees, c0.fieldAngleDegrees);
 ```
 
-`calculateFluxBreakdown` runs the same exact integration as `calculateLuminousFlux` (whose result is its `total`), splitting measured intervals at whole degrees so one pass also yields downward (γ = 0…90°), upward (γ = 90…180°) and 1° cumulative zonal flux. `computePhotometricMetrics` and the inspection models derive these additional fields from it; each is null for Type A/B data or an unselected LDT configuration:
+`computePhotometricMetrics` returns:
 
-- `downwardFluxLumens`, `upwardFluxLumens`.
-- `peakIntensityCandela` and `peakDirection` (`horizontalDegrees`, `verticalDegrees`): the largest tabulated intensity after lamp tilt and its first measured direction. The summary's existing `peakCandela` remains the raw table maximum.
-- `nadirCandela`: intensity at γ = 0.
-- `lightOutputRatio`, `downwardLightOutputRatio`, `upwardLightOutputRatio`: luminaire flux divided by declared lamp flux. Null for absolute photometry (`lumensPerLamp = -1`), which has no lamp rating.
-- `downwardFluxFraction` (DFF): downward ÷ total flux; null when no light is emitted.
-- `cieFluxCode`: `[N1, N2, N3, N4, N5]` rounded percentages. N1–N3 are the flux within γ = 41.4°, 60° and 75.5° (interpolated in the 1° cumulative array) as a percentage of downward flux; N4 and N5 are downward and total flux as a percentage of lamp flux and are null without a lamp rating.
-- `zonalLumens`: `{ fromDegrees, toDegrees, lumens, percentOfLamp, percentOfLuminaire }` for 0–30°, 0–40°, 0–60°, 0–90°, 90–120°, 90–130°, 90–150°, 90–180° and 0–180°.
+| Field                                                                    | Meaning                                                                                           |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `integratedFluxLumens`                                                   | Luminaire output, integrated from the intensity table                                             |
+| `declaredLampFluxLumens`                                                 | Lamp count × rated lumens per lamp; `null` for absolute photometry                                |
+| `luminousEfficacyLumensPerWatt`                                          | Integrated flux ÷ declared input watts; `null` for zero watts                                     |
+| `beamAngles`                                                             | Beam (50 %) and field (10 %) angles for the C0–C180 and C90–C270 planes                           |
+| `downwardFluxLumens`, `upwardFluxLumens`                                 | Flux below and above horizontal                                                                   |
+| `peakIntensityCandela`, `peakDirection`                                  | Brightest measured intensity and its direction                                                    |
+| `nadirCandela`                                                           | Intensity straight down                                                                           |
+| `lightOutputRatio`, `downwardLightOutputRatio`, `upwardLightOutputRatio` | Luminaire flux ÷ lamp flux (LOR, DLOR, ULOR); `null` for absolute photometry                      |
+| `downwardFluxFraction`                                                   | Downward ÷ total flux (DFF)                                                                       |
+| `cieFluxCode`                                                            | CIE flux code `[N1, N2, N3, N4, N5]` as rounded percentages; N4 and N5 need a lamp rating         |
+| `zonalLumens`                                                            | Flux in standard zones (0–30°, 0–40°, 0–60°, 0–90°, 90–120°, … 0–180°), in lumens and percentages |
 
-All of these are angular-table estimates with the same assumptions as `integratedFluxLumens`.
+For Type A and B files, `metricsSupported` is `false`, `metricsUnsupportedReason` explains why, and the values are `null`.
+
+Each beam estimate has a `beamAngleStatus` and `fieldAngleStatus`. When a plane has no light, no clear edge, or several lobes, the status says so (`no-light`, `no-crossing` or `multiple-lobes`) and the angle is `null`. `beamLeftDegrees`, `beamRightDegrees`, `fieldLeftDegrees` and `fieldRightDegrees` give each edge as a signed vertical angle, negative on the opposite C-plane.
+
+For just the flux, use `calculateLuminousFlux(profile, tiltDegrees?)`. `calculateFluxBreakdown(profile, tiltDegrees?)` returns `{ total, downward, upward, cumulative }`, where `cumulative[g]` is the flux from γ = 0° to γ = g°.
+
+### How metrics are calculated
+
+Flux integrates I(θ, φ) sin θ dθ dφ over the same interpolated intensity that `sampleIntensity` uses, with the file's symmetry expanded. Unmeasured directions count as dark. The result is an estimate from the angular table, not a laboratory flux measurement, so it can differ from the declared lamp flux. These are different quantities.
+
+Beam and field angles are the full angles between the 50 % and 10 % of peak crossings on each side of the peak, following the [IES beam-angle](https://ies.org/definitions/beam-angle/) and [field-angle](https://ies.org/definitions/field-angle/) definitions. They are estimates from the principal planes, not certified manufacturer values.
+
+CIE flux code N1–N3 are the flux within γ = 41.4°, 60° and 75.5° as percentages of downward flux. N4 and N5 are downward and total flux as percentages of lamp flux.
 
 ## Chart data
 
-The data behind every chart in the viewer and `ies chart` comes from core. It includes intensity curves and topology, ground illuminance and isolux grids with contours, cone diagrams, glare-angle luminance tables and intensity tables. None of it depends on React, Three.js or the DOM.
+The numbers behind every [chart](./graphs.md) come from core, with no React, Three.js or DOM dependency. Use them to draw charts with another library or to export values.
 
 ```ts
 import {
-  buildConeDiagram,
   buildIntensityCurves,
+  buildIntensityTopology,
   buildIsoluxGrid,
+  groundIlluminance,
   extractContours,
   isoluxContourLevels,
+  buildConeDiagram,
+  buildLuminanceTable,
+  buildIntensityTable,
 } from '@ies-tools/core';
 
 const cuts = buildIntensityCurves(profile, { principalPlanes: true });
-const grid = buildIsoluxGrid(profile, { mountingHeight: 3, extent: 12 });
-const contours = extractContours(grid, isoluxContourLevels(grid.maximum));
+// cuts.curves[].points: { angle: signed degrees, intensity: candela }; curves[].beam: beam and field estimate.
+// cuts.angleTicks and cuts.intensityTicks are ready for axes.
+
+const mesh = buildIntensityTopology(profile, { upAxis: 'z', projection: 'orthographic' });
+// vertices[].position: candela-scaled XYZ; projected: normalized XY. faces: triangles sorted far to near.
+
+const lux = groundIlluminance(profile, 1, 2, { mountingHeight: 3, aimAngle: 30 }); // lux at x = 1 m, z = 2 m
+const grid = buildIsoluxGrid(profile, { mountingHeight: 3, extent: [12, 8], resolution: [61, 41] });
+// grid.xs, grid.zs, grid.values[zIndex][xIndex], plus maximum, minimum, average and uniformity (U0).
+const levels = isoluxContourLevels(grid.maximum, { minContour: 1 }); // [1, 2, 5, 10, 20, 50, …]
+const contours = extractContours(grid, levels);
+// contours[].segments: [[x1, z1], [x2, z2]] line segments in metres.
+
 const cone = buildConeDiagram(profile, { maxDistance: 5 });
+// cone.rows[]: { distance, illuminance, beamDiameters: [c0, c90], fieldDiameters: [c0, c90] }
+const glare = buildLuminanceTable(profile);
+// glare.luminance[gammaIndex][cIndex] in cd/m² (null for zero area); glare.intensity in cd.
+const table = buildIntensityTable(profile, { unit: 'cd/klm' });
+// table.values[gammaIndex][cIndex], with table.gammas, table.cPlanes and table.unit.
 ```
 
-Also exported: `buildIntensityTopology`, `groundIlluminance`, `buildLuminanceTable`, `buildIntensityTable`, `niceTicks`, `logRadius`, `logTicks`, `orientGraphPoint` and `formatGraphValue`, plus their option and result types. See [Photometric graphs](./graphs.md) for the conventions and units. `@ies-tools/viewer/graphs` re-exports the same functions.
-
-## Shared inspection and validation
-
-```ts
-import { inspectPhotometry, validatePhotometry, inspectParsedPhotometry } from '@ies-tools/core';
-const validation = validatePhotometry(source, 'ies', false);
-const inspection = validation.profile ? inspectParsedPhotometry(validation.profile) : null;
-const direct = inspectPhotometry(source, 'ldt', 0); // zero-based alternative lamp configuration
-```
-
-The CLI and VS Code panel consume these same browser-safe models. `validatePhotometry` accepts a strict flag, returns diagnostic codes/severity/fields, and keeps structural parse errors separate from metadata warnings. `inspectParsedPhotometry` avoids reparsing a validated profile. Native LDT alternatives remain unselected unless the caller supplies an index; intensity/flux are unavailable until then. Inspection and validation are independent of Three.js rendering capabilities.
-
-See the [@ies-tools/core API reference](./api/core/index.md) for every export, generated from the source's TSDoc comments.
+Axis helpers `niceTicks`, `logRadius`, `logTicks`, `orientGraphPoint` and `formatGraphValue` are exported too. The options match the chart props described on the [Charts](./graphs.md) page.
