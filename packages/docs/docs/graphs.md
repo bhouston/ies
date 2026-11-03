@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Photometric graphs
 
-The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs are also available through `@ies-tools/viewer/graphs`, which imports neither React nor Three.js and works in Node.
+The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs live in `@ies-tools/core`, which has no React, Three.js or DOM dependency and works in Node. `@ies-tools/viewer/graphs` re-exports them for compatibility, alongside the viewer's presentation helpers (`graphFrame`, `heatColor`).
 
 The same graphs, exported from an asymmetric BEGA luminaire with `ies chart`:
 
@@ -46,7 +46,7 @@ Vertical cuts also carry `curve.beam`, the [`getBeamAngles`](./core.md) estimate
 <IntensityGraph profile={profile} principalPlanes logScale />
 ```
 
-`logScale` applies to polar and Cartesian views. Intensities at or below Imin sit at the centre (or the Cartesian baseline), and the rings or ticks fall on 1-2-5 candela values in each decade. `logRadius` and `logTicks` from `@ies-tools/viewer/graphs` expose the same mapping. The light viewer's chart tabs have a **Log scale** checkbox, and `ies chart --log-scale` exports the same view.
+`logScale` applies to polar and Cartesian views. Intensities at or below Imin sit at the centre (or the Cartesian baseline), and the rings or ticks fall on 1-2-5 candela values in each decade. `logRadius` and `logTicks` from `@ies-tools/core` expose the same mapping. The light viewer's chart tabs have a **Log scale** checkbox, and `ies chart --log-scale` exports the same view.
 
 ## Intensity topology
 
@@ -130,6 +130,8 @@ These three charts are Type C only; other photometric types render an "available
 
 ## Calculation and geometry APIs
 
+The chart data builders are part of `@ies-tools/core`. Use them to draw the same charts with another renderer or to export the values:
+
 ```ts
 import {
   buildIntensityCurves,
@@ -142,7 +144,7 @@ import {
   buildConeDiagram,
   buildLuminanceTable,
   buildIntensityTable,
-} from '@ies-tools/viewer/graphs';
+} from '@ies-tools/core';
 
 const cuts = buildIntensityCurves(profile, { principalPlanes: true });
 // cuts.curves[].points: { angle: signed degrees, intensity: candela }

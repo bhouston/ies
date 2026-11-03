@@ -1,0 +1,598 @@
+// Pure photometric chart data: no React, Three.js or DOM. Renderers live in @ies-tools/viewer.
+import { sampleIntensity, type IESProfile } from './index.js';
+import { getBeamAngles, type BeamAngles } from './metrics.js';
+
+export type GraphAxis = 'vertical' | 'horizontal';
+export type UpAxis = 'x' | 'y' | 'z';
+export type Point2 = [number, number];
+export type Point3 = [number, number, number];
+
+function finite(value: number, name: string, min = -Infinity, max = Infinity): number {
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new RangeError(`${name} must be finite and in [${min}, ${max}]`);
+  }
+  return value;
+}
+function count(value: number, name: string, min: number, max: number): number {
+  finite(value, name, min, max);
+  if (!Number.isInteger(value)) throw new RangeError(`${name} must be an integer`);
+  return value;
+}
+function choice<T extends string>(value: T, options: readonly T[], name: string): T {
+  if (!options.includes(value)) throw new RangeError(`${name} must be one of ${options.join(', ')}`);
+  return value;
+}
+function typeC(profile: IESProfile): void {
+  if (profile.photometricType !== 1) throw new Error('Photometric graphs support Type C photometry only (type 1)');
+}
+const radians = (degrees: number) => (degrees * Math.PI) / 180;
+const wrapped = (angle: number) => ((angle % 360) + 360) % 360;
+function sample(profile: IESProfile, vertical: number, horizontal: number, lampTilt: number): number {
+  return finite(sampleIntensity(profile, vertical, horizontal, lampTilt), 'Sampled candela', 0);
+}
+
+/** Rounded positive ticks suitable for candela or lux axes, including zero. */
+export function niceTicks(maximum: number, intervals = 4): number[] {
+  finite(maximum, 'Maximum', 0);
+  count(intervals, 'Tick intervals', 2, 10);
+  const raw = (maximum || 1) / intervals;
+  if (raw === 0) return [0, maximum];
+  const power = 10 ** Math.floor(Math.log10(raw));
+  const fraction = raw / power;
+  const step = (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10) * power;
+  const last = Math.ceil((maximum || 1) / step);
+  if (!Number.isFinite(last * step)) return Array.from({ length: intervals + 1 }, (_, i) => (i / intervals) * maximum);
+  return Array.from({ length: last + 1 }, (_, i) => Number((i * step).toPrecision(12)));
+}
+/** Decades shown by log-scale intensity graphs. */
+export const LOG_DECADES = 3;
+/** Log radius fraction log10(I / Imin) / decades, Imin = Imax / 10^decades; at or below Imin maps to 0. */
+export function logRadius(intensity: number, maximum: number, decades = LOG_DECADES): number {
+  if (!(maximum > 0) || !(intensity > 0)) return 0;
+  return Math.max(0, Math.log10(intensity / maximum) / decades + 1);
+}
+/** 1-2-5 candela ticks from Imax / 10^decades up to Imax, for log-scale rings. */
+export function logTicks(maximum: number, decades = LOG_DECADES): number[] {
+  if (!(maximum > 0)) return [];
+  const minimum = maximum / 10 ** decades;
+  const ticks: number[] = [];
+  for (let power = Math.floor(Math.log10(minimum)); power <= Math.ceil(Math.log10(maximum)); power++)
+    for (const step of [1, 2, 5]) {
+      const tick = Number((step * 10 ** power).toPrecision(12));
+      if (tick >= minimum && tick <= maximum) ticks.push(tick);
+    }
+  return ticks;
+}
+/** Four significant digits, or exponent form for very small/large values; used in curve labels. */
+export function formatGraphValue(value: number): string {
+  if (value !== 0 && (Math.abs(value) < 0.01 || Math.abs(value) >= 100000)) return value.toExponential(1);
+  return Number(value.toPrecision(4)).toString();
+}
+export interface IntensityCurveOptions {
+  axis?: GraphAxis;
+  angle?: number;
+  /** Fixed planes: azimuth for vertical sweeps; vertical angle for horizontal sweeps. */
+  planes?: readonly number[];
+  /** Use C0–C180 and C90–C270 when planes are omitted and axis is vertical. */
+  principalPlanes?: boolean;
+  /** Odd sample count includes nadir in complete opposed-plane vertical cuts. */
+  samples?: number;
+  /** Lamp-dependent IES correction angle, independent of fixture aiming. */
+  lampTilt?: number;
+}
+export interface IntensityCurve {
+  plane: number;
+  oppositePlane?: number;
+  label: string;
+  points: { angle: number; intensity: number }[];
+  /** Vertical sweeps only: beam (50%) and field (10%) estimate of this opposed-plane cut. */
+  beam?: BeamAngles;
+}
+export interface IntensityCurves {
+  axis: GraphAxis;
+  curves: IntensityCurve[];
+  maximum: number;
+  angleRange: Point2;
+  angleTicks: number[];
+  intensityTicks: number[];
+}
+/** Complete opposed-plane vertical cuts use negative gamma for C+180 and positive gamma for C. */
+export function buildIntensityCurves(profile: IESProfile, options: IntensityCurveOptions = {}): IntensityCurves {
+  typeC(profile);
+  const axis = choice(options.axis ?? 'vertical', ['vertical', 'horizontal'], 'Graph axis');
+  const angle = finite(options.angle ?? 0, 'Fixed angle', 0, axis === 'vertical' ? 360 : 180);
+  const samples = count(options.samples ?? 361, 'Curve samples', 3, 1441);
+  if (axis === 'vertical' && samples % 2 === 0)
+    throw new RangeError('Vertical curve samples must be odd to include nadir');
+  const lampTilt = finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180);
+  const planes = options.planes ?? (options.principalPlanes && axis === 'vertical' ? [0, 90] : [angle]);
+  count(planes.length, 'Plane count', 1, 8);
+  const angles = new Set(
+    Array.from({ length: samples }, (_, i) =>
+      axis === 'vertical' ? -180 + (i * 360) / (samples - 1) : (i * 360) / (samples - 1),
+    ),
+  );
+  if (axis === 'vertical') {
+    for (const value of profile.verticalAngles) {
+      angles.add(value);
+      angles.add(-value);
+    }
+  } else {
+    const base = profile.horizontalAngles[0]!,
+      span = profile.horizontalAngles.at(-1)! - base;
+    for (const value of profile.horizontalAngles) {
+      angles.add(wrapped(value));
+      if (span > 0 && span <= 180)
+        for (let cycle = -2; cycle <= 2; cycle++) {
+          angles.add(wrapped(value + cycle * 2 * span));
+          angles.add(wrapped(2 * (base + span) - value + cycle * 2 * span));
+        }
+    }
+  }
+  const positions = [...angles].toSorted((a, b) => a - b);
+  const curves = planes.map((plane): IntensityCurve => {
+    finite(plane, 'Plane angle', 0, axis === 'vertical' ? 360 : 180);
+    const fixed = axis === 'vertical' ? wrapped(plane) : plane;
+    const oppositePlane = axis === 'vertical' ? wrapped(fixed + 180) : undefined;
+    return {
+      plane: fixed,
+      oppositePlane,
+      label:
+        axis === 'vertical'
+          ? `C${formatGraphValue(fixed)}°–C${formatGraphValue(oppositePlane!)}°`
+          : `γ ${formatGraphValue(fixed)}°`,
+      points: positions.map((position) => {
+        const cd =
+          axis === 'vertical'
+            ? sample(profile, Math.abs(position), position < 0 ? oppositePlane! : fixed, lampTilt)
+            : sample(profile, fixed, position, lampTilt);
+        return { angle: position, intensity: cd };
+      }),
+      ...(axis === 'vertical' && { beam: getBeamAngles(profile, fixed, lampTilt) }),
+    };
+  });
+  const maximum = curves.reduce(
+    (max, curve) => curve.points.reduce((value, point) => Math.max(value, point.intensity), max),
+    0,
+  );
+  return {
+    axis,
+    curves,
+    maximum,
+    angleRange: axis === 'vertical' ? [-180, 180] : [0, 360],
+    angleTicks: axis === 'vertical' ? [-180, -90, 0, 90, 180] : [0, 90, 180, 270, 360],
+    intensityTicks: niceTicks(maximum),
+  };
+}
+
+export interface TopologyOptions {
+  upAxis?: UpAxis;
+  projection?: 'orthographic' | 'perspective';
+  azimuth?: number;
+  elevation?: number;
+  horizontalSegments?: number;
+  verticalSegments?: number;
+  lampTilt?: number;
+}
+export interface TopologyVertex {
+  /** Actual candela-scaled position, in the source luminaire's Y-up coordinates. */
+  position: Point3;
+  /** Projected coordinates normalized to the peak intensity. Positive Y points up. */
+  projected: Point2;
+  depth: number;
+  intensity: number;
+}
+export interface IntensityTopology {
+  vertices: TopologyVertex[];
+  /** Triangles ordered far to near for SVG painting; indices address vertices. */
+  faces: [number, number, number][];
+  maximum: number;
+}
+/** Proper axis rotations preserve orientation and lengths, rather than reflecting the surface. */
+export function orientGraphPoint([x, y, z]: Point3, upAxis: UpAxis = 'y'): Point3 {
+  choice(upAxis, ['x', 'y', 'z'], 'Up axis');
+  return upAxis === 'x' ? [-y, x, z] : upAxis === 'z' ? [x, z, -y] : [x, y, z];
+}
+export function buildIntensityTopology(profile: IESProfile, options: TopologyOptions = {}): IntensityTopology {
+  typeC(profile);
+  const upAxis = choice(options.upAxis ?? 'y', ['x', 'y', 'z'], 'Up axis');
+  const projection = choice(
+    options.projection ?? 'orthographic',
+    ['orthographic', 'perspective'],
+    'Topology projection',
+  );
+  const azimuth = radians(finite(options.azimuth ?? 45, 'View azimuth', -360, 360));
+  const elevation = radians(finite(options.elevation ?? 30, 'View elevation', -90, 90));
+  const hs = count(options.horizontalSegments ?? 36, 'Horizontal segments', 4, 144);
+  const vs = count(options.verticalSegments ?? 36, 'Vertical segments', 2, 144);
+  const lampTilt = finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180);
+  let maximum = 0;
+  const vertices: TopologyVertex[] = [];
+  for (let v = 0; v <= vs; v++) {
+    const theta = (v * Math.PI) / vs;
+    for (let h = 0; h <= hs; h++) {
+      const phi = (h * Math.PI * 2) / hs;
+      const intensity = sample(profile, (v * 180) / vs, (h * 360) / hs, lampTilt);
+      maximum = Math.max(maximum, intensity);
+      const position: Point3 = [
+        Math.sin(theta) * Math.cos(phi) * intensity,
+        -Math.cos(theta) * intensity,
+        Math.sin(theta) * Math.sin(phi) * intensity,
+      ];
+      vertices.push({ position, projected: [0, 0], depth: 0, intensity });
+    }
+  }
+  for (const vertex of vertices) {
+    const [x, y, z] = orientGraphPoint(vertex.position, upAxis).map((value) => value / (maximum || 1)) as Point3;
+    const sx = Math.cos(azimuth) * x - Math.sin(azimuth) * z;
+    const plane = Math.sin(azimuth) * x + Math.cos(azimuth) * z;
+    const sy = Math.cos(elevation) * y - Math.sin(elevation) * plane;
+    vertex.depth = Math.sin(elevation) * y + Math.cos(elevation) * plane;
+    const factor = projection === 'perspective' ? 3 / (3 - vertex.depth) : 1;
+    vertex.projected = [sx * factor, sy * factor];
+  }
+  const faces: [number, number, number][] = [];
+  for (let v = 0; v < vs; v++)
+    for (let h = 0; h < hs; h++) {
+      const a = v * (hs + 1) + h,
+        b = a + 1,
+        c = a + hs + 1,
+        d = c + 1;
+      faces.push([a, c, b], [b, c, d]);
+    }
+  const depth = (face: [number, number, number]) => face.reduce((sum, index) => sum + vertices[index]!.depth, 0);
+  faces.sort((a, b) => depth(a) - depth(b));
+  return { vertices, faces, maximum };
+}
+
+export interface IsoluxOptions {
+  mountingHeight?: number;
+  /** Full ground width/depth in metres, centered below the fixture. */
+  extent?: number | Point2;
+  /** Grid points per axis, not cells; default 51, maximum 201. */
+  resolution?: number | Point2;
+  /** Aim away from nadir toward azimuth, in degrees. Does not alter the lamp correction. */
+  aimAngle?: number;
+  /** Ground direction measured from +X toward +Z; also orients the C0 plane. */
+  azimuth?: number;
+  lampTilt?: number;
+}
+export interface ContourGrid {
+  xs: number[];
+  zs: number[];
+  values: number[][];
+}
+export interface IsoluxGrid extends ContourGrid {
+  maximum: number;
+  minimum: number;
+  average: number;
+  /** Uniformity U0 = Emin / Eavg over the grid points; 0 when the grid is unlit. */
+  uniformity: number;
+  mountingHeight: number;
+  extent: Point2;
+}
+function isoluxParameters(options: IsoluxOptions) {
+  return {
+    mountingHeight: finite(options.mountingHeight ?? 2, 'Mounting height', 0.01, 10000),
+    aimAngle: radians(finite(options.aimAngle ?? 0, 'Fixture aim', 0, 180)),
+    azimuth: radians(finite(options.azimuth ?? 0, 'Fixture azimuth', -360, 360)),
+    lampTilt: finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180),
+  };
+}
+function groundLux(profile: IESProfile, x: number, z: number, parameters: ReturnType<typeof isoluxParameters>): number {
+  const { mountingHeight: height, aimAngle: aim, azimuth, lampTilt } = parameters;
+  const distance = Math.hypot(x, height, z);
+  // Inverse of Ry(-azimuth) Rz(aim): transform world receiver direction into the fixture frame.
+  const p = Math.cos(azimuth) * x + Math.sin(azimuth) * z;
+  const localX = Math.cos(aim) * p - Math.sin(aim) * height;
+  const localY = -Math.sin(aim) * p - Math.cos(aim) * height;
+  const localZ = -Math.sin(azimuth) * x + Math.cos(azimuth) * z;
+  const vertical = (Math.acos(Math.max(-1, Math.min(1, -localY / distance))) * 180) / Math.PI;
+  const horizontal = wrapped((Math.atan2(localZ, localX) * 180) / Math.PI);
+  const lux = (sample(profile, vertical, horizontal, lampTilt) * (height / distance)) / distance ** 2;
+  if (!Number.isFinite(lux)) throw new RangeError('Ground illuminance exceeds the supported numeric range');
+  return lux;
+}
+/** Absolute ground-plane illuminance: I(direction) × receiver cosine / distance². */
+export function groundIlluminance(profile: IESProfile, x: number, z: number, options: IsoluxOptions = {}): number {
+  typeC(profile);
+  finite(x, 'Ground X');
+  finite(z, 'Ground Z');
+  return groundLux(profile, x, z, isoluxParameters(options));
+}
+export function buildIsoluxGrid(profile: IESProfile, options: IsoluxOptions = {}): IsoluxGrid {
+  typeC(profile);
+  const parameters = isoluxParameters(options);
+  const extent = typeof options.extent === 'number' ? [options.extent, options.extent] : (options.extent ?? [10, 10]);
+  if (extent.length !== 2) throw new RangeError('Ground extent must have two dimensions');
+  const width = finite(extent[0]!, 'Ground width', 0.01, 100000);
+  const depth = finite(extent[1]!, 'Ground depth', 0.01, 100000);
+  const resolution =
+    typeof options.resolution === 'number'
+      ? [options.resolution, options.resolution]
+      : (options.resolution ?? [51, 51]);
+  if (resolution.length !== 2) throw new RangeError('Grid resolution must have two dimensions');
+  const columns = count(resolution[0]!, 'Grid columns', 2, 201),
+    rows = count(resolution[1]!, 'Grid rows', 2, 201);
+  const xs = Array.from({ length: columns }, (_, i) => -width / 2 + (i * width) / (columns - 1));
+  const zs = Array.from({ length: rows }, (_, i) => -depth / 2 + (i * depth) / (rows - 1));
+  let maximum = 0,
+    minimum = Infinity,
+    average = 0,
+    seen = 0;
+  const values = zs.map((z) =>
+    xs.map((x) => {
+      const lux = groundLux(profile, x, z, parameters);
+      maximum = Math.max(maximum, lux);
+      minimum = Math.min(minimum, lux);
+      seen++;
+      average += (lux - average) / seen;
+      return lux;
+    }),
+  );
+  return {
+    xs,
+    zs,
+    values,
+    maximum,
+    minimum,
+    average,
+    uniformity: average > 0 ? minimum / average : 0,
+    mountingHeight: parameters.mountingHeight,
+    extent: [width, depth],
+  };
+}
+export interface ContourLevelOptions {
+  /** Lowest 1-2-5 level in lux; default 1. */
+  minContour?: number;
+  /** Keep at most this many levels, dropping the lowest first; default 10. */
+  maxLevels?: number;
+}
+/** 1-2-5 series (…, 1, 2, 5, 10, 20, 50, …) from `minContour` up to the largest value below `maximum`. */
+export function isoluxContourLevels(maximum: number, options: ContourLevelOptions = {}): number[] {
+  finite(maximum, 'Maximum', 0);
+  const floor = finite(options.minContour ?? 1, 'Minimum contour', 1e-9, 1e12);
+  const cap = count(options.maxLevels ?? 10, 'Contour level cap', 1, 32);
+  const levels: number[] = [];
+  for (let power = Math.floor(Math.log10(floor)); ; power++)
+    for (const mantissa of [1, 2, 5]) {
+      const level = Number((mantissa * 10 ** power).toPrecision(12));
+      if (level >= maximum) return levels.slice(-cap);
+      if (level >= floor * (1 - 1e-9)) levels.push(level);
+    }
+}
+export interface Contour {
+  level: number;
+  segments: [Point2, Point2][];
+}
+/** Marching squares with a center-value saddle decision. Segments use the grid's physical coordinates. */
+export function extractContours(grid: ContourGrid, levels: readonly number[]): Contour[] {
+  count(grid.xs.length, 'Contour columns', 2, 201);
+  count(grid.zs.length, 'Contour rows', 2, 201);
+  for (const [name, coordinates] of [
+    ['X', grid.xs],
+    ['Z', grid.zs],
+  ] as const) {
+    coordinates.forEach((value, i) => {
+      finite(value, `${name} coordinate`);
+      if (i && value <= coordinates[i - 1]!) throw new RangeError('Contour coordinates must be strictly increasing');
+    });
+  }
+  if (
+    grid.values.length !== grid.zs.length ||
+    grid.values.some((row) => row.length !== grid.xs.length || row.some((value) => !Number.isFinite(value)))
+  )
+    throw new RangeError('Contour values must form a finite rectangular grid');
+  count(levels.length, 'Contour level count', 0, 32);
+  levels.forEach((level, i) => {
+    finite(level, 'Contour level');
+    if (i && level <= levels[i - 1]!) throw new RangeError('Contour levels must be strictly increasing');
+  });
+  return levels.map((level) => {
+    const segments: [Point2, Point2][] = [];
+    for (let z = 0; z < grid.zs.length - 1; z++)
+      for (let x = 0; x < grid.xs.length - 1; x++) {
+        const corners: Point2[] = [
+          [grid.xs[x]!, grid.zs[z]!],
+          [grid.xs[x + 1]!, grid.zs[z]!],
+          [grid.xs[x + 1]!, grid.zs[z + 1]!],
+          [grid.xs[x]!, grid.zs[z + 1]!],
+        ];
+        const values = [
+          grid.values[z]![x]!,
+          grid.values[z]![x + 1]!,
+          grid.values[z + 1]![x + 1]!,
+          grid.values[z + 1]![x]!,
+        ];
+        const mask = values.reduce((bits, value, i) => bits | (value >= level ? 1 << i : 0), 0);
+        if (mask === 0 || mask === 15) continue;
+        const intersections: { edge: number; point: Point2 }[] = [];
+        for (let edge = 0; edge < 4; edge++) {
+          const next = (edge + 1) % 4,
+            a = values[edge]!,
+            b = values[next]!;
+          if (a >= level === b >= level) continue;
+          const t = (level - a) / (b - a),
+            p = corners[edge]!,
+            q = corners[next]!;
+          intersections.push({ edge, point: [p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])] });
+        }
+        const add = (a: number, b: number) => {
+          const p = intersections[a]!.point,
+            q = intersections[b]!.point;
+          if (p[0] !== q[0] || p[1] !== q[1]) segments.push([p, q]);
+        };
+        if (intersections.length === 2) add(0, 1);
+        else if (intersections.length === 4) {
+          const centerInside = values.reduce((sum, value) => sum + value / 4, 0) >= level;
+          if ((mask === 5) === centerInside) {
+            add(0, 1);
+            add(2, 3);
+          } else {
+            add(0, 3);
+            add(1, 2);
+          }
+        }
+      }
+    return { level, segments };
+  });
+}
+
+export interface ConeOptions {
+  /** Distances below the luminaire in metres. Overrides `maxDistance`. */
+  distances?: readonly number[];
+  /** Use distances 1, 2, …, maxDistance metres; integer 1–50, default 5. */
+  maxDistance?: number;
+  lampTilt?: number;
+}
+export interface ConePlane {
+  /** C plane of the positive side of the opposed cut (0 or 90). */
+  plane: number;
+  beam: BeamAngles;
+}
+export interface ConeRow {
+  distance: number;
+  /** Centre illuminance on a plane normal to nadir, I(γ = 0) / d², in lux. */
+  illuminance: number;
+  /** Beam (50 %) diameter in metres in the C0–C180 and C90–C270 planes; null without both crossings below 90°. */
+  beamDiameters: [number | null, number | null];
+  /** Field (10 %) diameter in metres in the C0–C180 and C90–C270 planes. */
+  fieldDiameters: [number | null, number | null];
+}
+export interface ConeDiagram {
+  centerIntensity: number;
+  planes: [ConePlane, ConePlane];
+  rows: ConeRow[];
+}
+const coneDiameter = (distance: number, left?: number, right?: number) =>
+  left === undefined || right === undefined || Math.abs(left) >= 90 || Math.abs(right) >= 90
+    ? null
+    : // Signed form; equals d·(tan|left| + tan|right|) when the crossings straddle nadir.
+      distance * (Math.tan(radians(right)) - Math.tan(radians(left)));
+/** Centre illuminance and beam/field diameters at a series of distances below the luminaire. */
+export function buildConeDiagram(profile: IESProfile, options: ConeOptions = {}): ConeDiagram {
+  typeC(profile);
+  const lampTilt = finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180);
+  const distances =
+    options.distances ??
+    Array.from({ length: count(options.maxDistance ?? 5, 'Maximum distance', 1, 50) }, (_, i) => i + 1);
+  count(distances.length, 'Distance count', 1, 50);
+  distances.forEach((d) => finite(d, 'Distance', 0.01, 100000));
+  const centerIntensity = sample(profile, 0, 0, lampTilt);
+  const planes: [ConePlane, ConePlane] = [
+    { plane: 0, beam: getBeamAngles(profile, 0, lampTilt) },
+    { plane: 90, beam: getBeamAngles(profile, 90, lampTilt) },
+  ];
+  const rows = distances.map((distance) => ({
+    distance,
+    illuminance: centerIntensity / distance ** 2,
+    beamDiameters: planes.map(({ beam }) =>
+      coneDiameter(distance, beam.beamLeftDegrees, beam.beamRightDegrees),
+    ) as ConeRow['beamDiameters'],
+    fieldDiameters: planes.map(({ beam }) =>
+      coneDiameter(distance, beam.fieldLeftDegrees, beam.fieldRightDegrees),
+    ) as ConeRow['fieldDiameters'],
+  }));
+  return { centerIntensity, planes, rows };
+}
+
+export interface LuminanceTableOptions {
+  /** Vertical angles γ in degrees; default 45, 50, …, 85. */
+  gammas?: readonly number[];
+  /** Horizontal C angles in degrees; default 0, 45, …, 315. */
+  cPlanes?: readonly number[];
+  lampTilt?: number;
+}
+export interface LuminanceTable {
+  gammas: number[];
+  cPlanes: number[];
+  /** intensity[gammaIndex][cIndex] in candela. */
+  intensity: number[][];
+  /** luminance[gammaIndex][cIndex] in cd/m²; null when the luminous opening has no projected area. */
+  luminance: (number | null)[][] | null;
+  /** Luminous opening in metres; negative IES width means circular with diameter |width|. */
+  opening: { shape: 'rectangular' | 'circular'; width: number; length: number; height: number };
+  bottomArea: number;
+}
+/**
+ * Average luminance L = I / A_proj with A_proj = A_bottom·cos γ + A_side(C)·sin γ. A_side is the
+ * opening's side silhouette seen from plane C: height × (width·|cos C| + length·|sin C|), or height ×
+ * diameter for a circular opening. IES length runs along C0–C180 and width along C90–C270.
+ */
+export function buildLuminanceTable(profile: IESProfile, options: LuminanceTableOptions = {}): LuminanceTable {
+  typeC(profile);
+  const lampTilt = finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180);
+  const gammas = [...(options.gammas ?? [45, 50, 55, 60, 65, 70, 75, 80, 85])];
+  const cPlanes = [...(options.cPlanes ?? [0, 45, 90, 135, 180, 225, 270, 315])];
+  gammas.forEach((g) => finite(g, 'Vertical angle', 0, 180));
+  cPlanes.forEach((c) => finite(c, 'Horizontal angle', 0, 360));
+  const scale = profile.units === 'feet' ? 0.3048 : 1;
+  const circular = profile.dimensions.width < 0;
+  const width = Math.abs(profile.dimensions.width) * scale;
+  const length = circular ? width : Math.abs(profile.dimensions.length) * scale;
+  const height = Math.abs(profile.dimensions.height) * scale;
+  const bottomArea = circular ? (Math.PI * width * width) / 4 : width * length;
+  const intensity = gammas.map((g) => cPlanes.map((c) => sample(profile, g, c, lampTilt)));
+  const hasArea = bottomArea > 0 || height * (width + length) > 0;
+  const luminance = hasArea
+    ? gammas.map((g, i) =>
+        cPlanes.map((c, j) => {
+          const side =
+            height *
+            (circular ? width : width * Math.abs(Math.cos(radians(c))) + length * Math.abs(Math.sin(radians(c))));
+          const area = bottomArea * Math.cos(radians(g)) + side * Math.sin(radians(g));
+          return area > 1e-12 ? intensity[i]![j]! / area : null;
+        }),
+      )
+    : null;
+  return {
+    gammas,
+    cPlanes,
+    intensity,
+    luminance,
+    opening: { shape: circular ? 'circular' : 'rectangular', width, length, height },
+    bottomArea,
+  };
+}
+
+export interface IntensityTableOptions {
+  /** `cd` (default) or `cd/klm`, normalized by declared lamp flux. Absolute photometry stays in cd. */
+  unit?: 'cd' | 'cd/klm';
+  /** Keep at most this many evenly spaced C columns, always including the first and last. */
+  maxColumns?: number;
+  /** Keep at most this many evenly spaced γ rows, always including the first and last. */
+  maxRows?: number;
+}
+export interface IntensityTable {
+  unit: 'cd' | 'cd/klm';
+  /** Row angles γ. */
+  gammas: number[];
+  /** Column angles C. */
+  cPlanes: number[];
+  /** values[gammaIndex][cIndex]. */
+  values: number[][];
+  maximum: number;
+}
+function spread(length: number, maximum: number | undefined, name: string): number[] {
+  const keep = maximum === undefined ? length : Math.min(length, count(maximum, name, 2, 10000));
+  if (keep === length || length < 2) return Array.from({ length }, (_, i) => i);
+  return [...new Set(Array.from({ length: keep }, (_, i) => Math.round((i * (length - 1)) / (keep - 1))))];
+}
+/** The measured candela grid with γ rows and C columns, optionally in cd/klm. */
+export function buildIntensityTable(profile: IESProfile, options: IntensityTableOptions = {}): IntensityTable {
+  typeC(profile);
+  const requested = choice(options.unit ?? 'cd', ['cd', 'cd/klm'], 'Intensity unit');
+  const flux = profile.lampCount * profile.lumensPerLamp;
+  const unit = requested === 'cd/klm' && flux > 0 ? 'cd/klm' : 'cd';
+  const factor = unit === 'cd/klm' ? 1000 / flux : 1;
+  const rows = spread(profile.verticalAngles.length, options.maxRows, 'Maximum rows');
+  const columns = spread(profile.horizontalAngles.length, options.maxColumns, 'Maximum columns');
+  const values = rows.map((v) => columns.map((h) => profile.candelaValues[h]![v]! * factor));
+  return {
+    unit,
+    gammas: rows.map((v) => profile.verticalAngles[v]!),
+    cPlanes: columns.map((h) => profile.horizontalAngles[h]!),
+    values,
+    maximum: values.reduce((max, row) => row.reduce((m, value) => Math.max(m, value), max), 0),
+  };
+}

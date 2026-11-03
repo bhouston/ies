@@ -99,6 +99,27 @@ const { total, downward, upward, cumulative } = calculateFluxBreakdown(profile, 
 
 All of these are angular-table estimates with the same assumptions as `integratedFluxLumens`.
 
+## Chart data
+
+The data behind every chart in the viewer and `ies chart` comes from core. It includes intensity curves and topology, ground illuminance and isolux grids with contours, cone diagrams, glare-angle luminance tables and intensity tables. None of it depends on React, Three.js or the DOM.
+
+```ts
+import {
+  buildConeDiagram,
+  buildIntensityCurves,
+  buildIsoluxGrid,
+  extractContours,
+  isoluxContourLevels,
+} from '@ies-tools/core';
+
+const cuts = buildIntensityCurves(profile, { principalPlanes: true });
+const grid = buildIsoluxGrid(profile, { mountingHeight: 3, extent: 12 });
+const contours = extractContours(grid, isoluxContourLevels(grid.maximum));
+const cone = buildConeDiagram(profile, { maxDistance: 5 });
+```
+
+Also exported: `buildIntensityTopology`, `groundIlluminance`, `buildLuminanceTable`, `buildIntensityTable`, `niceTicks`, `logRadius`, `logTicks`, `orientGraphPoint` and `formatGraphValue`, plus their option and result types. See [Photometric graphs](./graphs.md) for the conventions and units. `@ies-tools/viewer/graphs` re-exports the same functions.
+
 ## Shared inspection and validation
 
 ```ts

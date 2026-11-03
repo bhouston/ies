@@ -297,6 +297,23 @@ ${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
     expect(table).toContain('cd/klm');
     expect(table).toContain('fill-opacity');
   });
+  it('labels rectangular openings, dark tables and the cd/klm fallback', () => {
+    const box = { ...profile, dimensions: { width: 0.2, length: 0.3, height: 0.05 } };
+    const luminance = renderToStaticMarkup(createElement(LuminanceTableGraph, { profile: box }));
+    expect(luminance).toContain('0.2 × 0.3 m');
+    expect(luminance).toContain('0.05 m high');
+    const round = { ...profile, dimensions: { width: -0.1, length: -0.1, height: 0 } };
+    expect(renderToStaticMarkup(createElement(LuminanceTableGraph, { profile: round }))).toContain('opening Ø 0.1 m');
+    const slot = { ...profile, dimensions: { width: 0.2, length: 0, height: 0.1 } };
+    expect(renderToStaticMarkup(createElement(LuminanceTableGraph, { profile: slot }))).toContain('>—<');
+    const dark = { ...box, candelaValues: box.candelaValues.map((row) => row.map(() => 0)) };
+    const darkLuminance = renderToStaticMarkup(createElement(LuminanceTableGraph, { profile: dark }));
+    expect(darkLuminance).not.toContain('fill-opacity');
+    const absolute = { ...dark, lumensPerLamp: -1 };
+    const table = renderToStaticMarkup(createElement(IntensityTableGraph, { profile: absolute, unit: 'cd/klm' }));
+    expect(table).toContain('no declared lamp flux, shown in cd');
+    expect(table).not.toContain('fill-opacity');
+  });
   it('explains that table charts need Type C photometry', () => {
     const typeB = { ...profile, photometricType: 2 as const };
     for (const component of [ConeDiagramGraph, LuminanceTableGraph, IntensityTableGraph])

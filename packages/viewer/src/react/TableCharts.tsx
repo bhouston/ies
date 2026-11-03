@@ -1,16 +1,15 @@
 import { type CSSProperties, type ReactNode } from 'react';
-import { type IESProfile } from '@ies-tools/core';
 import {
+  type IESProfile,
   buildConeDiagram,
   buildIntensityTable,
   buildLuminanceTable,
   formatGraphValue,
-  graphFrame,
-  heatColor,
   type ConeOptions,
   type IntensityTableOptions,
   type LuminanceTableOptions,
-} from '../graphs.js';
+} from '@ies-tools/core';
+import { graphFrame, heatColor } from '../graphs.js';
 
 interface ChartStyleProps {
   /** Viewbox width / height; the background fills it and the chart is centered. Defaults to the native layout. */
