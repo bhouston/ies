@@ -11,6 +11,7 @@ import {
   LuminanceTableGraph,
 } from './index.js';
 import { ChartTabs, VIEWER_TABS } from './ChartTabs.js';
+import { buildIntensityCurves } from '../graphs.js';
 const profile = parseIES(`IESNA:LM-63-2002
 TILT=NONE
 1 1000 1 3 1 1 2 0 0 0
@@ -20,6 +21,9 @@ TILT=NONE
 100 20 0
 `);
 
+/** Single-plane profile measured at γ 0, 15, 30, 60, 90°. */
+const source = (values: string) =>
+  parseIES(`IESNA:LM-63-2002\nTILT=NONE\n1 1000 1 5 1 1 2 0 0 0\n1 1 10\n0 15 30 60 90\n0\n${values}\n`);
 const viewBox = (svg: string) =>
   svg
     .match(/viewBox="([^"]+)"/)![1]!
@@ -162,6 +166,49 @@ ${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
     expect(log).toContain('cd (log)');
     for (const ring of ['1 cd', '2 cd', '5 cd', '500 cd', '1000 cd']) expect(log).toContain(`>${ring}<`);
     expect(log).not.toEqual(polar);
+  });
+  it('labels horizontal-sweep spokes 0–330° and draws no beam markers for horizontal cuts', () => {
+    const polar = renderToStaticMarkup(createElement(IntensityGraph, { profile, axis: 'horizontal', angle: 45 }));
+    for (let label = 0; label < 360; label += 30) expect(polar).toContain(`>${label}°<`);
+    expect(polar).not.toContain('>360°<');
+    expect(polar.match(/stroke-dasharray="1 3"/g)).toHaveLength(12);
+    expect(polar).not.toContain('data-marker');
+  });
+  it('skips markers for no-crossing and multiple-lobes cuts', () => {
+    const lobes = source('100 0 100 0 0');
+    expect(buildIntensityCurves(lobes).curves[0]!.beam!.beamAngleStatus).toBe('multiple-lobes');
+    // Coverage stops at 90° with 100 cd there: no crossing for the 10 % field threshold.
+    const open = source('100 80 60 40 20');
+    expect(buildIntensityCurves(open).curves[0]!.beam!.fieldAngleStatus).toBe('no-crossing');
+    for (const projection of ['polar', 'cartesian'] as const) {
+      const multiple = renderToStaticMarkup(createElement(IntensityGraph, { profile: lobes, projection }));
+      expect(multiple).not.toContain('data-marker');
+      expect(multiple).not.toContain('beam 50 % / field 10 %');
+      const partial = renderToStaticMarkup(createElement(IntensityGraph, { profile: open, projection }));
+      expect(partial.match(/data-marker="beam"/g)).toHaveLength(2);
+      expect(partial).not.toContain('data-marker="field"');
+    }
+  });
+  it('puts log Cartesian ticks on 1-2-5 values and keeps dark profiles finite', () => {
+    const cartesian = renderToStaticMarkup(
+      createElement(IntensityGraph, { profile, projection: 'cartesian', logScale: true }),
+    );
+    expect(cartesian).toContain('Intensity (cd, log)');
+    expect(cartesian).toContain('log scale');
+    for (const tick of ['0.1', '0.2', '0.5', '1', '2', '5', '10', '20', '50', '100'])
+      expect(cartesian).toContain(`>${tick}</text>`);
+    expect(cartesian).not.toContain('>0.05</text>');
+    const dark = parseIES('IESNA:LM-63-2002\nTILT=NONE\n1 1000 1 3 1 1 2 0 0 0\n1 1 10\n0 90 180\n0\n0 0 0\n');
+    for (const projection of ['polar', 'cartesian'] as const) {
+      const markup = renderToStaticMarkup(createElement(IntensityGraph, { profile: dark, projection, logScale: true }));
+      expect(markup).not.toMatch(/NaN|Infinity/);
+      expect(markup).not.toContain('<circle');
+      expect(markup).not.toContain('data-marker');
+    }
+    // Topology ignores the log scale.
+    expect(
+      renderToStaticMarkup(createElement(IntensityGraph, { profile, projection: 'topology', logScale: true })),
+    ).not.toMatch(/log scale|cd \(log\)/);
   });
   it('renders an accessible physically scaled isolux map with requested contours', () => {
     const markup = renderToStaticMarkup(

@@ -271,6 +271,43 @@ describe('shared graph exports', () => {
     for (let i = 0; i < width; i++) expect([alpha(i, 0), alpha(i, height - 1)]).toEqual([255, 255]);
     for (let i = 0; i < height; i++) expect([alpha(0, i), alpha(width - 1, i)]).toEqual([255, 255]);
   });
+  it('runs ies chart --log-scale through the real handler to SVG and PNG files', async () => {
+    const directory = await temporary();
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const run = (argv: string[]) =>
+        yargs(['chart', fixture, ...argv])
+          .command(chart)
+          .strict()
+          .exitProcess(false)
+          .parseAsync();
+      await run(['-o', join(directory, 'log.svg'), '--log-scale']);
+      await run([
+        '-o',
+        join(directory, 'log.png'),
+        '--log-scale',
+        '--type',
+        'cartesian',
+        '--width',
+        '400',
+        '--height',
+        '300',
+      ]);
+      await run(['-o', join(directory, 'linear.png'), '--type', 'cartesian', '--width', '400', '--height', '300']);
+      expect(await readFile(join(directory, 'log.svg'), 'utf8')).toContain('cd (log)');
+      const sharp = (await import('sharp')).default;
+      const pixels = async (name: string) => (await sharp(join(directory, name)).raw().toBuffer()).toString('base64');
+      expect(await sharp(join(directory, 'log.png')).metadata()).toMatchObject({
+        format: 'png',
+        width: 400,
+        height: 300,
+      });
+      expect(await pixels('log.png')).not.toEqual(await pixels('linear.png'));
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('(400 × 300; cartesian)'));
+    } finally {
+      log.mockRestore();
+    }
+  });
   it('passes isolux contour, floor and colour options through to the shared graph', async () => {
     const text = await readFile(fixture, 'utf8');
     const chartSvg = async (options: Parameters<typeof chartPhotometry>[1]) =>
