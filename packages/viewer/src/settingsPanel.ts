@@ -12,7 +12,8 @@ export class SettingsPanel {
   #error: (error: unknown) => void;
   #inputs = new Map<keyof ViewerSettings, HTMLInputElement | HTMLSelectElement>();
   #outside = (event: Event) => {
-    if (!this.panel.hidden && !event.composedPath().includes(this.#host)) this.#mode('closed');
+    if (!this.panel.hidden && !event.composedPath().includes(this.panel) && !event.composedPath().includes(this.button))
+      this.#mode('closed');
   };
   #escape = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && !this.panel.hidden) {
@@ -127,7 +128,7 @@ export class SettingsPanel {
 export const SETTINGS_PANEL_CSS = `
 .settings-ui{font:13px/1.4 system-ui,sans-serif;color:#e5e7eb;position:absolute;inset:0;pointer-events:none;z-index:2}
 .settings-ui[hidden],.settings-panel[hidden]{display:none}
-.settings-toggle{position:absolute;right:12px;bottom:12px;width:36px;height:36px;font-size:23px;pointer-events:auto}
+.settings-ui .settings-toggle{position:absolute;right:12px;bottom:12px;width:36px;height:36px;font-size:23px;line-height:1;display:grid;place-items:center;padding:0;pointer-events:auto}
 .settings-ui button,.settings-ui input,.settings-ui select{color:inherit;background:#20252e;border:1px solid #535b69;border-radius:5px;font:inherit}
 .settings-ui button{cursor:pointer}.settings-ui button:focus-visible,.settings-ui input:focus-visible,.settings-ui select:focus-visible{outline:2px solid #8bd4ff;outline-offset:2px}
 .settings-panel{pointer-events:auto;position:absolute;right:12px;bottom:56px;width:min(290px,calc(100% - 24px));max-height:calc(100% - 72px);overflow:auto;box-sizing:border-box;padding:14px;background:rgba(14,18,24,.96);border:1px solid #49515e;border-radius:9px;box-shadow:0 8px 30px #0009}

@@ -131,6 +131,9 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     expect(panel.hidden).toBe(true);
     expect(root.activeElement).toBe(gear);
     gear.click();
+    root.querySelector('.viewport')!.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    expect(panel.hidden).toBe(true);
+    gear.click();
     document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     expect(panel.hidden).toBe(true);
   });
