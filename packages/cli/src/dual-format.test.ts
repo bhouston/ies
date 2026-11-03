@@ -171,7 +171,7 @@ describe('original-format local preview routing', () => {
       expect((await fetch(`${preview.url}profile.ies`)).status).toBe(404);
     } finally {
       preview.server.closeAllConnections();
-      await new Promise<void>((resolve) => preview.server.close(() => resolve()));
+      await new Promise<void>((done) => preview.server.close(() => done()));
     }
   });
   it('requires a lamp configuration before opening a multi-alternative LDT preview', async () => {

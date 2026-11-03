@@ -1,6 +1,6 @@
 # ies-viewer
 
-Shared Three.js viewer, React components, and `<light-viewer>` for IES Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres; exposure maps 100 lux to linear display value 1 before ACES tone mapping. This is a direct diffuse light preview without indirect light or occlusion simulation.
+Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres; exposure maps 100 lux to linear display value 1 before ACES tone mapping. This is a direct diffuse light preview without indirect light or occlusion simulation.
 
 ```sh
 npm install ies-viewer ies-core three
@@ -21,7 +21,7 @@ import { LightViewer, IntensityGraph } from 'ies-viewer/react';
 <IntensityGraph profile={profile} projection="topology" upAxis="z" />;
 ```
 
-React accepts `profile`, `iesText`, or `src` in that precedence order and emits `onLoad(profile)` / `onError(error)`. `style` and `className` control the container; default height is 480 pixels. Graph `axis` is `vertical` (sweep 0–180°, fixed azimuth) or `horizontal` (sweep 0–360°, fixed vertical angle). `angle` is the fixed angle in degrees. `projection` is `polar`, `cartesian`, or `topology`; topology shows the full candela surface with `upAxis` `x`, `y`, or `z`.
+React accepts `document`, `profile`, `text`, `iesText`, or `src` in that precedence order and emits `onLoad(profile, { document, sourceFormat })` / `onError(error)`. Existing one-argument load callbacks remain compatible. `style` and `className` control the container; default height is 480 pixels. Graph `axis` is `vertical` (sweep 0–180°, fixed azimuth) or `horizontal` (sweep 0–360°, fixed vertical angle). `angle` is the fixed angle in degrees. `projection` is `polar`, `cartesian`, or `topology`; topology shows the full candela surface with `upAxis` `x`, `y`, or `z`.
 
 ```html
 <script type="module" src="https://unpkg.com/ies-viewer/dist/light-viewer.js"></script>
@@ -35,3 +35,7 @@ The `dist/light-viewer.js` bundle includes Three.js and the parser for standalon
 `IESLoader` is also re-exported from Three.js for applications using Three.js native IES lighting. Its normalized map is intended for Three.js `IESSpotLight`; it has the loader's own texture layout. `createCandelaTexture(profile)` instead creates this viewer's 361×181 float receiver map with **absolute candela**, U = horizontal 0–360°, V = vertical 0–180°, sampled at pixel centers. These maps are not interchangeable. The calibrated map is tested against every repository IES fixture without creating a GPU context. Native-loader compatibility is tested on the original examples and can be diagnosed across the expanded fixture set with `node scripts/compare-ies-loaders.mjs`; consumers dispose returned textures.
 
 Installed Three.js **0.186.1** native-loader limitation: its symmetry expansion leaves holes/nonfinite float values in the maps for the `02a…` (90–270° azimuth) and `06b…` (0–345°) example fixtures. Compatibility tests record this explicitly. Use this package's `createCandelaTexture` and `createLightViewer` for those distributions; both preserve finite, absolute photometry across all bundled examples. The native loader also fails to parse the dense `Preliminar` fixture because of line-boundary assumptions. The re-export is the upstream loader unchanged, so applications choosing native `IESSpotLight` maps must check their inputs and Three.js version. See the documentation compatibility plan for the complete comparison.
+
+Raw IES and LDT sources are detected automatically; optional `format: 'ies' | 'ldt'` hints force a parser. React `lampSetIndex`, custom-element `lamp-set-index`, and imperative load options select a **zero-based** LDT alternative configuration. Multiple sets require an explicit choice and are never added together. The demo and VS Code preview provide selectors.
+
+Set the custom element's `photometryText` (`data`/`iesText` aliases) for raw text, or `photometry` for a native-source `PhotometricDocument`. Its `load` event preserves `profile` and additionally carries `document` and `sourceFormat`. The imperative viewer adds `loadDocument`, `setDocument`, and a readonly `document` while keeping `load`'s compatible-profile return value. Both source formats share the same absolute-candela renderer without serializing/reparsing an IES intermediary. Source changes cancel stale requests and disposal releases the GPU boundary.

@@ -43,6 +43,8 @@ function App() {
       );
       setSelectedLampSet(undefined);
       const next = sets.length > 1 ? undefined : parsePhotometry(text, format);
+      if (next && next.profile.photometricType !== 1)
+        throw new Error('The viewer and intensity graphs support Type C photometry only');
       setPhotometry(next);
       setProfile(next?.profile);
       setName(file.name);
