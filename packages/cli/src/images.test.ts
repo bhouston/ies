@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
 import { chartPhotometry } from './chart.js';
 import { imageDimensions, requireHardwareGPU } from './render.js';
@@ -239,6 +239,43 @@ describe('shared graph exports', () => {
     const alpha = (x: number, y: number) => data[(y * info.width + x) * info.channels + 3];
     for (let i = 0; i < width; i++) expect([alpha(i, 0), alpha(i, height - 1)]).toEqual([255, 255]);
     for (let i = 0; i < height; i++) expect([alpha(0, i), alpha(width - 1, i)]).toEqual([255, 255]);
+  });
+  it('runs ies chart --log-scale through the real handler to SVG and PNG files', async () => {
+    const directory = await temporary();
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const run = (argv: string[]) =>
+        yargs(['chart', fixture, ...argv])
+          .command(chart)
+          .strict()
+          .exitProcess(false)
+          .parseAsync();
+      await run(['-o', join(directory, 'log.svg'), '--log-scale']);
+      await run([
+        '-o',
+        join(directory, 'log.png'),
+        '--log-scale',
+        '--type',
+        'cartesian',
+        '--width',
+        '400',
+        '--height',
+        '300',
+      ]);
+      await run(['-o', join(directory, 'linear.png'), '--type', 'cartesian', '--width', '400', '--height', '300']);
+      expect(await readFile(join(directory, 'log.svg'), 'utf8')).toContain('cd (log)');
+      const sharp = (await import('sharp')).default;
+      const pixels = async (name: string) => (await sharp(join(directory, name)).raw().toBuffer()).toString('base64');
+      expect(await sharp(join(directory, 'log.png')).metadata()).toMatchObject({
+        format: 'png',
+        width: 400,
+        height: 300,
+      });
+      expect(await pixels('log.png')).not.toEqual(await pixels('linear.png'));
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('(400 × 300; cartesian)'));
+    } finally {
+      log.mockRestore();
+    }
   });
   it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
     const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
