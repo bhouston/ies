@@ -1,4 +1,5 @@
 import { IESParseError, parseIES, type IESProfile } from './index.js';
+import { profileRanges, type SourceRange } from './source.js';
 
 export type IESDiagnosticCode =
   | 'IES_PARSE_ERROR'
@@ -26,6 +27,8 @@ export interface IESDiagnostic {
   severity: 'error' | 'warning' | 'info';
   message: string;
   field?: string;
+  /** Source location, when the diagnostic came from parsing text (not from a profile built in memory). */
+  range?: SourceRange;
 }
 
 export interface IESValidationOptions {
@@ -39,8 +42,20 @@ export interface IESValidationResult {
   diagnostics: IESDiagnostic[];
 }
 
-/** Policy/metadata diagnostics for an already parsed file. This is not a full LM-63 certification. */
+/** Policy/metadata diagnostics for an already parsed file. This is not a full LM-63 certification.
+ * Profiles returned by `parseIES` get source ranges; metadata omissions point at the format line. */
 export function diagnoseIES(profile: IESProfile): IESDiagnostic[] {
+  const ranges = profileRanges.get(profile);
+  const diagnostics = policyDiagnostics(profile);
+  if (ranges)
+    for (const diagnostic of diagnostics) {
+      const range = diagnostic.code === 'IES_REQUIRED_METADATA' ? ranges.version : ranges[diagnostic.field ?? ''];
+      if (range) diagnostic.range = range;
+    }
+  return diagnostics;
+}
+
+function policyDiagnostics(profile: IESProfile): IESDiagnostic[] {
   const diagnostics: IESDiagnostic[] = [];
   if (profile.version === 'LM-63-2002' || profile.version === 'LM-63-2019') {
     for (const keyword of ['TEST', 'TESTLAB', 'ISSUEDATE', 'MANUFAC']) {
@@ -136,7 +151,13 @@ export function validateIES(text: string, options: IESValidationOptions = {}): I
       valid: false,
       profile: null,
       diagnostics: [
-        { code: error.code, severity: 'error', message: error.message, ...(error.field ? { field: error.field } : {}) },
+        {
+          code: error.code,
+          severity: 'error',
+          message: error.message,
+          ...(error.field ? { field: error.field } : {}),
+          ...(error.range ? { range: error.range } : {}),
+        },
       ],
     };
   }
