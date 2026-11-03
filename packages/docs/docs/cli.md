@@ -52,3 +52,18 @@ Native validation and native JSON/LDT round trips preserve all configurations wi
 `--to ies|ldt|json` selects conversion output; the default remains JSON. JSON preserves the **native source model**, not a relabeled normalized IES object. Text conversion prints loss warnings with stable codes on stderr, while stdout contains only the selected payload. `-o` creates an output exclusively and never overwrites an existing file. Bidirectional conversion has documented losses and coordinate restrictions; see [Conversion](./conversion.md).
 
 Local previews serve the unmodified original text at `/profile.ies` or `/profile.ldt` with the corresponding viewer hint. Lamp selections are explicit in the preview. Both source formats use the same calibrated rendering profile; viewing does not serialize LDT to IES first. `inspect` remains the statistics command; no separate `stats` alias is provided.
+
+## Export viewer and chart images
+
+```sh
+ies render light.ies -o preview.png --width 1024 --height 768 --exposure 1 --json
+ies chart light.ies -o polar.svg
+ies chart light.ies -o topology.png --type topology --up-axis z
+ies chart light.ies -o isolux.png --type isolux --mounting-height 2 --extent 10 --resolution 61
+```
+
+`render` captures the shared black-background viewer, ground and wall as PNG. It launches an installed Chrome/Edge or cached Playwright Chromium; it does not download a browser. Set `IES_BROWSER` or `--browser <executable>` to choose one. The actual WebGL2 context must report a recognizable hardware renderer. Software rasterizers, including SwiftShader, llvmpipe and lavapipe, and masked/unknown renderer identities are rejected. GPU work finishes before image capture. JSON output reports the hardware vendor, renderer and WebGL version.
+
+`chart` exports the same React diagrams used by the interactive viewer, with no graph implementation duplicated in the CLI. Output extension chooses SVG or PNG; PNG uses Sharp's 2D SVG rasterizer. Default polar and Cartesian diagrams show the principal planes. `--axis vertical|horizontal --angle <degrees>` chooses an explicit slice. Topology uses `--up-axis x|y|z`; isolux uses `--mounting-height <meters>`, `--extent <meters>` and `--resolution <count>`. Available types are `polar`, `cartesian`, `topology` and `isolux`.
+
+Both commands accept `--format ies|ldt`, `--width`, `--height`, `--json` and the one-based `--lamp-set` configuration selector. Render defaults to 1024×768; charts default to 900×700. Dimensions must be integers within 1–8192. Render exposure defaults to 1 and is nonnegative. `--timeout` defaults to 60 seconds, up to 600. Output paths must have existing parent directories. Export creates files exclusively, preserves existing files and removes its own partial output after failure. A still-image export does not measure rendering throughput.
