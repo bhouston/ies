@@ -14,7 +14,7 @@ ies view luminaire.ies --open
 
 Run `ies --help` for all commands. No MCP, authentication or cloud download services are included.
 
-Use `ies validate file.ies --strict --json` to fail on validation warnings. Structured JSON diagnostics include stable codes and severity for parse errors and metadata omissions. `ies inspect` reports declared lamp ratings separately from angularly integrated luminaire flux, efficacy and principal-plane beam/field estimates. Type A/B metrics are explicitly unavailable. LM-63-2019 generation codes are preserved as provenance and never change intensity.
+Use `ies validate file.ies --strict --json` to fail on validation warnings. Structured JSON diagnostics include stable codes and severity for parse errors and metadata omissions. `ies inspect` reports declared lamp ratings separately from angularly integrated luminaire flux, efficacy and principal-plane beam/field estimates, followed by downward/upward flux, DFF, LOR (DLOR/ULOR), the CIE flux code, tilt-applied peak and nadir intensity, and a zonal-lumens table. `--json` includes the same fields. Type A/B metrics are explicitly unavailable. LM-63-2019 generation codes are preserved as provenance and never change intensity.
 
 All file commands also accept `.ldt` EULUMDAT files. `--format ies|ldt` overrides extension/content detection. `--lamp-set N` uses one-based numbering to choose an alternative LDT lamp configuration; `inspect` lists every configuration and leaves normalized metrics unavailable until a choice is made. Absolute LDT source flux is reported separately from integrated output. Validation and native JSON/LDT round trips preserve all alternatives without selection.
 
