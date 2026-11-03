@@ -64,7 +64,7 @@ export function parseIES(text: string, fields?: SourceField[]): IESProfile {
   const lines = text.replace(/^﻿/, '').split(/\r\n?|\n/);
   const formatLine = lineRange(lines, 0);
   const tiltLine = lines.findIndex((line) => /^\s*TILT\s*=/i.test(line));
-  const first = lines[0]?.trim() ?? '';
+  const first = lines[0]!.trim();
   let version = 'LM-63-1986';
   if (/^IESNA91$/i.test(first)) version = 'LM-63-1991';
   else if (/^IESNA:LM-63-(1995|2002)$/i.test(first)) version = first.toUpperCase().slice(6);

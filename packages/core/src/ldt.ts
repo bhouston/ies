@@ -86,8 +86,7 @@ export function validateLDT(
   /** Maps a field key and index to its source range; supplied by the parser. */
   locate?: (key: string, index?: number) => SourceRange | undefined,
 ): void {
-  const fail = (message: string, key?: string, index?: number): never =>
-    error(message, key === undefined ? undefined : locate?.(key, index));
+  const fail = (message: string, key: string, index?: number): never => error(message, locate?.(key, index));
   const finite = (value: number, name: string, key: string, index?: number): void => {
     if (!Number.isFinite(value)) fail(`${name} must be finite`, key, index);
   };
@@ -126,7 +125,8 @@ export function validateLDT(
   nonnegative(profile.luminousArea.length, 'luminous length', 'luminousArea.length');
   for (const [index, height] of profile.luminousArea.heights.entries())
     nonnegative(height, 'luminous height', `luminousArea.heights.${index}`);
-  if (profile.luminousArea.heights.length !== 4) fail('four luminous-area heights are required');
+  if (profile.luminousArea.heights.length !== 4)
+    fail('four luminous-area heights are required', 'luminousArea.heights', 0);
   for (const [name, value, key] of [
     ['downward flux fraction', profile.downwardFluxFraction, 'downwardFluxFraction'],
     ['light output ratio', profile.lightOutputRatio, 'lightOutputRatio'],
@@ -147,7 +147,7 @@ export function validateLDT(
     nonnegative(lamp.totalLumens, 'lamp-set lumens', `lampSets.${index}.totalLumens`);
     nonnegative(lamp.watts, 'lamp-set watts', `lampSets.${index}.watts`);
   }
-  if (profile.directRatios.length !== 10) fail('ten direct ratios are required');
+  if (profile.directRatios.length !== 10) fail('ten direct ratios are required', 'directRatios', 0);
   for (const [index, ratio] of profile.directRatios.entries()) {
     nonnegative(ratio, 'direct ratio', 'directRatios', index);
     if (ratio > 1) fail('direct ratios must not exceed one', 'directRatios', index);
@@ -157,7 +157,7 @@ export function validateLDT(
     profile.intensities.length !== indices.length ||
     profile.intensities.some((row) => row.length !== profile.gammaAngles.length)
   )
-    fail('intensity table dimensions do not match the symmetry and angle counts');
+    fail('intensity table dimensions do not match the symmetry and angle counts', 'intensities', 0);
   const gammaCount = profile.gammaAngles.length;
   for (const [row, values] of profile.intensities.entries())
     for (const [column, value] of values.entries())

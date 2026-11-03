@@ -49,7 +49,7 @@ export function diagnoseIES(profile: IESProfile): IESDiagnostic[] {
   const diagnostics = policyDiagnostics(profile);
   if (ranges)
     for (const diagnostic of diagnostics) {
-      const range = diagnostic.code === 'IES_REQUIRED_METADATA' ? ranges.version : ranges[diagnostic.field ?? ''];
+      const range = diagnostic.code === 'IES_REQUIRED_METADATA' ? ranges.version : ranges[diagnostic.field!];
       if (range) diagnostic.range = range;
     }
   return diagnostics;
@@ -156,7 +156,7 @@ export function validateIES(text: string, options: IESValidationOptions = {}): I
           severity: 'error',
           message: error.message,
           ...(error.field ? { field: error.field } : {}),
-          ...(error.range ? { range: error.range } : {}),
+          range: error.range,
         },
       ],
     };

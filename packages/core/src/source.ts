@@ -20,14 +20,15 @@ export interface SourceField extends SourceRange {
 export const profileRanges = new WeakMap<object, Record<string, SourceRange>>();
 
 export function lineRange(lines: string[], line: number): SourceRange {
-  const text = lines[line] ?? '';
+  const text = lines[line]!;
   const start = text.length - text.trimStart().length;
   return { line, start, end: Math.max(start, text.trimEnd().length) };
 }
 
 export function endRange(lines: string[]): SourceRange {
-  const line = Math.max(0, lines.length - 1);
-  const end = lines[line]?.length ?? 0;
+  // Splitting text always yields at least one line.
+  const line = lines.length - 1;
+  const end = lines[line]!.length;
   return { line, start: end, end };
 }
 
