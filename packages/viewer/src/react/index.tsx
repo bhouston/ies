@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { type IESProfile, type PhotometricDocument } from 'ies-core';
 import { createPhotometrySourceLoader, type PhotometryFormat, type PhotometryLoadInfo } from '../source.js';
 import { createLightViewer } from '../viewer.js';
+import type { ViewerSettings, ViewerSettingsChangeDetail } from '../settings.js';
 
-export interface LightViewerProps {
+export interface LightViewerProps extends Partial<ViewerSettings> {
   /** A native-source document takes precedence, followed by profile, text, iesText, and src. */
   document?: PhotometricDocument;
   text?: string;
@@ -18,6 +19,7 @@ export interface LightViewerProps {
   style?: CSSProperties;
   onLoad?: (profile: IESProfile, info: PhotometryLoadInfo) => void;
   onError?: (error: Error) => void;
+  onSettingsChange?: (detail: ViewerSettingsChangeDetail) => void;
 }
 export function LightViewer({
   document: photometry,
@@ -28,17 +30,22 @@ export function LightViewer({
   iesText,
   src,
   exposure = 1,
+  showWall = true,
+  wallDistance = 2,
+  floorDistance = 2,
+  toneMapping = 'aces',
   className,
   style,
   onLoad,
   onError,
+  onSettingsChange,
 }: LightViewerProps) {
   const container = useRef<HTMLDivElement>(null);
   const controller = useRef<ReturnType<typeof createLightViewer> | undefined>(undefined);
-  const callbacks = useRef({ onLoad, onError });
+  const callbacks = useRef({ onLoad, onError, onSettingsChange });
   useEffect(() => {
-    callbacks.current = { onLoad, onError };
-  }, [onLoad, onError]);
+    callbacks.current = { onLoad, onError, onSettingsChange };
+  }, [onLoad, onError, onSettingsChange]);
   const [error, setError] = useState('');
   useEffect(() => {
     if (!container.current) return;
@@ -48,6 +55,7 @@ export function LightViewer({
     try {
       viewer = createLightViewer(container.current);
       controller.current = viewer;
+      viewer.addEventListener('settingschange', (event) => callbacks.current.onSettingsChange?.(event.detail));
     } catch (reason) {
       const failure = reason instanceof Error ? reason : new Error(String(reason));
       queueMicrotask(() => {
@@ -82,16 +90,30 @@ export function LightViewer({
       controller.current = undefined;
     };
   }, [photometry, profile, text, iesText, src, format, lampSetIndex]);
+  /* oxlint-disable react/exhaustive-effect-dependencies */
   useEffect(() => {
     try {
-      controller.current?.setExposure(exposure);
+      controller.current?.setSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping });
     } catch (reason) {
       const failure = reason instanceof Error ? reason : new Error(String(reason));
       callbacks.current.onError?.(failure);
     }
     // A new document recreates the controller, so reapply exposure to that controller.
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [exposure, photometry, profile, text, iesText, src, format, lampSetIndex]);
+  }, [
+    exposure,
+    showWall,
+    wallDistance,
+    floorDistance,
+    toneMapping,
+    photometry,
+    profile,
+    text,
+    iesText,
+    src,
+    format,
+    lampSetIndex,
+  ]);
+  /* oxlint-enable react/exhaustive-effect-dependencies */
   return (
     <div className={className} style={{ height: 480, position: 'relative', background: '#000', ...style }}>
       <div ref={container} style={{ width: '100%', height: '100%' }} />

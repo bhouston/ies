@@ -1,80 +1,60 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { iesSource } from '../../core/test/iesSource.js';
 import { ldtSource } from '../test/photometryFixtures.js';
-
-// Replace only the GPU boundary. These tests exercise the real element/source loader and parser;
-// they make no claim about renderer output or hardware quality.
+import { DEFAULT_VIEWER_SETTINGS, resolveViewerSettings, type ViewerSettings } from './settings.js';
 const mocks = vi.hoisted(() => ({ createLightViewer: vi.fn() }));
+// Only the GPU boundary is replaced: actual custom-element DOM, controls and source parser run.
 vi.mock('./viewer.js', () => ({ createLightViewer: mocks.createLightViewer }));
-
-class HostElement extends EventTarget {
-  isConnected = true;
-  shadowRoot?: ReturnType<typeof node>;
-  attributes = new Map<string, string>();
-  getAttribute(name: string) {
-    return this.attributes.get(name) ?? null;
-  }
-  setAttribute(name: string, value: string) {
-    this.attributes.set(name, value);
-    (this as unknown as { attributeChangedCallback?(name: string): void }).attributeChangedCallback?.(name);
-  }
-  removeAttribute(name: string) {
-    this.attributes.delete(name);
-    (this as unknown as { attributeChangedCallback?(name: string): void }).attributeChangedCallback?.(name);
-  }
-  attachShadow() {
-    this.shadowRoot = node();
-    return this.shadowRoot;
-  }
-}
-function node() {
-  return { textContent: '', className: '', setAttribute() {}, append() {} };
-}
-function globals() {
-  vi.stubGlobal('HTMLElement', HostElement);
-  vi.stubGlobal('document', { createElement: () => node() });
-  vi.stubGlobal('customElements', { get: () => undefined, define() {} });
-}
-let Element: typeof import('./element.js').LightViewerElement;
-const controllers: { setDocument: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> }[] = [];
-const elements: InstanceType<typeof import('./element.js').LightViewerElement>[] = [];
+import './element.js';
+import type { LightViewerElement } from './element.js';
+const controllers: {
+  setDocument: ReturnType<typeof vi.fn>;
+  setSettings: ReturnType<typeof vi.fn>;
+  dispose: ReturnType<typeof vi.fn>;
+}[] = [];
 const flush = async () => {
   for (let i = 0; i < 12; i++) await Promise.resolve();
 };
-beforeAll(async () => {
-  globals();
-  Element = (await import('./element.js')).LightViewerElement;
-});
 beforeEach(() => {
-  globals();
   controllers.length = 0;
-  mocks.createLightViewer.mockImplementation(() => {
-    const controller = { setDocument: vi.fn(), setExposure: vi.fn(), dispose: vi.fn() };
+  mocks.createLightViewer.mockImplementation((_host: HTMLElement, options: Partial<ViewerSettings>) => {
+    let settings = resolveViewerSettings(options);
+    const controller = {
+      setDocument: vi.fn(),
+      setSettings: vi.fn((patch: Partial<ViewerSettings>) => {
+        settings = resolveViewerSettings(patch, settings);
+      }),
+      getSettings: () => ({ ...settings }),
+      dispose: vi.fn(),
+    };
     controllers.push(controller);
     return controller;
   });
 });
 afterEach(() => {
-  for (const host of elements.splice(0)) host.disconnectedCallback();
+  document.body.replaceChildren();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
-afterAll(() => vi.unstubAllGlobals());
 function element() {
-  const value = new Element();
-  elements.push(value);
+  return document.createElement('light-viewer') as LightViewerElement;
+}
+function mount(value: LightViewerElement) {
+  document.body.append(value);
   return value;
 }
+function input(value: LightViewerElement, name: string) {
+  return value.shadowRoot!.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+}
 
-describe('light-viewer source lifecycle without constructing a GPU renderer', () => {
-  it('loads LDT and preserves the legacy profile plus document/source-format event fields', async () => {
-    const viewer = element();
-    const loads: unknown[] = [];
-    viewer.addEventListener('load', (event) => {
-      if (event instanceof CustomEvent) loads.push(event.detail);
-    });
+describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () => {
+  it('loads LDT and retains legacy profile and source document event fields', async () => {
+    const viewer = element(),
+      loads: unknown[] = [];
+    viewer.addEventListener('load', (event) => loads.push((event as CustomEvent).detail));
     viewer.photometryText = ldtSource();
-    viewer.connectedCallback();
+    mount(viewer);
     await flush();
     expect(controllers[0]!.setDocument).toHaveBeenCalledOnce();
     expect(loads).toEqual([
@@ -84,56 +64,133 @@ describe('light-viewer source lifecycle without constructing a GPU renderer', ()
         document: expect.objectContaining({ sourceFormat: 'ldt' }),
       }),
     ]);
-    expect(viewer.iesText).toBe(viewer.photometryText);
-    expect(viewer.data).toBe(viewer.photometryText);
+    expect(viewer.data).toBe(viewer.iesText);
   });
-  it('aborts an old URL and emits no stale load after a raw-source replacement', async () => {
-    let complete!: (response: Response) => void;
+  it('aborts old URLs and never publishes their stale result', async () => {
+    let complete!: (value: unknown) => void;
     let signal: AbortSignal | undefined;
     vi.stubGlobal('fetch', (_url: string, init: { signal: AbortSignal }) => {
       signal = init.signal;
-      return new Promise<Response>((resolve) => {
+      return new Promise((resolve) => {
         complete = resolve;
       });
     });
     const viewer = element();
     viewer.setAttribute('src', '/slow.ies');
-    viewer.connectedCallback();
+    mount(viewer);
     await flush();
     viewer.data = ldtSource();
     await flush();
-    complete(new Response(iesSource()));
+    complete({ ok: true, status: 200, text: async () => iesSource() });
     await flush();
     expect(signal?.aborted).toBe(true);
     expect(controllers[0]!.setDocument).toHaveBeenCalledOnce();
     expect(controllers[0]!.setDocument.mock.calls[0]![0].sourceFormat).toBe('ldt');
   });
-  it('cancels source loading and disposes on disconnect, then recreates the viewer on reconnect', async () => {
+  it('disposes on removal and restores source/settings after reinsertion', async () => {
     const viewer = element();
-    viewer.iesText = iesSource();
-    viewer.connectedCallback();
+    viewer.data = iesSource();
+    viewer.settings = { floorDistance: 4, showWall: false, toneMapping: 'agx' };
+    mount(viewer);
     await flush();
-    viewer.disconnectedCallback();
+    viewer.remove();
     expect(controllers[0]!.dispose).toHaveBeenCalledOnce();
-    viewer.connectedCallback();
+    mount(viewer);
     await flush();
     expect(controllers).toHaveLength(2);
     expect(controllers[1]!.setDocument).toHaveBeenCalledOnce();
+    expect(mocks.createLightViewer.mock.calls[1]![1]).toEqual(
+      expect.objectContaining({ floorDistance: 4, showWall: false, toneMapping: 'agx' }),
+    );
   });
-  it('supports explicit lamp-set attributes and surfaces invalid selections', async () => {
-    const viewer = element();
-    const errors: string[] = [];
-    viewer.addEventListener('error', (event) => {
-      if (event instanceof CustomEvent) errors.push(event.detail.message);
-    });
+  it('supports lamp-set selection and reports malformed attributes', async () => {
+    const viewer = element(),
+      errors: string[] = [];
+    viewer.addEventListener('error', (event) => errors.push((event as CustomEvent).detail.message));
     viewer.setAttribute('format', 'ldt');
     viewer.setAttribute('lamp-set-index', '1');
     viewer.data = ldtSource({ alternatives: true });
-    viewer.connectedCallback();
+    mount(viewer);
     await flush();
     expect(controllers[0]!.setDocument.mock.calls[0]![0].selectedLampSetIndex).toBe(1);
     viewer.setAttribute('lamp-set-index', '-1');
     await flush();
     expect(errors).toEqual([expect.stringContaining('nonnegative integer')]);
+  });
+  it('opens and closes its accessible options panel with the gear, Escape and outside pointer', () => {
+    const viewer = mount(element()),
+      root = viewer.shadowRoot!,
+      gear = root.querySelector<HTMLButtonElement>('[aria-label="Viewer options"]')!,
+      panel = root.querySelector<HTMLDivElement>('[role="region"]')!;
+    expect(gear.getAttribute('aria-expanded')).toBe('false');
+    expect(panel.hidden).toBe(true);
+    gear.click();
+    expect(viewer.getAttribute('settings-panel')).toBe('open');
+    expect(panel.hidden).toBe(false);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(panel.hidden).toBe(true);
+    expect(root.activeElement).toBe(gear);
+    gear.click();
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(panel.hidden).toBe(true);
+  });
+  it('binds all controls, reflects attributes and emits a single composed settings event', () => {
+    const viewer = mount(element()),
+      events: CustomEvent[] = [];
+    viewer.addEventListener('settingschange', (event) => events.push(event as CustomEvent));
+    const wall = input(viewer, 'showWall');
+    wall.checked = false;
+    wall.dispatchEvent(new Event('change'));
+    expect(viewer.settings.showWall).toBe(false);
+    expect(viewer.getAttribute('show-wall')).toBe('false');
+    expect(events).toHaveLength(1);
+    expect(events[0]!.bubbles && events[0]!.composed).toBe(true);
+    input(viewer, 'wallDistance').value = '3.5';
+    input(viewer, 'wallDistance').dispatchEvent(new Event('change'));
+    input(viewer, 'floorDistance').value = '4';
+    input(viewer, 'floorDistance').dispatchEvent(new Event('change'));
+    const tone = viewer.shadowRoot!.querySelector<HTMLSelectElement>('[name="toneMapping"]')!;
+    tone.value = 'neutral';
+    tone.dispatchEvent(new Event('change'));
+    input(viewer, 'exposure').value = '0';
+    input(viewer, 'exposure').dispatchEvent(new Event('change'));
+    expect(viewer.settings).toEqual({
+      showWall: false,
+      wallDistance: 3.5,
+      floorDistance: 4,
+      toneMapping: 'neutral',
+      exposure: 0,
+    });
+    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(5);
+  });
+  it('updates controls from attributes without reloading its source', async () => {
+    const viewer = element();
+    viewer.data = iesSource();
+    mount(viewer);
+    await flush();
+    viewer.setAttribute('floor-distance', '5');
+    viewer.setAttribute('tone-mapping', 'reinhard');
+    viewer.setAttribute('settings-panel', 'hidden');
+    await flush();
+    expect(input(viewer, 'floorDistance').value).toBe('5');
+    expect(viewer.settings.toneMapping).toBe('reinhard');
+    expect(controllers[0]!.setDocument).toHaveBeenCalledOnce();
+    expect(viewer.shadowRoot!.querySelector<HTMLDivElement>('.settings-ui')!.hidden).toBe(true);
+  });
+  it('validates mixed patches atomically and preserves settings across source changes', async () => {
+    const viewer = mount(element());
+    expect(() => {
+      viewer.settings = { showWall: false, wallDistance: -1 };
+    }).toThrow();
+    expect(viewer.settings).toEqual(DEFAULT_VIEWER_SETTINGS);
+    expect(controllers[0]!.setSettings).not.toHaveBeenCalled();
+    viewer.settings = { exposure: 250, wallDistance: 7 };
+    viewer.data = ldtSource();
+    await flush();
+    expect(viewer.settings.exposure).toBe(250);
+    expect(viewer.settings.wallDistance).toBe(7);
+    const snapshot = viewer.settings;
+    snapshot.exposure = 1;
+    expect(viewer.settings.exposure).toBe(250);
   });
 });

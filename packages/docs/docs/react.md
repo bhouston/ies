@@ -82,3 +82,7 @@ Import both components from `ies-viewer/react`. See [Photometric graphs](./graph
 Lamp sets in LDT are alternative configurations, not values to add together. Single-set files need no selection. For multiple sets, pass an explicit zero-based `lampSetIndex`, or parse the native file with `parseLDT` and provide a selector before calling `parsePhotometry`. The browser demo shows this flow. The simple upload example above deliberately reports an error for a multi-configuration file until your application supplies a choice.
 
 Changing a source cancels its previous fetch and suppresses stale completions and errors. Unmounting also cancels loading and releases the viewer. Format hints and selected lamp configurations participate in the same lifecycle. The supported rendering coordinates remain Type C for both source formats.
+
+### Scene settings
+
+`LightViewer` also accepts `showWall`, `wallDistance`, `floorDistance`, `toneMapping` and `exposure` props. These update the current renderer without reloading the source. `onSettingsChange({ settings, previousSettings })` observes effective changes. Defaults are a visible wall, 2-meter wall/floor distances, ACES tone mapping and exposure 1. The built-in gear overlay belongs to the custom element; React integrations can build controls around these props.

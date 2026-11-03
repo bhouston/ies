@@ -1,4 +1,13 @@
 import type { PhotometricDocument } from 'ies-core';
+import {
+  DEFAULT_VIEWER_SETTINGS,
+  VIEWER_SETTINGS_ATTRIBUTES,
+  resolveViewerSettings,
+  settingsEqual,
+  viewerSettingFromAttribute,
+  type ViewerSettings,
+} from './settings.js';
+import { SettingsPanel, SETTINGS_PANEL_CSS, type SettingsPanelMode } from './settingsPanel.js';
 import { createLightViewer, type LightViewerController } from './viewer.js';
 import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat } from './source.js';
 
@@ -6,8 +15,49 @@ import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat 
 // oxlint-disable-next-line typescript/no-extraneous-class
 const ElementBase = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 export class LightViewerElement extends ElementBase {
-  static observedAttributes = ['src', 'exposure', 'format', 'lamp-set-index'];
+  static observedAttributes = ['src', 'format', 'lamp-set-index', 'settings-panel', ...VIEWER_SETTINGS_ATTRIBUTES];
   #viewer?: LightViewerController;
+  #settings: ViewerSettings = { ...DEFAULT_VIEWER_SETTINGS };
+  #reflecting = false;
+  #panel?: SettingsPanel;
+  get settings(): ViewerSettings {
+    return { ...this.#settings };
+  }
+  set settings(patch: Partial<ViewerSettings>) {
+    const next = resolveViewerSettings(patch, this.#settings);
+    if (settingsEqual(next, this.#settings)) {
+      this.#panel?.update(next, this.#panelMode());
+      return;
+    }
+    const previousSettings = this.settings;
+    this.#viewer?.setSettings(next);
+    this.#settings = next;
+    this.#reflecting = true;
+    try {
+      for (const [name, value] of [
+        ['show-wall', String(next.showWall)],
+        ['wall-distance', String(next.wallDistance)],
+        ['floor-distance', String(next.floorDistance)],
+        ['tone-mapping', next.toneMapping],
+        ['exposure', String(next.exposure)],
+      ])
+        this.setAttribute(name!, value!);
+    } finally {
+      this.#reflecting = false;
+    }
+    this.#panel?.update(next, this.#panelMode());
+    this.dispatchEvent(
+      new CustomEvent('settingschange', {
+        detail: { settings: this.settings, previousSettings },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+  #panelMode(): SettingsPanelMode {
+    const value = this.getAttribute('settings-panel');
+    return value === 'open' || value === 'hidden' ? value : 'closed';
+  }
   #text?: string;
   #document?: PhotometricDocument;
   #loader = createPhotometrySourceLoader();
@@ -51,17 +101,30 @@ export class LightViewerElement extends ElementBase {
       const root = this.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
       style.textContent =
-        ':host{display:block;height:480px;background:#000;position:relative;min-width:0} .viewport{width:100%;height:100%} .status{position:absolute;bottom:8px;left:12px;color:#fff;font:13px system-ui;pointer-events:none} canvas{display:block}';
+        ':host{display:block;height:480px;background:#000;position:relative;min-width:0} .viewport{width:100%;height:100%} .status{position:absolute;bottom:8px;left:12px;color:#fff;font:13px system-ui;pointer-events:none} canvas{display:block}' +
+        SETTINGS_PANEL_CSS;
       this.#host = document.createElement('div');
       this.#host.className = 'viewport';
       this.#status = document.createElement('div');
       this.#status.className = 'status';
       this.#status.setAttribute('role', 'status');
-      root.append(style, this.#host, this.#status);
+      this.#panel = new SettingsPanel(
+        this,
+        (patch) => {
+          this.settings = patch;
+        },
+        (mode) => this.setAttribute('settings-panel', mode),
+        (error) => {
+          this.#panel?.update(this.settings, this.#panelMode());
+          this.#error(error);
+        },
+      );
+      root.append(style, this.#host, this.#status, this.#panel.root);
     }
     try {
-      this.#viewer = createLightViewer(this.#host!);
-      this.#applyExposure();
+      this.#viewer = createLightViewer(this.#host!, this.#settings);
+      this.#panel?.connect();
+      this.#panel?.update(this.settings, this.#panelMode());
       void this.#load();
     } catch (error) {
       this.#error(error);
@@ -70,12 +133,22 @@ export class LightViewerElement extends ElementBase {
   disconnectedCallback(): void {
     ++this.#revision;
     this.#loader.cancel();
+    this.#panel?.disconnect();
     this.#viewer?.dispose();
     this.#viewer = undefined;
   }
   attributeChangedCallback(name: string): void {
-    if (name === 'exposure') {
-      if (this.#viewer) this.#applyExposure();
+    if (this.#reflecting) return;
+    if (name === 'settings-panel') {
+      this.#panel?.update(this.settings, this.#panelMode());
+      return;
+    }
+    if ((VIEWER_SETTINGS_ATTRIBUTES as readonly string[]).includes(name)) {
+      try {
+        this.settings = viewerSettingFromAttribute(name, this.getAttribute(name));
+      } catch (error) {
+        this.#error(error);
+      }
       return;
     }
     this.#loader.cancel();
@@ -84,14 +157,6 @@ export class LightViewerElement extends ElementBase {
       this.#document = undefined;
     }
     if (this.#viewer) void this.#load();
-  }
-  #applyExposure(): void {
-    const value = this.getAttribute('exposure');
-    try {
-      this.#viewer?.setExposure(value === null ? 1 : Number(value));
-    } catch (error) {
-      this.#error(error);
-    }
   }
   async #load(): Promise<void> {
     if (!this.#viewer) return;
