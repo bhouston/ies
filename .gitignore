@@ -1,0 +1,11 @@
+node_modules/
+dist/
+media/
+build/
+coverage/
+*.tsbuildinfo
+*.vsix
+*.tgz
+.DS_Store
+.docusaurus/
+release-artifacts/
