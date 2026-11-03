@@ -2,7 +2,7 @@
 
 See how a luminaire distributes light without leaving VS Code. Open an IES or EULUMDAT file to preview its measured light on a floor and back wall, inspect its photometric properties, and check for data issues.
 
-![IES light preview with viewer controls and the file information panel](images/preview.png)
+![IES light preview with viewer controls and the file information panel](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/vscode-extension/images/preview.png)
 
 ## Features
 
@@ -33,9 +33,9 @@ If an edit makes the file incomplete or invalid, the information panel shows the
 
 ## Supported files
 
-The extension reads IES LM-63 files, including the 1986, 1991, 1995, 2002 and 2019 formats, and EULUMDAT `.ldt` files. Uppercase `.IES` and `.LDT` extensions are also recognized.
+The extension reads IES LM-63 files, including the 1986, 1991, 1995, 2002 and 2019 formats, and EULUMDAT `.ldt` files.
 
-The 3D preview requires **hardware WebGL 2** and **Type C photometry**. Type A and B IES data can be inspected and validated, but their 3D distributions are not rendered.
+The 3D preview requires **Type C photometry**. Type A and B IES data can be inspected and validated, but their 3D distributions are not rendered.
 
 ## Help and feedback
 
