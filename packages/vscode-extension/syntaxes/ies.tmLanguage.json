@@ -1,0 +1,59 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "IES Photometric (LM-63)",
+  "scopeName": "source.ies",
+  "patterns": [
+    { "include": "#format" },
+    { "include": "#user-keyword" },
+    { "include": "#more" },
+    { "include": "#keyword" },
+    { "include": "#tilt" },
+    { "include": "#number" }
+  ],
+  "repository": {
+    "format": {
+      "match": "^\\s*(IESNA\\s*:\\s*LM-63-\\d{4}|IES\\s*:\\s*LM-63-\\d{4}|IESNA91)\\b",
+      "captures": { "1": { "name": "keyword.control.directive.format.ies" } }
+    },
+    "user-keyword": {
+      "match": "^\\s*(\\[)(_[^\\]]*)(\\])(.*)$",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.ies" },
+        "2": { "name": "entity.other.attribute-name.user-keyword.ies" },
+        "3": { "name": "punctuation.definition.tag.end.ies" },
+        "4": { "name": "string.unquoted.value.ies" }
+      }
+    },
+    "more": {
+      "match": "^\\s*(\\[)(MORE)(\\])(.*)$",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.ies" },
+        "2": { "name": "keyword.other.continuation.ies" },
+        "3": { "name": "punctuation.definition.tag.end.ies" },
+        "4": { "name": "string.unquoted.value.ies" }
+      }
+    },
+    "keyword": {
+      "match": "^\\s*(\\[)([^\\]]*)(\\])(.*)$",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.ies" },
+        "2": { "name": "entity.name.tag.keyword.ies" },
+        "3": { "name": "punctuation.definition.tag.end.ies" },
+        "4": { "name": "string.unquoted.value.ies" }
+      }
+    },
+    "tilt": {
+      "match": "^\\s*(TILT)\\s*(=)\\s*(?:(NONE|INCLUDE)(?=\\s*$)|(.*))",
+      "captures": {
+        "1": { "name": "keyword.other.tilt.ies" },
+        "2": { "name": "keyword.operator.assignment.ies" },
+        "3": { "name": "constant.language.tilt.ies" },
+        "4": { "name": "string.unquoted.filename.ies" }
+      }
+    },
+    "number": {
+      "match": "(?<![\\w.])[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?(?![\\w.])",
+      "name": "constant.numeric.ies"
+    }
+  }
+}
