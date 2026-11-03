@@ -164,6 +164,9 @@ describe('image command arguments', () => {
     expect(parseImageArguments(command, [...argv])).rejects.toThrow(),
   );
   it.each([
+    [{ contours: Array.from({ length: 33 }, (_, i) => String(i)).join(',') }, 'at most 32'],
+    [{ contours: '-1,2' }, 'nonnegative'],
+    [{ contours: '1,Infinity' }, 'Contours must'],
     [{ type: 'pie' }, 'Chart type'],
     [{ axis: 'diagonal' }, 'Axis'],
     [{ upAxis: 'w' }, 'Up axis'],
@@ -250,6 +253,18 @@ describe('shared graph exports', () => {
     const alpha = (x: number, y: number) => data[(y * info.width + x) * info.channels + 3];
     for (let i = 0; i < width; i++) expect([alpha(i, 0), alpha(i, height - 1)]).toEqual([255, 255]);
     for (let i = 0; i < height; i++) expect([alpha(0, i), alpha(width - 1, i)]).toEqual([255, 255]);
+  });
+  it('passes isolux contour, floor and colour options through to the shared graph', async () => {
+    const text = await readFile(fixture, 'utf8');
+    const chartSvg = async (options: Parameters<typeof chartPhotometry>[1]) =>
+      (await chartPhotometry(text, { type: 'isolux', resolution: 21, ...options })).data.toString();
+    const explicit = await chartSvg({ contours: [1, 2, 5], colorScale: 'linear' });
+    expect(explicit.match(/data-level="[\d.]+"/g)).toEqual(['data-level="1"', 'data-level="2"', 'data-level="5"']);
+    expect(explicit).toContain('linear colour');
+    const floor = await chartSvg({ minContour: 5 });
+    expect(floor).toContain('log colour');
+    expect(floor).not.toContain('data-level="2"');
+    expect(floor).toContain('data-level="5"');
   });
   it.each([
     [{ type: 'pie' }, 'Unknown chart type'],
