@@ -25,10 +25,13 @@ export interface ImageArguments extends Omit<RenderOptions, 'lampSetIndex' | 'in
   extent?: number;
   resolution?: number;
   logScale?: boolean;
+  contours?: string;
+  minContour?: number;
+  colorScale?: string;
 }
 /** Range checks yargs cannot express, applied before any output file is created. */
 export function imageOptions(command: 'render' | 'chart', argv: ImageArguments): ImageCommandOptions {
-  const { file, lampSet, format, json, ...rest } = argv;
+  const { file, lampSet, format, json, contours, ...rest } = argv;
   // Choices are checked below; yargs types them as plain strings.
   const options = {
     ...(rest as Omit<ImageCommandOptions, 'input' | 'json'>),
@@ -36,6 +39,7 @@ export function imageOptions(command: 'render' | 'chart', argv: ImageArguments):
     json: json ?? false,
     inputFormat: format,
     lampSetIndex: lampSetIndex(lampSet),
+    contours: contours === undefined ? undefined : contours.split(',').map((level) => Number(level.trim())),
   };
   for (const [name, value] of Object.entries(options))
     if (typeof value === 'number' && !Number.isFinite(value)) throw new Error(`--${name} must be a finite number`);
@@ -64,6 +68,17 @@ export function imageOptions(command: 'render' | 'chart', argv: ImageArguments):
     (!Number.isInteger(options.resolution) || options.resolution < 2 || options.resolution > 201)
   )
     throw new Error('Grid resolution must be an integer from 2 to 201');
+  if (
+    options.contours?.some(
+      (level, i, levels) => !(level >= 0) || !Number.isFinite(level) || (i > 0 && level <= levels[i - 1]!),
+    ) ||
+    (options.contours && options.contours.length > 32)
+  )
+    throw new Error('Contours must be at most 32 comma-separated, strictly increasing, nonnegative lux values');
+  if (options.minContour !== undefined && !(options.minContour > 0))
+    throw new Error('Minimum contour must be a positive lux value');
+  if (options.colorScale !== undefined && !['log', 'linear'].includes(options.colorScale))
+    throw new Error('Colour scale must be log or linear');
   return options;
 }
 
