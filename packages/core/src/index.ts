@@ -1,3 +1,6 @@
+import { computePhotometricMetrics } from './metrics.js';
+import type { IESDiagnosticCode } from './diagnostics.js';
+
 /** Embedded LM-63 lamp tilt correction. Angles are degrees; factors are dimensionless. */
 export interface IESTilt {
   geometry: number;
@@ -15,7 +18,10 @@ export interface IESProfile {
   units: 'feet' | 'meters';
   dimensions: { width: number; length: number; height: number };
   ballastFactor: number;
+  /** Raw second field: multiplier in 1986/1991, reserved in 1995/2002, generation code in 2019. */
   ballastLampPhotometricFactor: number;
+  /** LM-63-2019 provenance code, not an intensity multiplier. Absent in earlier editions. */
+  fileGenerationType?: number;
   inputWatts: number;
   verticalAngles: number[];
   horizontalAngles: number[];
@@ -25,35 +31,40 @@ export interface IESProfile {
 }
 
 export class IESParseError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    public readonly code: IESDiagnosticCode = 'IES_PARSE_ERROR',
+    public readonly field?: string,
+  ) {
     super(message);
     this.name = 'IESParseError';
   }
 }
 
-function fail(message: string): never {
-  throw new IESParseError(message);
+function fail(message: string, code: IESDiagnosticCode = 'IES_PARSE_ERROR', field?: string): never {
+  throw new IESParseError(message, code, field);
 }
 
 function ascending(values: number[], label: string, min: number, max: number): void {
   for (let i = 0; i < values.length; i++) {
     const value = values[i]!;
     if (value < min || value > max || (i > 0 && value <= values[i - 1]!)) {
-      fail(`${label} must be strictly increasing within ${min}..${max} degrees`);
+      fail(`${label} must be strictly increasing within ${min}..${max} degrees`, 'IES_INVALID_ANGLES', label);
     }
   }
 }
 
-/** Parse LM-63-1986, IESNA91, LM-63-1995 and LM-63-2002. External TILT files are rejected. */
+/** Parse LM-63-1986, IESNA91, LM-63-1995, LM-63-2002 and LM-63-2019. External TILT files are rejected. */
 export function parseIES(text: string): IESProfile {
   const lines = text.replace(/^\uFEFF/, '').split(/\r\n?|\n/);
   const tiltLine = lines.findIndex((line) => /^\s*TILT\s*=/i.test(line));
-  if (tiltLine < 0) fail('Missing TILT=NONE or TILT=INCLUDE declaration');
+  if (tiltLine < 0) fail('Missing TILT=NONE or TILT=INCLUDE declaration', 'IES_MISSING_TILT', 'TILT');
   const first = lines[0]?.trim() ?? '';
   let version = 'LM-63-1986';
   if (/^IESNA91$/i.test(first)) version = 'LM-63-1991';
   else if (/^IESNA:LM-63-(1995|2002)$/i.test(first)) version = first.toUpperCase().slice(6);
-  else if (/^IES/i.test(first)) fail(`Unsupported IES header: ${first}`);
+  else if (/^IES:LM-63-2019$/i.test(first)) version = 'LM-63-2019';
+  else if (/^IES/i.test(first)) fail(`Unsupported IES header: ${first}`, 'IES_UNSUPPORTED_HEADER', 'version');
   const metadata: Record<string, string> = Object.create(null);
   let lastKey = '';
   for (const line of lines.slice(version === 'LM-63-1986' ? 0 : 1, tiltLine)) {
@@ -71,7 +82,11 @@ export function parseIES(text: string): IESProfile {
     .trim()
     .toUpperCase();
   if (tiltMode !== 'NONE' && tiltMode !== 'INCLUDE') {
-    fail('External TILT files are unsupported; use TILT=NONE or embed the data with TILT=INCLUDE');
+    fail(
+      'External TILT files are unsupported; use TILT=NONE or embed the data with TILT=INCLUDE',
+      'IES_EXTERNAL_TILT',
+      'TILT',
+    );
   }
   const raw = lines
     .slice(tiltLine + 1)
@@ -81,14 +96,16 @@ export function parseIES(text: string): IESProfile {
   let cursor = 0;
   function number(label: string): number {
     const token = tokens[cursor++];
-    if (!token || !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(token)) fail(`Missing or invalid ${label}`);
+    if (!token || !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(token))
+      fail(`Missing or invalid ${label}`, 'IES_INVALID_NUMBER', label);
     const value = Number(token);
-    if (!Number.isFinite(value)) fail(`Non-finite ${label}`);
+    if (!Number.isFinite(value)) fail(`Non-finite ${label}`, 'IES_INVALID_NUMBER', label);
     return value;
   }
   function count(label: string, max = 100_000): number {
     const value = number(label);
-    if (!Number.isInteger(value) || value < 1 || value > max) fail(`${label} must be a positive integer <= ${max}`);
+    if (!Number.isInteger(value) || value < 1 || value > max)
+      fail(`${label} must be a positive integer <= ${max}`, 'IES_INVALID_COUNT', label);
     return value;
   }
   let tilt: IESTilt | null = null;
@@ -98,25 +115,27 @@ export function parseIES(text: string): IESProfile {
     const angles = Array.from({ length }, () => number('tilt angle'));
     const factors = Array.from({ length }, () => number('tilt factor'));
     ascending(angles, 'Tilt angles', 0, 180);
-    if (factors.some((factor) => factor < 0)) fail('Tilt factors must be nonnegative');
+    if (factors.some((factor) => factor < 0))
+      fail('Tilt factors must be nonnegative', 'IES_INVALID_RANGE', 'tilt factor');
     tilt = { geometry, angles, factors };
   }
   const lampCount = count('lamp count');
   const lumensPerLamp = number('lumens per lamp');
   if (lumensPerLamp < 0 && lumensPerLamp !== -1)
-    fail('Lumens per lamp must be nonnegative or -1 for absolute photometry');
+    fail('Lumens per lamp must be nonnegative or -1 for absolute photometry', 'IES_INVALID_RANGE', 'lumens per lamp');
   const candelaMultiplier = number('candela multiplier');
   const verticalCount = count('vertical angle count');
   const horizontalCount = count('horizontal angle count');
-  if (verticalCount * horizontalCount > 10_000_000) fail('Photometric table exceeds 10 million samples');
+  if (verticalCount * horizontalCount > 10_000_000)
+    fail('Photometric table exceeds 10 million samples', 'IES_TABLE_LIMIT', 'angle counts');
   const photometricType = count('photometric type', 3);
   const unit = count('units', 2);
   const dimensions = { width: number('width'), length: number('length'), height: number('height') };
   const ballastFactor = number('ballast factor');
-  const ballastLampPhotometricFactor = number('ballast lamp factor / reserved field');
+  const ballastLampPhotometricFactor = number('ballast lamp factor / reserved field / file generation type');
   const inputWatts = number('input watts');
   if (candelaMultiplier < 0 || ballastFactor < 0 || ballastLampPhotometricFactor < 0 || inputWatts < 0)
-    fail('Multipliers and input watts must be nonnegative');
+    fail('Multipliers and input watts must be nonnegative', 'IES_INVALID_RANGE', 'multipliers / input watts');
   const verticalAngles = Array.from({ length: verticalCount }, () => number('vertical angle'));
   const horizontalAngles = Array.from({ length: horizontalCount }, () => number('horizontal angle'));
   ascending(verticalAngles, 'Vertical angles', photometricType === 1 ? 0 : -90, photometricType === 1 ? 180 : 90);
@@ -126,20 +145,28 @@ export function parseIES(text: string): IESProfile {
     if (
       horizontalCount === 1 ? horizontalAngles[0] !== 0 : span !== 90 && span !== 180 && !(span > 180 && span <= 360)
     ) {
-      fail('Type C horizontal coverage must be axial (0), quadrant (90), bilateral (180), or full (>180)');
+      fail(
+        'Type C horizontal coverage must be axial (0), quadrant (90), bilateral (180), or full (>180)',
+        'IES_INVALID_COVERAGE',
+        'horizontal angles',
+      );
     }
   }
-  const scale = candelaMultiplier * ballastFactor * (version === 'LM-63-2002' ? 1 : ballastLampPhotometricFactor);
+  // The ballast-lamp factor was replaced by a reserved field in 1995; 2019 repurposes it as provenance.
+  const legacyFactor = version === 'LM-63-1986' || version === 'LM-63-1991' ? ballastLampPhotometricFactor : 1;
+  const scale = candelaMultiplier * ballastFactor * legacyFactor;
   const candelaValues = Array.from({ length: horizontalCount }, () =>
     Array.from({ length: verticalCount }, () => {
       const value = number('candela value');
-      if (value < 0) fail('Candela values must be nonnegative');
+      if (value < 0) fail('Candela values must be nonnegative', 'IES_NEGATIVE_CANDELA', 'candela values');
       const scaled = value * scale;
-      if (!Number.isFinite(scaled)) fail('Scaled candela values must be finite');
+      if (!Number.isFinite(scaled))
+        fail('Scaled candela values must be finite', 'IES_SCALED_OVERFLOW', 'candela values');
       return scaled;
     }),
   );
-  if (cursor !== tokens.length) fail(`Unexpected trailing data (${tokens.length - cursor} tokens)`);
+  if (cursor !== tokens.length)
+    fail(`Unexpected trailing data (${tokens.length - cursor} tokens)`, 'IES_TRAILING_DATA');
   return {
     version,
     metadata,
@@ -151,6 +178,7 @@ export function parseIES(text: string): IESProfile {
     dimensions,
     ballastFactor,
     ballastLampPhotometricFactor,
+    ...(version === 'LM-63-2019' ? { fileGenerationType: ballastLampPhotometricFactor } : {}),
     inputWatts,
     verticalAngles,
     horizontalAngles,
@@ -241,5 +269,12 @@ export function summarizeIES(profile: IESProfile) {
     units: profile.units,
     dimensions: profile.dimensions,
     hasTilt: profile.tilt !== null,
+    fileGenerationType: profile.fileGenerationType ?? null,
+    ...computePhotometricMetrics(profile),
   };
 }
+
+export { validateIES, diagnoseIES } from './diagnostics.js';
+export type { IESDiagnostic, IESDiagnosticCode, IESValidationOptions, IESValidationResult } from './diagnostics.js';
+export { calculateLuminousFlux, computePhotometricMetrics, getBeamAngles } from './metrics.js';
+export type { PhotometricGrid, PhotometricMetrics, BeamAngles, BeamAngleStatus } from './metrics.js';

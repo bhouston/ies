@@ -1,13 +1,13 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { spawn } from 'node:child_process';
-import { parseIES, summarizeIES } from 'ies-core';
+import { diagnoseIES, parseIES, summarizeIES, validateIES } from 'ies-core';
 
 export const help = `ies — IES lighting tools
 
 Usage:
   ies inspect <file.ies> [--json]     Show format, light source and photometric statistics
-  ies validate <file.ies> [--json]    Validate an LM-63 photometric file
+  ies validate <file.ies> [--json] [--strict]  Validate; strict mode fails on warnings
   ies convert <file.ies> [-o file]    Export parsed data as JSON (stdout by default)
   ies view <file.ies> [--port 0] [--open]  Serve a local interactive light preview
   ies --help
@@ -83,12 +83,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     throw new Error(`Unknown command: ${command}. Run ies --help.`);
   let file: string | undefined;
   let json = false;
+  let strict = false;
   let output: string | undefined;
   let port = 0;
   let open = false;
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
     if (arg === '--json' && (command === 'inspect' || command === 'validate')) json = true;
+    else if (arg === '--strict' && command === 'validate') strict = true;
     else if ((arg === '-o' || arg === '--output') && command === 'convert') {
       output = rest[++i];
       if (!output || output.startsWith('-')) throw new Error('Missing output file');
@@ -103,16 +105,39 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   }
   if (!file) throw new Error(`Missing input file. Run ies ${command} <file.ies>.`);
   const text = await readFile(file, 'utf8');
-  const profile = parseIES(text);
   if (command === 'validate') {
-    console.log(
-      json
-        ? JSON.stringify({ valid: true, file, ...summarizeIES(profile) }, null, 2)
-        : `${file}: valid ${profile.version} (Type ${profile.photometricType === 1 ? 'C' : profile.photometricType === 2 ? 'B' : 'A'})`,
-    );
-  } else if (command === 'inspect') {
+    const result = validateIES(text, { strict });
+    if (json) {
+      console.log(
+        JSON.stringify(
+          {
+            valid: result.valid,
+            file,
+            ...(result.profile ? summarizeIES(result.profile) : {}),
+            diagnostics: result.diagnostics,
+          },
+          null,
+          2,
+        ),
+      );
+    } else {
+      const label = result.valid ? 'valid' : 'invalid';
+      const message = `${file}: ${label}${result.profile ? ` ${result.profile.version}` : ''}`;
+      if (result.valid) console.log(message);
+      else console.error(message);
+      for (const diagnostic of result.diagnostics) {
+        console.error(
+          `${diagnostic.severity} [${diagnostic.code}]${diagnostic.field ? ` (${diagnostic.field})` : ''}: ${diagnostic.message}`,
+        );
+      }
+    }
+    if (!result.valid) process.exitCode = 1;
+    return;
+  }
+  const profile = parseIES(text);
+  if (command === 'inspect') {
     const summary = summarizeIES(profile);
-    if (json) console.log(JSON.stringify(summary, null, 2));
+    if (json) console.log(JSON.stringify({ ...summary, diagnostics: diagnoseIES(profile) }, null, 2));
     else {
       const dimensions = summary.dimensions;
       const lines = [
@@ -129,12 +154,27 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         `Lumens per lamp: ${summary.lumensPerLamp === -1 ? 'not specified (absolute photometry)' : `${summary.lumensPerLamp} lm`}`,
         `Input power: ${summary.inputWatts} W`,
         `Peak intensity: ${summary.peakCandela} cd`,
+        `Declared lamp flux: ${summary.declaredLampFluxLumens === null ? 'not specified (absolute photometry)' : `${summary.declaredLampFluxLumens} lm (lamp rating, not luminaire output)`}`,
+        `Integrated luminaire flux: ${summary.integratedFluxLumens === null ? 'unavailable (Type C only)' : `${summary.integratedFluxLumens.toFixed(3)} lm (angular table estimate)`}`,
+        `Integrated luminous efficacy: ${summary.luminousEfficacyLumensPerWatt === null ? 'unavailable (unsupported coordinates or zero input power)' : `${summary.luminousEfficacyLumensPerWatt.toFixed(3)} lm/W`}`,
+        `Metrics lamp tilt: ${summary.metricsTiltDegrees}°`,
+        ...(summary.metricsUnsupportedReason ? [`Metrics: ${summary.metricsUnsupportedReason}`] : []),
+        ...summary.beamAngles.map(
+          (cut) =>
+            `C${cut.horizontalDegrees}–C${(cut.horizontalDegrees + 180) % 360} beam / field estimate: ${cut.beamAngleDegrees === null ? `unavailable (${cut.beamAngleStatus})` : `${cut.beamAngleDegrees.toFixed(3)}°`} / ${cut.fieldAngleDegrees === null ? `unavailable (${cut.fieldAngleStatus})` : `${cut.fieldAngleDegrees.toFixed(3)}°`} (peak direction ${cut.peakDirectionDegrees}°)`,
+        ),
         `Angles: ${summary.verticalAngles} vertical × ${summary.horizontalAngles} horizontal`,
         `Dimensions (width × length × height): ${dimensions.width} × ${dimensions.length} × ${dimensions.height} ${summary.units}`,
         `Tilt correction: ${summary.hasTilt ? 'embedded' : 'none'}`,
+        ...(summary.fileGenerationType === null
+          ? []
+          : [
+              `File generation type: ${summary.fileGenerationType.toFixed(5)} (provenance, not an intensity multiplier)`,
+            ]),
       ];
       const metadata = Object.entries(summary.metadata).map(([key, value]) => `${key}: ${value}`);
-      console.log([...lines, ...(metadata.length ? ['Metadata:', ...metadata] : [])].join('\n'));
+      const diagnostics = diagnoseIES(profile).map((item) => `${item.severity} [${item.code}]: ${item.message}`);
+      console.log([...lines, ...(metadata.length ? ['Metadata:', ...metadata] : []), ...diagnostics].join('\n'));
     }
   } else if (command === 'convert') {
     const converted = `${JSON.stringify(profile, null, 2)}\n`;
