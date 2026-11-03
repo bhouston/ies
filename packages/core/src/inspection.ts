@@ -90,7 +90,7 @@ function parseErrorDiagnostic(error: IESParseError | LDTParseError): PhotometryD
     severity: 'error',
     message: error.message,
     ...(error instanceof IESParseError && error.field ? { field: error.field } : {}),
-    ...(error.range ? { range: error.range } : {}),
+    range: error.range,
   };
 }
 

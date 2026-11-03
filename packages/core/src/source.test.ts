@@ -2,15 +2,23 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   describePhotometrySource,
+  diagnoseIES,
+  iesKeywordDescription,
+  inspectParsedPhotometry,
+  ldtDiagnostics,
   IESParseError,
   LDTParseError,
   parseIES,
   parseLDT,
   validateIES,
   validatePhotometry,
+  validateLDT,
+  writeLDT,
+  type LDTProfile,
   type SourceField,
   type SourceRange,
 } from './index.js';
+import { TokenReader } from './source.js';
 import { iesSource } from '../test/iesSource.js';
 import { ldtSource } from '../../viewer/test/photometryFixtures.js';
 
@@ -177,5 +185,124 @@ describe('describePhotometrySource', () => {
     expect(ldt.valid).toBe(false);
     expect(ldt.fields.map((field) => field.name)).toEqual(['Company identification', 'Ityp', 'Isym', 'Mc', 'Dc']);
     expect(ldt.diagnostics[0]!.range).toEqual({ line: 4, start: 1, end: 1 });
+  });
+});
+
+/** Fake locator that encodes the requested key and index in the range. */
+const locate = (key: string, index?: number) => ({ line: key.length, start: index ?? -1, end: 0 });
+/** Replace one 0-based line of LDT text. */
+const withLine = (text: string, line: number, value: string) =>
+  lines(text)
+    .map((current, index) => (index === line ? value : current))
+    .join('\n');
+const ldtThrown = (text: string) => {
+  try {
+    parseLDT(text);
+  } catch (error) {
+    expect(error).toBeInstanceOf(LDTParseError);
+    return error as LDTParseError;
+  }
+  throw new Error('expected an LDTParseError');
+};
+
+describe('range edge cases', () => {
+  it('keeps reporting the end of the file after the tokens run out', () => {
+    const reader = new TokenReader(['1 2', ''], 0);
+    expect([reader.next(), reader.next(), reader.next(), reader.next()]).toEqual(['1', '2', undefined, undefined]);
+    expect(reader.range()).toEqual({ line: 1, start: 0, end: 0 });
+  });
+  it('locates invalid lumens and describes unknown keywords', () => {
+    const text = iesSource({ lumens: -2 });
+    expect(iesError(text)).toMatchObject({ code: 'IES_INVALID_RANGE', range: { line: 6, start: 2, end: 4 } });
+    expect(iesKeywordDescription('NOTAKEYWORD')).toBe('Unrecognized keyword');
+  });
+  it('omits ranges for profiles that were not parsed from text', () => {
+    const ies = structuredClone(parseIES(iesSource({ metadata: '[TEST] x' })));
+    expect(diagnoseIES(ies).length).toBeGreaterThan(0);
+    expect(diagnoseIES(ies).every((item) => item.range === undefined)).toBe(true);
+    const ldt = structuredClone(parseLDT(ldtSource({ alternatives: true, emptyDescriptions: true })));
+    expect(ldtDiagnostics(ldt).every((item) => item.range === undefined)).toBe(true);
+    expect(inspectParsedPhotometry(ldt).diagnostics.at(-1)).toMatchObject({
+      code: 'LDT_LAMP_SET_SELECTION_REQUIRED',
+    });
+    expect(inspectParsedPhotometry(ldt).diagnostics.at(-1)!.range).toBeUndefined();
+  });
+  it('applies strict mode in describePhotometrySource', () => {
+    const text = iesSource({ metadata: '[TEST] x' });
+    expect(describePhotometrySource(text, 'ies').valid).toBe(true);
+    expect(describePhotometrySource(text, 'ies', true).valid).toBe(false);
+  });
+
+  // ldtSource layout: 1 Isym, 3 Mc, 5 Ng, 12 luminaire length, 21 DFF, 26 lamp count,
+  // 32 first direct ratio, 42 C angle, 43–45 γ angles, 46–48 intensities.
+  const source = ldtSource();
+  it.each([
+    [2, '2', 'C0–C180 symmetry'],
+    [2, '7', 'C90–C270'],
+    [5, '100001', 'gamma-angle count'],
+    [12, '1e999', 'luminaire length must be finite'],
+    [21, '150', 'downward flux fraction must not exceed 100%'],
+    [26, '0', 'lamp counts must be nonzero integers'],
+    [32, '2', 'direct ratios must not exceed one'],
+    [42, '10', 'C angles must start at 0°'],
+    [46, '-1', 'intensity must be nonnegative'],
+  ])('points LDT line %i = %s at its line', (line, value, message) => {
+    const error = ldtThrown(withLine(source, line, value));
+    expect(error.message).toContain(message);
+    expect(error.range?.line).toBe(line);
+  });
+  it('points the table-size limit at the γ count and missing angles at the end', () => {
+    const huge = withLine(withLine(source, 3, '100000'), 5, '101');
+    expect(ldtThrown(huge)).toMatchObject({ range: { line: 5 }, message: expect.stringContaining('ten million') });
+    const short = lines(source).slice(0, 44).join('\n');
+    expect(ldtThrown(short)).toMatchObject({ range: { line: 43, start: 1, end: 1 } });
+  });
+  it('validates the symmetry code after the table layout', () => {
+    const native = parseLDT(source);
+    const quadrant: LDTProfile = {
+      ...native,
+      symmetry: 3,
+      cPlaneSpacing: 90,
+      cAngles: [0, 90, 180, 270],
+      intensities: [native.intensities[0]!, native.intensities[0]!, native.intensities[0]!],
+    };
+    const error = ldtThrown(withLine(writeLDT(quadrant), 2, '5'));
+    expect(error).toMatchObject({ range: { line: 2 }, message: expect.stringContaining('symmetry must be 0..4') });
+  });
+  it('describes intensities by index when the symmetry is invalid', () => {
+    const { fields, valid } = describePhotometrySource(withLine(source, 2, '7'), 'ldt');
+    expect(valid).toBe(false);
+    expect(fields.at(-1)!.description).toBe('Luminous intensity #3 (cd/klm)');
+  });
+  it('locates whole-table validation errors at the first element of the table', () => {
+    const native = parseLDT(source);
+    const cases: [Partial<LDTProfile>, string, string][] = [
+      [
+        { luminousArea: { ...native.luminousArea, heights: [1, 2, 3] as never } },
+        'four luminous-area',
+        'luminousArea.heights',
+      ],
+      [{ directRatios: [0, 0] }, 'ten direct ratios', 'directRatios'],
+      [{ intensities: [[1]] }, 'intensity table dimensions', 'intensities'],
+    ];
+    for (const [change, message, key] of cases) {
+      const invalid = { ...native, ...change };
+      expect(() => validateLDT(invalid)).toThrow(message);
+      try {
+        validateLDT(invalid, locate);
+      } catch (error) {
+        expect((error as LDTParseError).range).toEqual({ line: key.length, start: 0, end: 0 });
+      }
+    }
+  });
+  it('rejects structurally invalid in-memory profiles', () => {
+    const native = parseLDT(source);
+    for (const [change, message] of [
+      [{ typeIndicator: 4 }, 'type indicator'],
+      [{ cAngles: [] }, 'C angles cannot be empty'],
+      [{ measurementTilt: Number.NaN }, 'measurement tilt must be finite'],
+      [{ lampSets: [] }, 'one to twenty lamp sets'],
+    ] as [Partial<LDTProfile>, string][])
+      expect(() => validateLDT({ ...native, ...change } as LDTProfile)).toThrow(message);
   });
 });

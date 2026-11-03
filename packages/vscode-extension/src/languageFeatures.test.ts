@@ -30,6 +30,7 @@ describe('editor language features', () => {
   it('uses the language ID before the file extension', () => {
     expect(analyze(ldtSource(), '/untitled', 'eulumdat').valid).toBe(true);
     expect(analyze(ldtSource(), '/light.LDT').valid).toBe(true);
+    expect(analyze(iesSource(), '/light.txt', 'ies').valid).toBe(true);
   });
   it('finds the field under the cursor and renders escaped Markdown', () => {
     const fields = [field(0, 0, 4, 'A'), field(1, 0, 1, 'B'), field(1, 2, 5, 'C'), field(3, 1, 2, 'D')];
@@ -86,5 +87,16 @@ describe('editor language features', () => {
     expect(alternatives.title).toMatch(/Select an alternative lamp configuration/);
     const typeA = lensSummary(analyze(iesSource({ type: 3, vertical: [-90, 0, 90] }), '/a.ies'));
     expect(typeA.problems).toBe(false);
+  });
+  it('marks a principal plane without a beam crossing with a dash', () => {
+    const text = iesSource({
+      vertical: [0, 30, 60, 90],
+      horizontal: [0, 90],
+      values: [
+        [100, 80, 20, 0],
+        [100, 100, 100, 100],
+      ],
+    });
+    expect(lensSummary(analyze(text, '/a.ies')).title).toContain('beam 90.0°/–');
   });
 });

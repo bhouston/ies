@@ -99,12 +99,7 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 export function lensSummary(result: PhotometrySourceDescription): { title: string; problems: boolean } {
   const errors = result.diagnostics.filter((item) => item.severity === 'error').length;
   if (errors || !result.profile) return { title: plural(Math.max(errors, 1), 'error'), problems: true };
-  let inspection;
-  try {
-    inspection = inspectParsedPhotometry(result.profile);
-  } catch {
-    return { title: 'Photometric summary unavailable', problems: false };
-  }
+  const inspection = inspectParsedPhotometry(result.profile);
   const beam = (plane: number) => {
     const value = inspection.beamAngles.find((item) => item.horizontalDegrees === plane)?.beamAngleDegrees;
     return value == null ? null : `${value.toFixed(1)}°`;
