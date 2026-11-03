@@ -1,5 +1,5 @@
 {
-  "name": "ies-viewer",
+  "name": "@ies-tools/viewer",
   "version": "0.1.0",
   "description": "Photometric IES lighting viewer, React components, and light-viewer custom element.",
   "license": "MIT",
@@ -47,7 +47,7 @@
     "build": "tsc -p . && node scripts/build-element.mjs"
   },
   "dependencies": {
-    "ies-core": "workspace:*"
+    "@ies-tools/core": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.18",

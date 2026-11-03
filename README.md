@@ -4,9 +4,9 @@ IES and EULUMDAT photometric lighting tools for JavaScript and TypeScript, model
 
 | Package                | Purpose                                                            |
 | ---------------------- | ------------------------------------------------------------------ |
-| `ies-core`             | Parse IES/LDT, convert photometry and calculate statistics         |
-| `ies` (CLI)            | Inspect, validate, convert, preview and export render/chart images |
-| `ies-viewer`           | Three.js scene, `<light-viewer>` and React viewer/graphs           |
+| `@ies-tools/core`      | Parse IES/LDT, convert photometry and calculate statistics         |
+| `@ies-tools/cli`       | Inspect, validate, convert, preview and export render/chart images |
+| `@ies-tools/viewer`    | Three.js scene, `<light-viewer>` and React viewer/graphs           |
 | `ies-vscode-extension` | Live `.ies` and `.ldt` previews for VS Code                        |
 | `ies-website`          | React demo with local file input                                   |
 | `ies-docs`             | Docusaurus documentation built as a GitHub Pages artifact          |

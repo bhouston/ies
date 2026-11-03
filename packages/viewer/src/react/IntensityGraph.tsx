@@ -1,5 +1,5 @@
 import { type CSSProperties } from 'react';
-import { type IESProfile } from 'ies-core';
+import { type IESProfile } from '@ies-tools/core';
 import {
   buildIntensityCurves,
   buildIntensityTopology,
@@ -23,7 +23,7 @@ export interface IntensityGraphProps extends IntensityCurveOptions {
   style?: CSSProperties;
 }
 
-/** SVG photometric diagrams; all geometry is also available through ies-viewer/graphs. */
+/** SVG photometric diagrams; all geometry is also available through @ies-tools/viewer/graphs. */
 export function IntensityGraph({
   profile,
   projection = 'polar',

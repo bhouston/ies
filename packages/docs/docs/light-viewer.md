@@ -11,10 +11,10 @@ Use the custom element in any browser application, independently of React:
 <light-viewer src="/lights/luminaire.ies" exposure="1" style="height: 600px"></light-viewer>
 ```
 
-Copy the self-contained `ies-viewer/dist/light-viewer.js` bundle to your application's public assets, or import the registration module in a bundler:
+Copy the self-contained `@ies-tools/viewer/dist/light-viewer.js` bundle to your application's public assets, or import the registration module in a bundler:
 
 ```js
-import 'ies-viewer/element';
+import '@ies-tools/viewer/element';
 
 const viewer = document.querySelector('light-viewer');
 viewer.addEventListener('load', (event) => console.log(event.detail.profile));
@@ -31,7 +31,7 @@ The `load` event carries `{ profile, document, sourceFormat }`; the existing pro
 ## Imperative Three.js API
 
 ```js
-import { createLightViewer } from 'ies-viewer';
+import { createLightViewer } from '@ies-tools/viewer';
 
 const viewer = createLightViewer(document.querySelector('#viewport'), { height: 2, exposure: 1 });
 viewer.load(iesOrLdtText);
@@ -42,7 +42,7 @@ viewer.dispose();
 
 `height` is the luminaire's distance above the floor in meters; size the host element with CSS. `setProfile(profile)` accepts a previously parsed compatible profile. `setDocument(document)` accepts a shared native-source document directly. The returned `renderer` exposes the Three.js WebGLRenderer for integrations and hardware diagnostics.
 
-Three.js's `IESLoader` is also exported by `ies-viewer` for applications that use its native photometric textures. Its texture representation differs from the viewer's calibrated candela table; consult the Three.js loader contract when integrating it with Three.js lighting.
+Three.js's `IESLoader` is also exported by `@ies-tools/viewer` for applications that use its native photometric textures. Its texture representation differs from the viewer's calibrated candela table; consult the Three.js loader contract when integrating it with Three.js lighting.
 
 The currently pinned Three.js loader has known texture layout limitations for some bilateral and full-azimuth files. The shared viewer uses its own validated candela sampler, and tests verify finite receiver textures for every bundled fixture. The native loader export is provided for interoperability, not as a substitute for core validation.
 
@@ -55,7 +55,7 @@ The currently pinned Three.js loader has known texture layout limitations for so
 `format` optionally forces `ies` or `ldt`; without it, file content is detected. `lamp-set-index` is a **zero-based** LDT configuration index and must be supplied for files containing multiple alternative lamp sets. It is not a lamp count or a brightness multiplier. Single-set files need no index. Invalid formats and indices produce the normal error event and visible status message.
 
 ```js
-import { parsePhotometry } from 'ies-core';
+import { parsePhotometry } from '@ies-tools/core';
 viewer.photometryText = ldtText; // automatically detected
 viewer.photometry = parsePhotometry(ldtText, 'ldt', { lampSetIndex: 1 });
 viewer.addEventListener('load', (event) => {
@@ -94,6 +94,6 @@ The `settings` property returns a copy. Assigning a partial settings object vali
 
 ## Shared React and Tailwind styling
 
-The options overlay uses the shared React `ViewerSettingsPanel`, styled by the same Tailwind utilities and tokens as the extension and React viewer. The standalone `light-viewer.js` bundle contains React and its compiled stylesheet; it fetches no UI scripts, styles or fonts. Bundler users importing `ies-viewer/element` must supply the React and React DOM peer dependencies, but do not need a CSS loader: the built element imports an SSR-safe stylesheet string module.
+The options overlay uses the shared React `ViewerSettingsPanel`, styled by the same Tailwind utilities and tokens as the extension and React viewer. The standalone `light-viewer.js` bundle contains React and its compiled stylesheet; it fetches no UI scripts, styles or fonts. Bundler users importing `@ies-tools/viewer/element` must supply the React and React DOM peer dependencies, but do not need a CSS loader: the built element imports an SSR-safe stylesheet string module.
 
 UI colors inherit host custom properties such as `--popover`, `--popover-foreground`, `--foreground`, `--input`, `--border` and `--ring`. Unspecified values use dark standalone fallbacks. These properties pass through the shadow boundary, so VS Code themes update the controls without rebuilding them. The rendering background stays black. See [Styling and themes](./styling.md).

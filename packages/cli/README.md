@@ -1,7 +1,7 @@
 # ies
 
 ```sh
-npm install -g ies
+npm install -g @ies-tools/cli
 ies validate luminaire.ies
 ies inspect luminaire.ies --json
 ies convert luminaire.ies -o luminaire.json

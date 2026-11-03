@@ -8,8 +8,8 @@
     "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
-    "ies-core": "workspace:*",
-    "ies-viewer": "workspace:*",
+    "@ies-tools/core": "workspace:*",
+    "@ies-tools/viewer": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.186.0"

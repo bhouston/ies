@@ -6,10 +6,10 @@ import {
   parsePhotometry,
   type IESProfile,
   type PhotometricDocument,
-} from 'ies-core';
-import { LightViewer } from 'ies-viewer/react';
+} from '@ies-tools/core';
+import { LightViewer } from '@ies-tools/viewer/react';
 import { GraphPanel } from './GraphPanel.js';
-import 'ies-viewer/styles.css';
+import '@ies-tools/viewer/styles.css';
 import './style.css';
 
 function App() {

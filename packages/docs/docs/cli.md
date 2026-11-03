@@ -7,7 +7,7 @@ sidebar_position: 2
 Install `ies` after its first npm release, or build the workspace and run `node packages/cli/bin/cli.js` in place of `ies`.
 
 ```sh
-npm install -g ies
+npm install -g @ies-tools/cli
 ies validate luminaire.ies
 ies inspect luminaire.ies --json
 ies convert luminaire.ies -o luminaire.json

@@ -11,8 +11,8 @@ The extension, React viewer and custom-element options panel share React UI comp
 Import the compiled stylesheet once:
 
 ```tsx
-import 'ies-viewer/styles.css';
-import { LightViewer, PhotometryInfoPanel } from 'ies-viewer/react';
+import '@ies-tools/viewer/styles.css';
+import { LightViewer, PhotometryInfoPanel } from '@ies-tools/viewer/react';
 
 <div className="dark">
   <LightViewer src="/luminaire.ies" settingsPanel="closed" />
@@ -23,14 +23,14 @@ The shared stylesheet defines light `:root` defaults and a `.dark` palette. Over
 
 ```css
 @import 'tailwindcss';
-@import 'ies-viewer/styles/viewer.css';
+@import '@ies-tools/viewer/styles/viewer.css';
 ```
 
 The source theme scans the published React components. Its `@theme inline` mappings make utilities such as `bg-popover`, `text-foreground`, `border-border` and `ring-ring` use host tokens. Import either the compiled entry or your own compiled Tailwind entry; do not load both unnecessarily.
 
 ## Custom-element controls
 
-The self-contained `dist/light-viewer.js` bundle includes React and the compiled stylesheet. `import 'ies-viewer/element'` uses the same compiled CSS as a static JavaScript string, so bundler consumers need no runtime CSS loader. These consumers must install the React and React DOM peers. Importing the built module on a server without `HTMLElement` is supported.
+The self-contained `dist/light-viewer.js` bundle includes React and the compiled stylesheet. `import '@ies-tools/viewer/element'` uses the same compiled CSS as a static JavaScript string, so bundler consumers need no runtime CSS loader. These consumers must install the React and React DOM peers. Importing the built module on a server without `HTMLElement` is supported.
 
 The shadow-root stylesheet does not redefine the host's theme colors. It reads inherited custom properties with dark standalone fallbacks. For example:
 

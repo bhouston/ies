@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseIES, parseLDT, parsePhotometry, sampleIntensity } from 'ies-core';
+import { parseIES, parseLDT, parsePhotometry, sampleIntensity } from '@ies-tools/core';
 import { iesSource } from '../../core/test/iesSource.js';
 import { ldtSource } from '../../viewer/test/photometryFixtures.js';
 import { servePreview } from './index.js';

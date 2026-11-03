@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from 'ies-core';
+import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from '@ies-tools/core';
 import type { PhotometryFormat } from './source.js';
 import { createCandelaTexture } from './texture.js';
 import {

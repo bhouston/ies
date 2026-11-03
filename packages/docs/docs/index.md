@@ -9,9 +9,9 @@ JavaScript and TypeScript tools for IES LM-63 and EULUMDAT photometric lighting 
 
 The pnpm workspace follows [mtlx](https://github.com/bhouston/mtlx): `packages/core`, `packages/cli`, `packages/viewer`, and `packages/vscode-extension`, plus a React demo in `packages/website` and these Docusaurus docs.
 
-- **ies-core**: IES/LDT parsing, validation, conversion, interpolation and photometric summaries, usable in Node and browsers.
-- **ies** (CLI): terminal inspection, validation, IES/LDT/JSON conversion, local previews, hardware-rendered PNGs and SVG/PNG chart exports.
-- **ies-viewer**: Three.js viewer, `<light-viewer>` custom element and React components.
+- **@ies-tools/core**: IES/LDT parsing, validation, conversion, interpolation and photometric summaries, usable in Node and browsers.
+- **@ies-tools/cli**: terminal inspection, validation, IES/LDT/JSON conversion, local previews, hardware-rendered PNGs and SVG/PNG chart exports.
+- **@ies-tools/viewer**: Three.js viewer, `<light-viewer>` custom element and React components.
 - **VS Code**: a local `.ies` or `.ldt` preview that updates when the file changes.
 
 No account, authentication service, MCP server or cloud download service is required. File URLs fetched by browser components must allow access from your page's origin (CORS).

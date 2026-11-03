@@ -1,5 +1,5 @@
 {
-  "name": "ies-core",
+  "name": "@ies-tools/core",
   "version": "0.1.0",
   "description": "Parse, validate, sample and inspect IES LM-63 lighting photometry in Node and browsers.",
   "license": "MIT",

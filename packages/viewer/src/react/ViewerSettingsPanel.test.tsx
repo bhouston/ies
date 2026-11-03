@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseIES } from 'ies-core';
+import { parseIES } from '@ies-tools/core';
 import { DEFAULT_VIEWER_SETTINGS, resolveViewerSettings, type ViewerSettings } from '../settings.js';
 const mocks = vi.hoisted(() => ({ createLightViewer: vi.fn() }));
 vi.mock('../viewer.js', () => ({ createLightViewer: mocks.createLightViewer }));

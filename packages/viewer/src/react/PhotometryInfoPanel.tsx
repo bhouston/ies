@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { PhotometryDiagnostic, PhotometryInspection } from 'ies-core';
+import type { PhotometryDiagnostic, PhotometryInspection } from '@ies-tools/core';
 
 export interface PhotometryValidation {
   valid: boolean;

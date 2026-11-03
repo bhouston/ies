@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App.js';
 import { inspectPreview } from './inspection.js';
-import { inspectPhotometry, validatePhotometry } from 'ies-core';
+import { inspectPhotometry, validatePhotometry } from '@ies-tools/core';
 import { iesSource } from '../../../core/test/iesSource.js';
 import { ldtSource } from '../../../viewer/test/photometryFixtures.js';
 import { createPreviewUpdate } from '../previewData.js';

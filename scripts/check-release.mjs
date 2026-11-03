@@ -12,7 +12,7 @@ try {
     const cwd = join(root, 'packages', name);
     const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'));
     execFileSync('pnpm', ['pack', '--pack-destination', consumer], { cwd, stdio: 'pipe' });
-    return join(consumer, `${pkg.name}-${pkg.version}.tgz`);
+    return join(consumer, `${pkg.name.replace('@', '').replace('/', '-')}-${pkg.version}.tgz`);
   });
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
   execFileSync(
@@ -23,7 +23,7 @@ try {
       stdio: 'inherit',
     },
   );
-  for (const name of ['ies-core', 'ies-viewer', 'ies']) {
+  for (const name of ['@ies-tools/core', '@ies-tools/viewer', '@ies-tools/cli']) {
     const files = readdirSync(join(consumer, 'node_modules', name, 'dist'), { recursive: true });
     assert.ok(files.includes('index.js'), `${name} has an entry point`);
     assert.ok(
@@ -36,12 +36,12 @@ try {
     `
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { parseIES, parsePhotometry, sampleIntensity, serializeIES, serializeLDT, inspectPhotometry, validatePhotometry } from 'ies-core';
+import { parseIES, parsePhotometry, sampleIntensity, serializeIES, serializeLDT, inspectPhotometry, validatePhotometry } from '@ies-tools/core';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import * as viewer from 'ies-viewer';
-import * as react from 'ies-viewer/react';
-import * as graphs from 'ies-viewer/graphs';
+import * as viewer from '@ies-tools/viewer';
+import * as react from '@ies-tools/viewer/react';
+import * as graphs from '@ies-tools/viewer/graphs';
 const profile = parseIES(readFileSync(process.argv[2], 'utf8'));
 assert.ok(sampleIntensity(profile, 0, 0) >= 0);
 assert.ok(Object.keys(viewer).length > 0);
@@ -50,8 +50,8 @@ assert.ok(react.IntensityGraph);
 assert.ok(react.IsoluxGraph);
 assert.ok(react.ViewerSettingsPanel);
 assert.ok(react.PhotometryInfoPanel);
-assert.match(readFileSync(new URL(import.meta.resolve('ies-viewer/styles.css')), 'utf8'), /tailwindcss/);
-const styles = await import(new URL('./elementStyles.js', import.meta.resolve('ies-viewer')).href);
+assert.match(readFileSync(new URL(import.meta.resolve('@ies-tools/viewer/styles.css')), 'utf8'), /tailwindcss/);
+const styles = await import(new URL('./elementStyles.js', import.meta.resolve('@ies-tools/viewer')).href);
 assert.ok(styles.ELEMENT_STYLES.length > 100);
 const sourceText = readFileSync(process.argv[2], 'utf8');
 const validation = validatePhotometry(sourceText, 'ies');
@@ -70,7 +70,7 @@ assert.equal(loaded.sourceFormat, 'ldt');
 const roundtrip = parseIES(serializeIES(ldt).value);
 assert.ok(Math.abs(sampleIntensity(roundtrip, 30, 0) - sampleIntensity(profile, 30, 0)) < 1e-6);
 writeFileSync('fixture.ldt', nativeLDT);
-await import('ies-viewer/element'); // SSR-safe registration import, no renderer construction.
+await import('@ies-tools/viewer/element'); // SSR-safe registration import, no renderer construction.
 `,
   );
   execFileSync(process.execPath, ['check.mjs', join(root, 'fixtures/007cfb11e343e2f42e3b476be4ab684e.ies')], {

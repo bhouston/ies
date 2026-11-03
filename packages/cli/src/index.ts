@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { spawn } from 'node:child_process';
-import { parseIES, parseLDT, parsePhotometry, serializeIES, serializeLDT } from 'ies-core';
+import { parseIES, parseLDT, parsePhotometry, serializeIES, serializeLDT } from '@ies-tools/core';
 import { inputFormat, inspectPhotometry, validatePhotometry, type InputFormat } from './photometry.js';
 
 export const help = `ies — photometric lighting tools

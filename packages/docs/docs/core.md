@@ -5,7 +5,7 @@ sidebar_position: 5
 # Core library
 
 ```ts
-import { parseIES, sampleIntensity, summarizeIES } from 'ies-core';
+import { parseIES, sampleIntensity, summarizeIES } from '@ies-tools/core';
 const profile = parseIES(iesText);
 const candela = sampleIntensity(profile, 30, 90);
 const summary = summarizeIES(profile); // format/version, coordinate type, source descriptions and stats
@@ -30,7 +30,7 @@ Sources: the [ANSI overview of the 2019 changes](https://blog.ansi.org/ansi/stan
 ## Structured validation
 
 ```ts
-import { validateIES, diagnoseIES } from 'ies-core';
+import { validateIES, diagnoseIES } from '@ies-tools/core';
 const result = validateIES(iesText, { strict: true });
 for (const diagnostic of result.diagnostics) {
   console.log(diagnostic.code, diagnostic.severity, diagnostic.field, diagnostic.message);
@@ -48,7 +48,7 @@ Diagnostics carry stable `code`, `severity` (`error`, `warning`, `info`), human-
 ## Flux, efficacy and angular widths
 
 ```ts
-import { calculateLuminousFlux, computePhotometricMetrics, getBeamAngles } from 'ies-core';
+import { calculateLuminousFlux, computePhotometricMetrics, getBeamAngles } from '@ies-tools/core';
 const lumens = calculateLuminousFlux(profile); // default lamp tilt 0°
 const tiltedLumens = calculateLuminousFlux(profile, 30);
 const metrics = computePhotometricMetrics(profile);
@@ -68,7 +68,7 @@ Widths are null with `no-light`, `no-crossing`, or `multiple-lobes` status when 
 ## Shared inspection and validation
 
 ```ts
-import { inspectPhotometry, validatePhotometry, inspectParsedPhotometry } from 'ies-core';
+import { inspectPhotometry, validatePhotometry, inspectParsedPhotometry } from '@ies-tools/core';
 const validation = validatePhotometry(source, 'ies', false);
 const inspection = validation.profile ? inspectParsedPhotometry(validation.profile) : null;
 const direct = inspectPhotometry(source, 'ldt', 0); // zero-based alternative lamp configuration

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { type IESProfile, type PhotometricDocument } from 'ies-core';
+import { type IESProfile, type PhotometricDocument } from '@ies-tools/core';
 import { createPhotometrySourceLoader, type PhotometryFormat, type PhotometryLoadInfo } from '../source.js';
 import { createLightViewer } from '../viewer.js';
 import {

@@ -1,5 +1,5 @@
 {
-  "name": "ies",
+  "name": "@ies-tools/cli",
   "version": "0.1.0",
   "description": "Validate, inspect, convert and preview IES photometric files.",
   "license": "MIT",
@@ -30,8 +30,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "ies-core": "workspace:*",
-    "ies-viewer": "workspace:*",
+    "@ies-tools/core": "workspace:*",
+    "@ies-tools/viewer": "workspace:*",
     "playwright-core": "^1.63.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,4 +1,4 @@
-import type { PhotometricDocument } from 'ies-core';
+import type { PhotometricDocument } from '@ies-tools/core';
 import {
   DEFAULT_VIEWER_SETTINGS,
   VIEWER_SETTINGS_ATTRIBUTES,

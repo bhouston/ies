@@ -1,4 +1,4 @@
-import { sampleIntensity, type IESProfile } from 'ies-core';
+import { sampleIntensity, type IESProfile } from '@ies-tools/core';
 
 export type GraphAxis = 'vertical' | 'horizontal';
 export type UpAxis = 'x' | 'y' | 'z';
