@@ -5,6 +5,7 @@ import {
   buildIntensityTable,
   buildLuminanceTable,
   formatGraphValue,
+  graphFrame,
   heatColor,
   type ConeOptions,
   type IntensityTableOptions,
@@ -12,25 +13,36 @@ import {
 } from '../graphs.js';
 
 interface ChartStyleProps {
+  /** Viewbox width / height; the background fills it and the chart is centered. Defaults to the native layout. */
+  aspectRatio?: number;
   className?: string;
   style?: CSSProperties;
 }
 const muted = '#b7c1ce';
 const format = (value: number | null) => (value === null ? '—' : formatGraphValue(value));
+const offset = (distance: number, angle: number) => distance * Math.tan((angle * Math.PI) / 180);
+const angles = (left?: number, right?: number) =>
+  left === undefined || right === undefined ? '—' : `${formatGraphValue(right - left)}°`;
+const fractions = (values: (number | null)[][]) => {
+  const max = Math.max(0, ...values.flat().map((v) => v ?? 0));
+  return values.map((row) => row.map((v) => (max > 0 && v !== null ? v / max : 0)));
+};
 
 function Frame({
   width,
   height,
   label,
+  aspectRatio,
   className,
   style,
   children,
 }: ChartStyleProps & { width: number; height: number; label: string; children: ReactNode }) {
+  const frame = graphFrame(width, height, aspectRatio);
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width={width}
-      height={height}
+      width={frame.width}
+      height={frame.height}
       className={className}
       style={{
         width: '100%',
@@ -41,15 +53,14 @@ function Frame({
         color: '#ddd',
         ...style,
       }}
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
       // SVG contains the chart itself, with a textual image description.
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="img"
       aria-label={label}
     >
       <title>{label}</title>
-      {/* Oversized so a letterboxed fixed-size export stays dark beyond the viewBox. */}
-      <rect x={-width} y={-height} width={width * 3} height={height * 3} fill="#111" />
+      <rect x={frame.x} y={frame.y} width={frame.width} height={frame.height} fill="#111" />
       {children}
     </svg>
   );
@@ -164,8 +175,9 @@ export interface ConeDiagramGraphProps extends ConeOptions, ChartStyleProps {
  * <ConeDiagramGraph profile={profile} maxDistance={6} />
  * ```
  */
-export function ConeDiagramGraph({ profile, className, style, ...options }: ConeDiagramGraphProps) {
-  if (profile.photometricType !== 1) return <TypeCOnly name="Cone diagram" className={className} style={style} />;
+export function ConeDiagramGraph({ profile, aspectRatio, className, style, ...options }: ConeDiagramGraphProps) {
+  if (profile.photometricType !== 1)
+    return <TypeCOnly name="Cone diagram" aspectRatio={aspectRatio} className={className} style={style} />;
   const cone = buildConeDiagram(profile, options);
   const deepest = Math.max(...cone.rows.map((row) => row.distance));
   const [c0] = cone.planes;
@@ -176,7 +188,6 @@ export function ConeDiagramGraph({ profile, className, style, ...options }: Cone
     (cut): cut is typeof cut & { left: number; right: number } =>
       cut.left !== undefined && cut.right !== undefined && Math.abs(cut.left) < 90 && Math.abs(cut.right) < 90,
   );
-  const offset = (distance: number, angle: number) => distance * Math.tan((angle * Math.PI) / 180);
   const widest = Math.max(
     1e-9,
     ...crossings.flatMap((cut) => [cut.left, cut.right]).map((angle) => Math.abs(offset(deepest, angle))),
@@ -188,11 +199,9 @@ export function ConeDiagramGraph({ profile, className, style, ...options }: Cone
   const tableTop = 330,
     rowHeight = 20,
     height = tableTop + (cone.rows.length + 1) * rowHeight + 46;
-  const angles = (left?: number, right?: number) =>
-    left === undefined || right === undefined ? '—' : `${formatGraphValue(right - left)}°`;
   const title = `Cone diagram, centre intensity ${formatGraphValue(cone.centerIntensity)} candela, distances up to ${formatGraphValue(deepest)} metres`;
   return (
-    <Frame width={520} height={height} label={title} className={className} style={style}>
+    <Frame width={520} height={height} label={title} aspectRatio={aspectRatio} className={className} style={style}>
       <text x="24" y="28" fill="currentColor" fontSize="14">
         Cone diagram · C0–C180 side view
       </text>
@@ -268,18 +277,15 @@ export interface LuminanceTableGraphProps extends LuminanceTableOptions, ChartSt
  * <LuminanceTableGraph profile={profile} />
  * ```
  */
-export function LuminanceTableGraph({ profile, className, style, ...options }: LuminanceTableGraphProps) {
-  if (profile.photometricType !== 1) return <TypeCOnly name="Luminance table" className={className} style={style} />;
+export function LuminanceTableGraph({ profile, aspectRatio, className, style, ...options }: LuminanceTableGraphProps) {
+  if (profile.photometricType !== 1)
+    return <TypeCOnly name="Luminance table" aspectRatio={aspectRatio} className={className} style={style} />;
   const table = buildLuminanceTable(profile, options);
   const columns = table.cPlanes.map((c) => `C${formatGraphValue(c)}`);
   const rows = table.gammas.map((g) => `γ ${formatGraphValue(g)}°`);
   const cellWidth = Math.min(80, 424 / columns.length),
     cellHeight = 18;
   const tableHeight = (rows.length + 1) * cellHeight;
-  const fractions = (values: (number | null)[][]) => {
-    const max = Math.max(0, ...values.flat().map((v) => v ?? 0));
-    return values.map((row) => row.map((v) => (max > 0 && v !== null ? v / max : 0)));
-  };
   const secondTop = 96 + tableHeight;
   const height = secondTop + 26 + tableHeight + 44;
   const { opening } = table;
@@ -291,7 +297,7 @@ export function LuminanceTableGraph({ profile, className, style, ...options }: L
     ? `Glare-angle luminance table in candela per square metre, luminous opening ${size}`
     : 'Glare-angle intensity table; luminance is unavailable because the luminous area is zero';
   return (
-    <Frame width={520} height={height} label={title} className={className} style={style}>
+    <Frame width={520} height={height} label={title} aspectRatio={aspectRatio} className={className} style={style}>
       <text x="24" y="28" fill="currentColor" fontSize="14">
         Average luminance · cd/m²
       </text>
@@ -353,8 +359,9 @@ export interface IntensityTableGraphProps extends IntensityTableOptions, ChartSt
  * <IntensityTableGraph profile={profile} unit="cd/klm" />
  * ```
  */
-export function IntensityTableGraph({ profile, className, style, ...options }: IntensityTableGraphProps) {
-  if (profile.photometricType !== 1) return <TypeCOnly name="Intensity table" className={className} style={style} />;
+export function IntensityTableGraph({ profile, aspectRatio, className, style, ...options }: IntensityTableGraphProps) {
+  if (profile.photometricType !== 1)
+    return <TypeCOnly name="Intensity table" aspectRatio={aspectRatio} className={className} style={style} />;
   const table = buildIntensityTable(profile, options);
   const headerWidth = 48,
     cellWidth = Math.max(40, Math.min(80, 424 / table.cPlanes.length)),
@@ -363,7 +370,7 @@ export function IntensityTableGraph({ profile, className, style, ...options }: I
   const height = 72 + (table.gammas.length + 1) * cellHeight + 34;
   const title = `Luminous intensity table in ${table.unit}, ${table.gammas.length} vertical by ${table.cPlanes.length} horizontal angles, maximum ${formatGraphValue(table.maximum)}`;
   return (
-    <Frame width={width} height={height} label={title} className={className} style={style}>
+    <Frame width={width} height={height} label={title} aspectRatio={aspectRatio} className={className} style={style}>
       <text x="24" y="28" fill="currentColor" fontSize="14">
         Luminous intensity table · {table.unit}
       </text>

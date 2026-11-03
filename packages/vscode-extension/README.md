@@ -12,6 +12,7 @@ See how a luminaire distributes light without leaving VS Code. Open an IES or EU
 - **Photometric information:** see the format and version, manufacturer, luminaire and lamp descriptions, power, peak intensity, flux, efficacy, beam and field angles, dimensions, and source metadata.
 - **Validation alongside the preview:** review errors, warnings and their diagnostic codes. Enable **Strict validation** to flag files with warnings as well as errors.
 - **Live updates:** keep the preview open while editing the source, including unsaved changes.
+- **Syntax highlighting:** open the source as text to see IES keywords, `TILT` lines and numbers, or EULUMDAT numeric and text lines, highlighted in the **IES Photometric (LM-63)** and **EULUMDAT (LDT)** language modes.
 - **IES and LDT support:** preview either format and choose between alternative lamp configurations when an LDT file provides them.
 - **A familiar workspace:** controls and file details follow your VS Code color theme. Files are processed locally, with no upload or account required.
 
@@ -20,7 +21,7 @@ Declared lamp ratings and calculated luminaire values are labeled separately, so
 ## Open a light preview
 
 1. Open an `.ies` or `.ldt` file. The light preview is the default editor for these files.
-2. If the file opens as text, run **IES: Open Light Preview** from the Command Palette, or right-click the file in the Explorer and choose the same command.
+2. If the file opens as text, select **Open Light Preview** in the editor title bar, run **IES: Open Light Preview** from the Command Palette, or right-click the file in the Explorer and choose the same command. From the preview, select **Open as Text** in the title bar to return to the highlighted source.
 3. Drag the scene to orbit and scroll to zoom. Open the **gear menu** in the lower-right corner to adjust the wall, distances, tone mapping and exposure.
 4. Use **File information** on the right to inspect properties and validation results. Its sections expand and collapse; in narrow windows, the information panel moves below the preview.
 
@@ -28,7 +29,7 @@ For an LDT file with multiple lamp configurations, choose one from the selector 
 
 ## Edit the source while previewing
 
-Split the editor into two groups. In one copy, choose **Reopen Editor With → Text Editor** and leave the other copy in the light preview. Source changes refresh the preview and file information without requiring a save.
+Split the editor into two groups. In one copy, select **Open as Text** in the title bar (or choose **Reopen Editor With → Text Editor**) and leave the other copy in the light preview. Source changes refresh the preview and file information without requiring a save.
 
 If an edit makes the file incomplete or invalid, the information panel shows the current diagnostics instead of retaining outdated statistics. Inspection and validation remain available when a file cannot be rendered in 3D.
 

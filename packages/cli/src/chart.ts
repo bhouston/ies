@@ -76,19 +76,21 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
         : type === 'intensity-table'
           ? graphs.buildIntensityTable(profile, table)
           : undefined;
+  const aspectRatio = width / height;
   const element =
     type === 'cone'
-      ? createElement(react.ConeDiagramGraph, { profile, maxDistance: options.maxDistance, style })
+      ? createElement(react.ConeDiagramGraph, { profile, maxDistance: options.maxDistance, aspectRatio, style })
       : type === 'luminance'
-        ? createElement(react.LuminanceTableGraph, { profile, style })
+        ? createElement(react.LuminanceTableGraph, { profile, aspectRatio, style })
         : type === 'intensity-table'
-          ? createElement(react.IntensityTableGraph, { profile, ...table, style })
+          ? createElement(react.IntensityTableGraph, { profile, ...table, aspectRatio, style })
           : type === 'isolux'
             ? createElement(IsoluxGraph, {
                 profile: document.profile,
                 mountingHeight: options.mountingHeight ?? 2,
                 extent: options.extent ?? 10,
                 resolution: options.resolution ?? 61,
+                aspectRatio,
                 style,
               })
             : createElement(IntensityGraph, {
@@ -98,6 +100,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
                 angle,
                 upAxis,
                 principalPlanes: axis === 'vertical' && options.angle === undefined,
+                aspectRatio,
                 style,
               });
   let svg = renderToStaticMarkup(element);

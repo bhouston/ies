@@ -184,6 +184,8 @@ describe('exclusive image outputs', () => {
   });
 });
 
+const runChart = (...args: string[]) =>
+  JSON.parse(execFileSync(process.execPath, [bin, 'chart', fixture, ...args, '--json'], { encoding: 'utf8' }));
 describe('shared graph exports', () => {
   it.each(['polar', 'cartesian', 'topology', 'isolux', 'cone', 'luminance', 'intensity-table'] as const)(
     'exports the shared %s graph as standalone SVG and sized PNG',
@@ -199,17 +201,39 @@ describe('shared graph exports', () => {
   );
   it('reports table chart values in --json and honors table options', async () => {
     const directory = await temporary();
-    const run = (...args: string[]) =>
-      JSON.parse(execFileSync(process.execPath, [bin, 'chart', fixture, ...args, '--json'], { encoding: 'utf8' }));
-    const cone = run('-o', join(directory, 'cone.svg'), '--type', 'cone', '--max-distance', '3');
+    const cone = runChart('-o', join(directory, 'cone.svg'), '--type', 'cone', '--max-distance', '3');
     expect(cone).toMatchObject({ type: 'cone', format: 'svg' });
     expect(cone.values.rows).toHaveLength(3);
-    const table = run('-o', join(directory, 'table.png'), '--type', 'intensity-table', '--max-columns', '4');
+    const table = runChart('-o', join(directory, 'table.png'), '--type', 'intensity-table', '--max-columns', '4');
     expect(table).toMatchObject({ type: 'intensity-table', format: 'png' });
     expect(table.values.cPlanes.length).toBeLessThanOrEqual(4);
-    const luminance = run('-o', join(directory, 'luminance.svg'), '--type', 'luminance');
+    const luminance = runChart('-o', join(directory, 'luminance.svg'), '--type', 'luminance');
     expect(luminance.values.gammas).toEqual([45, 50, 55, 60, 65, 70, 75, 80, 85]);
-    expect(run('-o', join(directory, 'polar.svg')).values).toBeUndefined();
+    expect(runChart('-o', join(directory, 'polar.svg')).values).toBeUndefined();
+  });
+  it.each(
+    (['polar', 'cartesian', 'topology', 'isolux', 'cone', 'luminance', 'intensity-table'] as const).flatMap((type) =>
+      [
+        [900, 700],
+        [700, 900],
+        [700, 700],
+      ].map(([width, height]) => [type, width!, height!] as const),
+    ),
+  )('fills the whole %s canvas at %dx%d without letterboxing', async (type, width, height) => {
+    const text = await readFile(fixture, 'utf8');
+    const svg = (await chartPhotometry(text, { type, format: 'svg', width, height, resolution: 11 })).data.toString();
+    const [, , boxWidth, boxHeight] = svg
+      .match(/viewBox="([^"]+)"/)![1]!
+      .split(' ')
+      .map(Number);
+    expect(boxWidth! / boxHeight!).toBeCloseTo(width / height, 6);
+    const png = await chartPhotometry(text, { type, format: 'png', width, height, resolution: 11 });
+    const { data, info } = await (await import('sharp')).default(png.data).ensureAlpha().raw().toBuffer({
+      resolveWithObject: true,
+    });
+    const alpha = (x: number, y: number) => data[(y * info.width + x) * info.channels + 3];
+    for (let i = 0; i < width; i++) expect([alpha(i, 0), alpha(i, height - 1)]).toEqual([255, 255]);
+    for (let i = 0; i < height; i++) expect([alpha(0, i), alpha(width - 1, i)]).toEqual([255, 255]);
   });
   it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
     const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
