@@ -315,3 +315,58 @@ describe('extended photometric metrics', () => {
     }
   });
 });
+
+// A one-degree triangular spike puts all flux into the two whole-degree bins around `peak`, so
+// floor/ceil lookups would give ~0 % or ~100 % where linear interpolation gives a fraction.
+const spike = (peak: number) =>
+  parseIES(iesSource({ vertical: [0, peak - 1, peak, peak + 1, 180], values: [[0, 0, 1000, 0, 0]], lumens: 1000 }));
+const interpolated = (profile: ReturnType<typeof spike>, degrees: number) => {
+  const { cumulative, downward } = calculateFluxBreakdown(profile);
+  const low = Math.floor(degrees);
+  return Math.round(
+    ((cumulative[low]! + (cumulative[low + 1]! - cumulative[low]!) * (degrees - low)) / downward) * 100,
+  );
+};
+
+describe('extended metric edges', () => {
+  it('interpolates N1 inside the 41°–42° bin rather than snapping to a whole degree', () => {
+    const profile = spike(42);
+    const [n1, n2, n3] = computePhotometricMetrics(profile).cieFluxCode!;
+    expect(n1).toBe(interpolated(profile, 41.4));
+    expect(n1).toBeGreaterThan(10);
+    expect(n1).toBeLessThan(30);
+    expect([n2, n3]).toEqual([100, 100]);
+  });
+  it('interpolates N3 inside the 75°–76° bin', () => {
+    const profile = spike(75);
+    const [n1, n2, n3] = computePhotometricMetrics(profile).cieFluxCode!;
+    expect([n1, n2]).toEqual([0, 0]);
+    expect(n3).toBe(interpolated(profile, 75.5));
+    expect(n3).toBeGreaterThan(60);
+    expect(n3).toBeLessThan(90);
+  });
+  it('accumulates flux measured exactly at γ = 180° into the last bin and the upward zones', () => {
+    const profile = parseIES(iesSource({ vertical: [0, 179, 180], values: [[0, 0, 1000]] }));
+    const { cumulative, total, upward } = calculateFluxBreakdown(profile);
+    expect(cumulative[179]).toBe(0);
+    expect(cumulative[180]).toBe(total);
+    expect(upward).toBe(total);
+    const metrics = computePhotometricMetrics(profile);
+    expect(metrics.peakDirection).toEqual({ horizontalDegrees: 0, verticalDegrees: 180 });
+    expect(metrics.downwardFluxFraction).toBe(0);
+    expect(metrics.cieFluxCode).toEqual([null, null, null, null, null]);
+    expect(metrics.zonalLumens!.find((zone) => zone.fromDegrees === 90 && zone.toDegrees === 180)!.lumens).toBe(total);
+  });
+  it('keeps the cumulative array flat above a lower-hemisphere-only measurement', () => {
+    const { cumulative, upward } = calculateFluxBreakdown(parseIES(iesSource({ vertical: [0, 45.5, 90] })));
+    expect(cumulative[180]).toBe(cumulative[90]);
+    expect(upward).toBe(0);
+  });
+  it('rejects non-finite tilt and cut angles', () => {
+    const profile = parseIES(iesSource());
+    expect(() => computePhotometricMetrics(profile, Number.NaN)).toThrow(RangeError);
+    expect(() => getBeamAngles(profile, Number.POSITIVE_INFINITY)).toThrow(RangeError);
+    expect(() => calculateFluxBreakdown(profile, Number.NaN)).toThrow(RangeError);
+    expect(() => calculateFluxBreakdown({ ...profile, photometricType: 2 })).toThrow(/Type C/);
+  });
+});

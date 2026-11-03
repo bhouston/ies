@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computePhotometricMetrics,
+  inputFormat,
   inspectPhotometry,
   inspectParsedPhotometry,
   parseIES,
   parseLDT,
   summarizeIES,
+  toPhotometricDocument,
   validatePhotometry,
 } from './index.js';
 import { inspectPhotometry as cliInspection, validatePhotometry as cliValidation } from '../../cli/src/photometry.js';
@@ -52,5 +55,77 @@ describe('shared inspection and validation models', () => {
   it('can inspect unsupported rendering coordinates with unavailable metrics', () => {
     const text = iesSource({ type: 2, vertical: [-90, 0, 90], horizontal: [-90, 0, 90] });
     expect(inspectPhotometry(text, 'ies')).toMatchObject({ photometricTypeName: 'B', integratedFluxLumens: null });
+  });
+});
+
+describe('extended metrics through LDT inspection', () => {
+  const extended = [
+    'downwardFluxLumens',
+    'upwardFluxLumens',
+    'peakIntensityCandela',
+    'peakDirection',
+    'nadirCandela',
+    'lightOutputRatio',
+    'downwardLightOutputRatio',
+    'upwardLightOutputRatio',
+    'downwardFluxFraction',
+    'cieFluxCode',
+    'zonalLumens',
+  ] as const;
+  it('leaves every extended metric null until an alternative lamp set is selected', () => {
+    const unselected = inspectPhotometry(ldtSource({ alternatives: true, emptyDescriptions: true }), 'ldt');
+    for (const field of extended) expect(unselected[field]).toBeNull();
+    expect(unselected).toMatchObject({
+      metricsSupported: false,
+      luminaire: 'not specified',
+      manufacturer: 'not specified',
+      declaredLuminaireFluxLumens: null,
+    });
+  });
+  it('computes extended metrics from the selected lamp set, matching the converted IES profile', () => {
+    const text = ldtSource({ alternatives: true });
+    const selected = inspectPhotometry(text, 'ldt', 1);
+    const { profile } = toPhotometricDocument(parseLDT(text), { lampSetIndex: 1 });
+    expect(selected).toMatchObject(computePhotometricMetrics(profile));
+    // Isotropic 25 cd against the 500 lm second configuration.
+    expect(selected.integratedFluxLumens).toBeCloseTo(4 * Math.PI * 25, 10);
+    expect(selected.lightOutputRatio).toBeCloseTo((4 * Math.PI * 25) / 500, 10);
+    expect(selected.downwardFluxFraction).toBeCloseTo(0.5, 12);
+    expect(selected.cieFluxCode).toEqual([25, 50, 75, 31, 63]);
+    expect(selected.nadirCandela).toBeCloseTo(25, 10);
+    expect(selected.zonalLumens!.at(-1)!.percentOfLamp).toBeCloseTo((4 * Math.PI * 25) / 5, 10);
+    // The first set renormalizes the same relative table to its own 2000 lm rating.
+    expect(inspectPhotometry(text, 'ldt', 0).peakIntensityCandela).toBeCloseTo(100, 10);
+    expect(() => inspectPhotometry(text, 'ldt', 2)).toThrow(RangeError);
+  });
+  it('treats a single-set file as selected and absolute LDT as having no lamp-relative ratios', () => {
+    const relative = inspectPhotometry(ldtSource(), 'ldt');
+    expect(relative.selectedLampSetIndex).toBe(0);
+    expect(relative.lightOutputRatio).toBeCloseTo((4 * Math.PI * 100) / 2000, 10);
+    const absolute = inspectPhotometry(ldtSource({ absolute: true }), 'ldt');
+    expect(absolute.declaredLuminaireFluxLumens).toBe(2000);
+    expect(absolute).toMatchObject({
+      lightOutputRatio: null,
+      downwardLightOutputRatio: null,
+      upwardLightOutputRatio: null,
+    });
+    expect(absolute.cieFluxCode!.slice(3)).toEqual([null, null]);
+    expect(absolute.zonalLumens!.every((zone) => zone.percentOfLamp === null)).toBe(true);
+    expect(absolute.downwardFluxLumens).toBeCloseTo(2 * Math.PI * 100, 10);
+  });
+  it('detects formats, fails strict LDT validation on warnings and rethrows unexpected errors', () => {
+    expect(inputFormat(iesSource(), 'x.ldt', 'ies')).toBe('ies');
+    expect(inputFormat(ldtSource(), 'x.IES')).toBe('ies');
+    expect(inputFormat(iesSource(), 'x.LDT')).toBe('ldt');
+    expect(inputFormat(ldtSource())).toBe('ldt');
+    const empty = ldtSource({ emptyDescriptions: true });
+    expect(validatePhotometry(empty, 'ldt').valid).toBe(true);
+    expect(validatePhotometry(empty, 'ldt', true)).toMatchObject({
+      valid: false,
+      diagnostics: [{ code: 'LDT_MISSING_DESCRIPTION' }, { code: 'LDT_MISSING_DESCRIPTION' }],
+    });
+    expect(validatePhotometry(ldtSource(), 'ldt', false, 0.5).valid).toBe(false);
+    expect(validatePhotometry('not an ldt', 'ldt')).toMatchObject({ valid: false, profile: null });
+    expect(() => validatePhotometry(null as unknown as string, 'ldt')).toThrow(TypeError);
   });
 });
