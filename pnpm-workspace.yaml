@@ -6,3 +6,4 @@ allowBuilds:
   sharp: true
   keytar: true
   '@vscode/vsce-sign': true
+  '@parcel/watcher': false

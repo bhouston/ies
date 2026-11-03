@@ -24,3 +24,11 @@ Marketplace and Open VSX publication run through the manual Release workflow aft
 EULUMDAT files with multiple alternative lamp configurations show a configuration selector above the preview. Choose a configuration explicitly; configurations are never summed and the first is not selected automatically. Single-configuration files display directly. Changing the file's source text refreshes its configuration labels; an out-of-range prior selection is cleared.
 
 File text, format hints and configuration labels travel as validated structured messages. Labels are assigned through `textContent`, so manufacturer or lamp descriptions cannot become HTML or scripts. Source loading uses the shared parser and in-memory profile, with no intermediate IES serialization.
+
+## File information and validation
+
+The right-hand panel shares the core inspection/validation model with `ies inspect` and `ies validate`. It includes format/version, coordinate type, source and lamp descriptions, power, peak candela, declared and integrated flux, efficacy, principal-plane beam/field estimates, angular counts, dimensions, tilt, generation provenance and every metadata keyword. Native LDT alternative configurations remain separate and require a selection for calculated output.
+
+Validation lists codes, severity, fields and messages. **Strict validation** makes warnings fail validation without changing their original severity. Invalid unsaved edits replace old statistics with the current errors; unsupported 3D coordinates can still be inspected. The layout places the panel to the right on wider webviews and below the preview on narrow ones.
+
+The webview uses React, Tailwind v4 and `ies-viewer`'s shared theme stylesheet, with theme tokens mapped to VS Code's editor colors. Its scripts and compiled styles ship inside the VSIX and do not need a CDN.

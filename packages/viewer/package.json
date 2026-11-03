@@ -10,12 +10,15 @@
   },
   "files": [
     "dist",
-    "!dist/**/*.tsbuildinfo"
+    "!dist/**/*.tsbuildinfo",
+    "styles"
   ],
   "type": "module",
   "sideEffects": [
     "./dist/element.js",
-    "./dist/light-viewer.js"
+    "./dist/light-viewer.js",
+    "./dist/viewer.css",
+    "./styles/*.css"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -36,7 +39,9 @@
     "./graphs": {
       "types": "./dist/graphs.d.ts",
       "default": "./dist/graphs.js"
-    }
+    },
+    "./styles/*": "./styles/*",
+    "./styles.css": "./dist/viewer.css"
   },
   "scripts": {
     "build": "tsc -p . && node scripts/build-element.mjs"
@@ -45,12 +50,14 @@
     "ies-core": "workspace:*"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.186.0",
     "esbuild": "^0.27.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.18",
     "three": "^0.186.0"
   },
   "peerDependencies": {

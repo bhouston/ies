@@ -124,7 +124,7 @@ export function inspectParsedPhotometry(profile: IESProfile | LDTProfile, lampSe
       severity: 'info',
       field: 'lampSetIndex',
       message:
-        'Lamp sets are alternative configurations; select one with --lamp-set to calculate intensity, flux and efficacy',
+        'Lamp sets are alternative configurations; select a configuration to calculate intensity, flux and efficacy',
     });
   const nativeLamp = selected ? native.lampSets[selected.selectedLampSetIndex ?? 0]! : undefined;
   const summary = selected
@@ -160,7 +160,7 @@ export function inspectParsedPhotometry(profile: IESProfile | LDTProfile, lampSe
         hasTilt: false,
         fileGenerationType: null,
         metricsSupported: false,
-        metricsUnsupportedReason: 'Select an alternative lamp configuration with --lamp-set before calculating metrics',
+        metricsUnsupportedReason: 'Select an alternative lamp configuration before calculating metrics',
         declaredLampFluxLumens: null,
         integratedFluxLumens: null,
         luminousEfficacyLumensPerWatt: null,

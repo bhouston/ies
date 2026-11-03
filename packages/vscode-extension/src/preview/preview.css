@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+@import 'ies-viewer/styles/viewer.css';
+@source './**/*.{ts,tsx}';
+
+/* The shared React theme follows VS Code, as in the mtlx preview. */
+:root,
+.dark {
+  --background: var(--vscode-editor-background, #1e1e1e);
+  --foreground: var(--vscode-editor-foreground, var(--vscode-foreground, #d4d4d4));
+  --card: var(--vscode-sideBar-background, var(--vscode-editor-background, #252526));
+  --card-foreground: var(--vscode-foreground, #d4d4d4);
+  --popover: var(--vscode-dropdown-background, #252526);
+  --popover-foreground: var(--vscode-dropdown-foreground, #d4d4d4);
+  --primary: var(--vscode-button-background, #007acc);
+  --primary-foreground: var(--vscode-button-foreground, #fff);
+  --secondary: var(--vscode-button-secondaryBackground, #303031);
+  --secondary-foreground: var(--vscode-button-secondaryForeground, #d4d4d4);
+  --muted: var(--vscode-editorWidget-background, #252526);
+  --muted-foreground: var(--vscode-descriptionForeground, #a5a5a5);
+  --accent: var(--vscode-list-hoverBackground, #2a2d2e);
+  --accent-foreground: var(--vscode-foreground, #d4d4d4);
+  --destructive: var(--vscode-errorForeground, #f48771);
+  --border: var(--vscode-panel-border, var(--vscode-widget-border, #454545));
+  --input: var(--vscode-input-background, #3c3c3c);
+  --ring: var(--vscode-focusBorder, #007acc);
+  --radius: 0.375rem;
+}
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+body {
+  font-family: var(--vscode-font-family, ui-sans-serif, system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+light-viewer {
+  display: block;
+  height: auto;
+}
+@media (max-width: 760px) {
+  .photometry-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(300px, 52vh) minmax(0, 1fr);
+  }
+  .photometry-workspace > aside {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}

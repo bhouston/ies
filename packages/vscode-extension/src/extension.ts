@@ -11,7 +11,11 @@ export function activate(context: vscode.ExtensionContext): void {
       const script = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'preview.js'));
       const style = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'preview.css'));
       const update = (): void => {
-        const message = createPreviewUpdate(document.getText(), /\.ldt$/i.test(document.uri.path) ? 'ldt' : 'ies');
+        const message = createPreviewUpdate(
+          document.getText(),
+          /\.ldt$/i.test(document.uri.path) ? 'ldt' : 'ies',
+          document.uri.path.split('/').at(-1),
+        );
         // VS Code's Webview.postMessage has no targetOrigin argument.
         // oxlint-disable-next-line unicorn/require-post-message-target-origin
         void panel.webview.postMessage(message);
