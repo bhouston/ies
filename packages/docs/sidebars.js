@@ -17,6 +17,5 @@ module.exports = {
         { type: 'doc', id: 'api/react/index', label: '@ies-tools/viewer/react' },
       ],
     },
-    'compatibility-plan',
   ],
 };
