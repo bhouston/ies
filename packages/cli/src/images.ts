@@ -24,6 +24,7 @@ export interface ImageArguments extends Omit<RenderOptions, 'lampSetIndex' | 'in
   mountingHeight?: number;
   extent?: number;
   resolution?: number;
+  logScale?: boolean;
   contours?: string;
   minContour?: number;
   colorScale?: string;
