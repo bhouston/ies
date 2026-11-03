@@ -10,6 +10,8 @@ Usage:
   ies validate <file.ies> [--json] [--strict]  Validate; strict mode fails on warnings
   ies convert <file.ies> [-o file]    Export parsed data as JSON (stdout by default)
   ies view <file.ies> [--port 0] [--open]  Serve a local interactive light preview
+  ies render <file> -o output.png [--width 1024 --height 768 --exposure 1]
+  ies chart <file> -o output.svg [--type polar|cartesian|topology|isolux]
   ies --help
   ies --version
 
@@ -79,6 +81,10 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
   const [command, ...rest] = argv;
+  if (command === 'render' || command === 'chart') {
+    await (await import('./images.js')).runImageCommand(command, rest);
+    return;
+  }
   if (!['inspect', 'validate', 'convert', 'view'].includes(command!))
     throw new Error(`Unknown command: ${command}. Run ies --help.`);
   let file: string | undefined;
