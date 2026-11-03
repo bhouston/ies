@@ -1,4 +1,4 @@
-import { sampleIntensity, type IESProfile } from '@ies-tools/core';
+import { getBeamAngles, sampleIntensity, type BeamAngles, type IESProfile } from '@ies-tools/core';
 
 export type GraphAxis = 'vertical' | 'horizontal';
 export type UpAxis = 'x' | 'y' | 'z';
@@ -42,6 +42,25 @@ export function niceTicks(maximum: number, intervals = 4): number[] {
   if (!Number.isFinite(last * step)) return Array.from({ length: intervals + 1 }, (_, i) => (i / intervals) * maximum);
   return Array.from({ length: last + 1 }, (_, i) => Number((i * step).toPrecision(12)));
 }
+/** Decades shown by log-scale intensity graphs. */
+export const LOG_DECADES = 3;
+/** Log radius fraction log10(I / Imin) / decades, Imin = Imax / 10^decades; at or below Imin maps to 0. */
+export function logRadius(intensity: number, maximum: number, decades = LOG_DECADES): number {
+  if (!(maximum > 0) || !(intensity > 0)) return 0;
+  return Math.max(0, Math.log10(intensity / maximum) / decades + 1);
+}
+/** 1-2-5 candela ticks from Imax / 10^decades up to Imax, for log-scale rings. */
+export function logTicks(maximum: number, decades = LOG_DECADES): number[] {
+  if (!(maximum > 0)) return [];
+  const minimum = maximum / 10 ** decades;
+  const ticks: number[] = [];
+  for (let power = Math.floor(Math.log10(minimum)); power <= Math.ceil(Math.log10(maximum)); power++)
+    for (const step of [1, 2, 5]) {
+      const tick = Number((step * 10 ** power).toPrecision(12));
+      if (tick >= minimum && tick <= maximum) ticks.push(tick);
+    }
+  return ticks;
+}
 /**
  * SVG viewBox for a `width`×`height` graph layout, widened or heightened to `aspectRatio` (width / height)
  * with the layout centered. Without an aspect ratio the viewBox is the layout itself.
@@ -74,6 +93,8 @@ export interface IntensityCurve {
   oppositePlane?: number;
   label: string;
   points: { angle: number; intensity: number }[];
+  /** Vertical sweeps only: beam (50%) and field (10%) estimate of this opposed-plane cut. */
+  beam?: BeamAngles;
 }
 export interface IntensityCurves {
   axis: GraphAxis;
@@ -135,6 +156,7 @@ export function buildIntensityCurves(profile: IESProfile, options: IntensityCurv
             : sample(profile, fixed, position, lampTilt);
         return { angle: position, intensity: cd };
       }),
+      ...(axis === 'vertical' && { beam: getBeamAngles(profile, fixed, lampTilt) }),
     };
   });
   const maximum = curves.reduce(

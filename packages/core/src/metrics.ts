@@ -19,6 +19,14 @@ export interface BeamAngles {
   fieldAngleDegrees: number | null;
   beamAngleStatus: BeamAngleStatus;
   fieldAngleStatus: BeamAngleStatus;
+  /** Signed vertical angle of the 50% crossing below the peak (negative = opposite C-plane). Absent when not bracketed. */
+  beamLeftDegrees?: number;
+  /** Signed vertical angle of the 50% crossing above the peak. Absent when not bracketed. */
+  beamRightDegrees?: number;
+  /** Signed vertical angle of the 10% crossing below the peak. Absent when not bracketed. */
+  fieldLeftDegrees?: number;
+  /** Signed vertical angle of the 10% crossing above the peak. Absent when not bracketed. */
+  fieldRightDegrees?: number;
 }
 
 export interface PhotometricMetrics {
@@ -200,7 +208,9 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
   let peakIndex = 0;
   for (let i = 1; i < intensities.length; i++) if (intensities[i]! > intensities[peakIndex]!) peakIndex = i;
   const peak = intensities[peakIndex] ?? 0;
-  const width = (fraction: number): { angle: number | null; status: BeamAngleStatus } => {
+  const width = (
+    fraction: number,
+  ): { angle: number | null; status: BeamAngleStatus; left?: number; right?: number } => {
     if (peak <= 0) return { angle: null, status: 'no-light' };
     const threshold = peak * fraction;
     const crossing = (direction: -1 | 1): number | null => {
@@ -221,9 +231,9 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
     if (
       intensities.some((value, index) => value > threshold && (directions[index]! < left || directions[index]! > right))
     ) {
-      return { angle: null, status: 'multiple-lobes' };
+      return { angle: null, status: 'multiple-lobes', left, right };
     }
-    return { angle: right - left, status: 'ok' };
+    return { angle: right - left, status: 'ok', left, right };
   };
   const beam = width(0.5);
   const field = width(0.1);
@@ -235,6 +245,8 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
     fieldAngleDegrees: field.angle,
     beamAngleStatus: beam.status,
     fieldAngleStatus: field.status,
+    ...(beam.left !== undefined && { beamLeftDegrees: beam.left, beamRightDegrees: beam.right }),
+    ...(field.left !== undefined && { fieldLeftDegrees: field.left, fieldRightDegrees: field.right }),
   };
 }
 
