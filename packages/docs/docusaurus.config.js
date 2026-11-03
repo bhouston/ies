@@ -1,16 +1,16 @@
-// Docusaurus builds this documentation into a GitHub Pages artifact served at https://ies.ben3d.ca.
+// Docusaurus builds this documentation into a GitHub Pages artifact served at https://ies-tools.ben3d.ca.
 // `pnpm generate` writes the CLI's OpenCLI document and the TypeDoc API pages before each build.
 const clidocPlugin = require('@clidoc/docusaurus');
 
 module.exports = {
-  title: 'ies',
+  title: 'ies-tools',
   tagline: 'See how a luminaire really lights a room.',
-  url: process.env.SITE_URL ?? 'https://ies.ben3d.ca',
+  url: process.env.SITE_URL ?? 'https://ies-tools.ben3d.ca',
   baseUrl: process.env.BASE_URL ?? '/',
   organizationName: 'bhouston',
   projectName: 'ies-tools',
   onBrokenLinks: 'throw',
-  markdown: { format: 'md' },
+  markdown: { format: 'detect' },
   presets: [
     [
       'classic',
@@ -24,9 +24,8 @@ module.exports = {
   plugins: [[clidocPlugin, { input: 'ies.opencli.json', outputDir: 'docs/cli-reference', basePath: '/cli/reference' }]],
   themeConfig: {
     navbar: {
-      title: 'ies',
+      title: 'ies-tools',
       items: [
-        { to: '/docs', label: 'Docs', position: 'left' },
         { to: '/docs/cli/reference', label: 'CLI', position: 'left' },
         { to: '/docs/react', label: 'React', position: 'left' },
         { to: '/docs/light-viewer', label: '<light-viewer>', position: 'left' },
@@ -44,7 +43,7 @@ module.exports = {
     },
     footer: {
       style: 'dark',
-      copyright: `Copyright © ${new Date().getFullYear()} ies · MIT · Created with love ❤️ by <a href="https://ben3d.ca">Ben Houston</a> · Sponsored by <a href="https://landofassets.com">Land of Assets</a>`,
+      copyright: `Copyright © ${new Date().getFullYear()} ies-tools · MIT · Created with love ❤️ by <a href="https://ben3d.ca">Ben Houston</a> · Sponsored by <a href="https://landofassets.com">Land of Assets</a>`,
     },
     colorMode: { defaultMode: 'dark', respectPrefersColorScheme: true },
   },

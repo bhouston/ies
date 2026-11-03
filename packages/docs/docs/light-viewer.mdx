@@ -4,14 +4,20 @@ sidebar_position: 4
 
 # The light-viewer element
 
-Use the custom element in any browser application, independently of React:
+import LiveLightViewer from '@site/src/components/LiveLightViewer';
+
+<LiveLightViewer style={{ marginBottom: '1rem' }} />
+
+This is a live `<light-viewer>` showing a track light's IES file. Drag to orbit, scroll to zoom, and use the gear for viewer settings.
+
+Use the custom element in any browser application, independently of React. The quickest way is to load the self-contained bundle from jsDelivr:
 
 ```html
-<script type="module" src="/vendor/light-viewer.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ies" exposure="1" style="height: 600px"></light-viewer>
 ```
 
-Copy the self-contained `@ies-tools/viewer/dist/light-viewer.js` bundle to your application's public assets, or import the registration module in a bundler:
+This URL always serves the latest release; add a version such as `@ies-tools/viewer@0.1.0` to pin one. To self-host instead, copy `@ies-tools/viewer/dist/light-viewer.js` to your application's public assets and point the script at it, or import the registration module in a bundler:
 
 ```js
 import '@ies-tools/viewer/element';

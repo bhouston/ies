@@ -2,7 +2,7 @@
   "name": "ies-monorepo",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://ies.ben3d.ca/",
+  "homepage": "https://ies-tools.ben3d.ca/",
   "license": "MIT",
   "type": "module",
   "scripts": {

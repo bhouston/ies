@@ -140,7 +140,7 @@ function App() {
         </aside>
       </div>
       <footer>
-        IES toolkit · <a href="https://ies.ben3d.ca/">Documentation</a> · Drag to orbit · Scroll to zoom
+        IES toolkit · <a href="https://ies-tools.ben3d.ca/">Documentation</a> · Drag to orbit · Scroll to zoom
       </footer>
     </main>
   );

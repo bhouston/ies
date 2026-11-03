@@ -22,6 +22,6 @@ pnpm test
 pnpm dev
 ```
 
-See [documentation](https://ies.ben3d.ca/), [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md). npm and extension publication are configured as a separate manual release; initial registry setup is required. No MCP, authentication or cloud service is included.
+See [documentation](https://ies-tools.ben3d.ca/), [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md). npm and extension publication are configured as a separate manual release; initial registry setup is required. No MCP, authentication or cloud service is included.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for test-data provenance and licenses.
