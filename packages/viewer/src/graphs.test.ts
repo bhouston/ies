@@ -256,6 +256,17 @@ describe('Marching-squares contours', () => {
     };
     expect(extractContours(grid, [1])[0]!.segments).toHaveLength(2);
     expect(extractContours(grid, [1])).toEqual(extractContours(grid, [1]));
+    // Center (1) below the level: the saddle splits around the two high corners instead.
+    expect(extractContours(grid, [1.5])[0]!.segments).toEqual([
+      [
+        [0.5, 0],
+        [0, 0.5],
+      ],
+      [
+        [2, 1.5],
+        [1.5, 2],
+      ],
+    ]);
     expect(
       extractContours(
         {
@@ -312,6 +323,12 @@ describe('Graph input validation', () => {
     expect(() => buildIsoluxGrid(isotropic, { mountingHeight: 0 })).toThrow('Mounting height');
     expect(() => buildIsoluxGrid(isotropic, { extent: -1 })).toThrow('Ground width');
     expect(() => buildIsoluxGrid(isotropic, { aimAngle: -1 })).toThrow('Fixture aim');
+    expect(() => buildIsoluxGrid(isotropic, { extent: [1, 2, 3] as unknown as [number, number] })).toThrow(
+      'two dimensions',
+    );
+    expect(() => buildIsoluxGrid(isotropic, { resolution: [5] as unknown as [number, number] })).toThrow(
+      'two dimensions',
+    );
     expect(() => groundIlluminance(isotropic, NaN, 0)).toThrow('Ground X');
     expect(() => niceTicks(-1)).toThrow('Maximum');
   });

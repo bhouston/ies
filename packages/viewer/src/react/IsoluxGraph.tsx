@@ -48,7 +48,8 @@ function pngChunk(type: string, data: Uint8Array): Uint8Array {
   return out;
 }
 /** Minimal RGB PNG data URI with stored (uncompressed) deflate blocks; no canvas or zlib needed. */
-function pngDataUri(width: number, height: number, raw: Uint8Array): string {
+/** @internal Exported for tests; not part of the public React entry point. */
+export function pngDataUri(width: number, height: number, raw: Uint8Array): string {
   const blocks = Math.max(1, Math.ceil(raw.length / 65535));
   const zlib = new Uint8Array(2 + raw.length + blocks * 5 + 4);
   zlib.set([0x78, 0x01]);
@@ -82,7 +83,8 @@ function pngDataUri(width: number, height: number, raw: Uint8Array): string {
   return `data:image/png;base64,${btoa(binary)}`;
 }
 /** The graph's perceptual blue-to-yellow ramp, hsl(235 − 195t, 80%, 15 + 50t%), as RGB bytes. */
-function rampRgb(t: number): [number, number, number] {
+/** @internal Exported for tests. */
+export function rampRgb(t: number): [number, number, number] {
   const h = 235 - t * 195,
     l = (15 + t * 50) / 100,
     a = 0.8 * Math.min(l, 1 - l);
