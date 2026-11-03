@@ -43,6 +43,9 @@
     "./styles/*": "./styles/*",
     "./styles.css": "./dist/viewer.css"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p . && node scripts/build-element.mjs"
   },
