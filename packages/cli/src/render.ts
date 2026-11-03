@@ -72,7 +72,7 @@ export async function launchRenderBrowser(executablePath?: string, timeout = 60)
 const initialState = `
 window.__iesImageState = { loaded: false, error: '' };
 document.addEventListener('load', (event) => {
-  if (event.target && event.target.localName === 'light-viewer') window.__iesImageState.loaded = true;
+  if (event.target && event.target.localName === 'light-viewer') { event.target.setAttribute('settings-panel', 'hidden'); window.__iesImageState.loaded = true; }
 }, true);
 document.addEventListener('error', (event) => {
   if (event.target && event.target.localName === 'light-viewer') window.__iesImageState.error = event.detail?.message || 'Shared viewer failed';
@@ -113,6 +113,7 @@ export async function renderPhotometry(text: string, options: RenderOptions = {}
     // Attribute updates invoke the shared viewer's synchronous render. finish() waits for that GPU work.
     const glError = await page.evaluate<number>(`(() => {
       const viewer = document.querySelector('light-viewer');
+      viewer.setAttribute('settings-panel', 'hidden');
       viewer.setAttribute('exposure', ${JSON.stringify(exposure)});
       const gl = viewer.shadowRoot.querySelector('canvas').getContext('webgl2');
       gl.finish();

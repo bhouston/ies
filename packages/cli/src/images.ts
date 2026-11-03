@@ -107,6 +107,15 @@ export function parseImageArguments(command: 'render' | 'chart', argv: string[])
     throw new Error('Axis must be vertical or horizontal');
   if (options.upAxis !== undefined && !['x', 'y', 'z'].includes(options.upAxis))
     throw new Error('Up axis must be x, y or z');
+  if (options.mountingHeight !== undefined && (options.mountingHeight < 0.01 || options.mountingHeight > 10000))
+    throw new Error('Mounting height must be within 0.01–10000 meters');
+  if (options.extent !== undefined && (options.extent < 0.01 || options.extent > 100000))
+    throw new Error('Ground extent must be within 0.01–100000 meters');
+  if (
+    options.resolution !== undefined &&
+    (!Number.isInteger(options.resolution) || options.resolution < 2 || options.resolution > 201)
+  )
+    throw new Error('Grid resolution must be an integer from 2 to 201');
   return { ...options, input: options.input, output: options.output, json: options.json ?? false };
 }
 
@@ -129,7 +138,28 @@ export async function writeImageExclusively<T extends { data: Buffer }>(
   }
 }
 
+export const imageHelp = {
+  render: `ies render <file.ies|file.ldt> -o output.png
+  --width <pixels> --height <pixels>  Default 1024×768; maximum 8192 per side
+  --exposure <number>                 Default 1, nonnegative
+  --browser <executable>              Installed Chromium browser, or IES_BROWSER
+  --timeout <seconds>                Default 60, maximum 600
+  --lamp-set <index> --json           One-based LDT configuration; JSON GPU report
+Requires confirmed hardware WebGL2; software and unknown renderers are rejected.`,
+  chart: `ies chart <file.ies|file.ldt> -o output.svg|output.png
+  --type polar|cartesian|topology|isolux
+  --width <pixels> --height <pixels>  Default 900×700; maximum 8192 per side
+  --axis vertical|horizontal --angle <degrees>
+  --up-axis x|y|z                    Topology orientation
+  --mounting-height <meters> --extent <meters> --resolution <count>
+  --lamp-set <index> --json           One-based LDT configuration; JSON output report
+Uses the shared React diagrams; PNG rasterization is 2D and does not require WebGL.`,
+};
 export async function runImageCommand(command: 'render' | 'chart', argv: string[]): Promise<void> {
+  if (argv.length === 1 && ['--help', '-h'].includes(argv[0]!)) {
+    console.log(imageHelp[command]);
+    return;
+  }
   const options = parseImageArguments(command, argv);
   const text = await readFile(options.input, 'utf8');
   if (command === 'render') {
