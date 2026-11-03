@@ -1,81 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-type Listener = (value?: unknown) => void;
-type Uri = { path: string; toString(): string };
-const uri = (path: string): Uri => ({ path, toString: () => `file://${path}` });
-
-/** Fake event registration: records the listener and returns a disposable spy. */
-const event = () => {
-  const listeners: Listener[] = [];
-  const disposables: { dispose: ReturnType<typeof vi.fn> }[] = [];
-  const subscribe = vi.fn((listener: Listener) => {
-    listeners.push(listener);
-    const disposable = { dispose: vi.fn() };
-    disposables.push(disposable);
-    return disposable;
-  });
-  return { subscribe, fire: (value?: unknown) => listeners.forEach((listener) => listener(value)), disposables };
-};
-
-const vscode = vi.hoisted(() => {
-  class TabInputCustom {
-    readonly uri: unknown;
-    constructor(target: unknown) {
-      this.uri = target;
-    }
-  }
-  return {
-    commands: new Map<string, (...args: unknown[]) => unknown>(),
-    providers: new Map<string, { provider: unknown; options: unknown }>(),
-    executeCommand: vi.fn(async () => undefined),
-    showInformationMessage: vi.fn(),
-    textChanges: undefined as unknown as { subscribe: unknown; fire: Listener; disposables: { dispose: unknown }[] },
-    window: { activeTextEditor: undefined as unknown, activeTab: undefined as unknown },
-    TabInputCustom,
-  };
-});
-
-vi.mock('vscode', () => ({
-  Uri: { joinPath: (base: Uri, ...parts: string[]) => uri([base.path, ...parts].join('/')) },
-  TabInputCustom: vscode.TabInputCustom,
-  commands: {
-    registerCommand: (id: string, handler: (...args: unknown[]) => unknown) => {
-      vscode.commands.set(id, handler);
-      return { dispose: vi.fn() };
-    },
-    executeCommand: vscode.executeCommand,
-  },
-  window: {
-    registerCustomEditorProvider: (viewType: string, provider: unknown, options: unknown) => {
-      vscode.providers.set(viewType, { provider, options });
-      return { dispose: vi.fn() };
-    },
-    showInformationMessage: vscode.showInformationMessage,
-    get activeTextEditor() {
-      return vscode.window.activeTextEditor;
-    },
-    tabGroups: {
-      activeTabGroup: {
-        get activeTab() {
-          return vscode.window.activeTab;
-        },
-      },
-    },
-  },
-  workspace: {
-    onDidChangeTextDocument: (listener: Listener) =>
-      (vscode.textChanges.subscribe as (listener: Listener) => unknown)(listener),
-  },
-}));
-
-// Conversion commands have their own tests; here we only check that activate() delegates to them.
+vi.mock('vscode', () => import('../test/vscodeMock.js'));
+// Conversion commands and language features have their own tests; here we only check that activate() delegates to them.
 vi.mock('./convert.js', () => ({ registerConvertCommands: vi.fn() }));
-// Language features are covered separately; their module reads vscode enums at load time.
 vi.mock('./languageProviders.js', () => ({ registerLanguageFeatures: vi.fn() }));
 
+const { fake, commands, window, uri, event, TabInputCustom } = await import('../test/vscodeMock.js');
+type Uri = ReturnType<typeof uri>;
 const { activate } = await import('./extension.js');
 const { registerConvertCommands } = await import('./convert.js');
+const { registerLanguageFeatures } = await import('./languageProviders.js');
 const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   contributes: {
     commands: { command: string }[];
@@ -90,47 +25,41 @@ let subscriptions: { dispose: unknown }[];
 let context: unknown;
 
 beforeEach(() => {
-  vscode.commands.clear();
-  vscode.providers.clear();
-  vscode.executeCommand.mockClear();
-  vscode.showInformationMessage.mockClear();
-  vscode.textChanges = event();
-  vscode.window.activeTextEditor = undefined;
-  vscode.window.activeTab = undefined;
+  fake.reset();
   subscriptions = [];
-  vi.mocked(registerConvertCommands).mockClear();
   context = { extensionUri: uri('/ext'), subscriptions };
   activate(context as never);
 });
 
-const run = (command: string, ...args: unknown[]) => vscode.commands.get(command)?.(...args);
+const run = fake.run;
 
 describe('activate', () => {
-  it('registers every contributed ies.* command and custom editor, and delegates conversion commands', () => {
-    expect([...vscode.commands.keys()].toSorted()).toEqual(
+  it('registers every contributed ies.* command and custom editor, and delegates conversion and language features', () => {
+    expect([...fake.commands.keys()].toSorted()).toEqual(
       manifest.contributes.commands
         .map((entry) => entry.command)
         .filter((command) => command.startsWith('ies.'))
         .toSorted(),
     );
     expect(registerConvertCommands).toHaveBeenCalledExactlyOnceWith(context);
-    expect([...vscode.providers.keys()]).toEqual(manifest.contributes.customEditors.map((entry) => entry.viewType));
-    expect(vscode.providers.get('ies.lightPreview')?.options).toEqual({
+    expect(registerLanguageFeatures).toHaveBeenCalledExactlyOnceWith(context);
+    expect([...fake.providers.keys()]).toEqual(manifest.contributes.customEditors.map((entry) => entry.viewType));
+    expect(fake.providers.get('ies.lightPreview')?.options).toEqual({
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: true,
     });
-    expect(subscriptions).toHaveLength(vscode.commands.size + vscode.providers.size);
+    expect(subscriptions).toHaveLength(fake.commands.size + fake.providers.size);
   });
 
   it('only references contributed commands, submenus and editors in menus', () => {
-    const commands = new Set(manifest.contributes.commands.map((entry) => entry.command));
+    const contributed = new Set(manifest.contributes.commands.map((entry) => entry.command));
     const submenus = new Set(manifest.contributes.submenus.map((entry) => entry.id));
     const editors = new Set(manifest.contributes.customEditors.map((entry) => entry.viewType));
     const entries = Object.values(manifest.contributes.menus).flat();
     expect(entries.length).toBeGreaterThan(0);
     for (const entry of entries) {
       if (entry.submenu) expect(submenus, entry.submenu).toContain(entry.submenu);
-      else expect(commands, entry.command).toContain(entry.command);
+      else expect(contributed, entry.command).toContain(entry.command);
       for (const [, id] of entry.when?.matchAll(/activeCustomEditorId\s*[!=]=\s*'([^']+)'/g) ?? [])
         expect(editors, entry.when).toContain(id);
     }
@@ -149,18 +78,18 @@ describe('ies.openPreview', () => {
   it('opens the given URI in the light preview', async () => {
     const target = uri('/a.ies');
     await run('ies.openPreview', target);
-    expect(vscode.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'ies.lightPreview');
+    expect(commands.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'ies.lightPreview');
   });
   it('falls back to the active text editor', async () => {
     const target = uri('/b.ldt');
-    vscode.window.activeTextEditor = { document: { uri: target } };
+    window.activeTextEditor = { document: { uri: target } };
     await run('ies.openPreview');
-    expect(vscode.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'ies.lightPreview');
+    expect(commands.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'ies.lightPreview');
   });
   it('explains what to do when no file is open', async () => {
     await run('ies.openPreview');
-    expect(vscode.executeCommand).not.toHaveBeenCalled();
-    expect(vscode.showInformationMessage).toHaveBeenCalledWith(
+    expect(commands.executeCommand).not.toHaveBeenCalled();
+    expect(window.showInformationMessage).toHaveBeenCalledWith(
       'Open an IES or LDT file to preview its lighting distribution.',
     );
   });
@@ -170,20 +99,20 @@ describe('ies.openAsText', () => {
   it('reopens the given URI in the default editor', async () => {
     const target = uri('/a.ies');
     await run('ies.openAsText', target);
-    expect(vscode.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'default');
+    expect(commands.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'default');
   });
   it('falls back to the active custom editor tab', async () => {
     const target = uri('/b.ldt');
-    vscode.window.activeTab = { input: new vscode.TabInputCustom(target) };
+    window.tabGroups.activeTabGroup.activeTab = { input: new TabInputCustom(target) };
     await run('ies.openAsText');
-    expect(vscode.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'default');
+    expect(commands.executeCommand).toHaveBeenCalledWith('vscode.openWith', target, 'default');
   });
   it('does nothing without a URI or custom editor tab', async () => {
-    vscode.window.activeTab = { input: { uri: uri('/c.ies') } };
+    window.tabGroups.activeTabGroup.activeTab = { input: { uri: uri('/c.ies') } };
     await run('ies.openAsText');
-    vscode.window.activeTab = undefined;
+    window.tabGroups.activeTabGroup.activeTab = undefined;
     await run('ies.openAsText');
-    expect(vscode.executeCommand).not.toHaveBeenCalled();
+    expect(commands.executeCommand).not.toHaveBeenCalled();
   });
 });
 
@@ -206,7 +135,7 @@ const resolve = async (path: string, text = IES) => {
     onDidChangeViewState: viewState.subscribe,
     onDidDispose: disposed.subscribe,
   };
-  const { provider } = vscode.providers.get('ies.lightPreview') as {
+  const { provider } = fake.providers.get('ies.lightPreview') as {
     provider: { resolveCustomTextEditor(document: unknown, panel: unknown): Promise<void> };
   };
   await provider.resolveCustomTextEditor(document, panel);
@@ -236,9 +165,9 @@ describe('light preview provider', () => {
       lampSetLabels: [],
       fileName: 'a.ies',
     });
-    vscode.textChanges.fire({ document: { uri: uri('/dir/other.ies') } });
+    fake.textChanges.fire({ document: { uri: uri('/dir/other.ies') } });
     expect(postMessage).toHaveBeenCalledTimes(1);
-    vscode.textChanges.fire({ document });
+    fake.textChanges.fire({ document });
     expect(postMessage).toHaveBeenCalledTimes(2);
     panel.visible = false;
     viewState.fire();
@@ -256,7 +185,7 @@ describe('light preview provider', () => {
 
   it('disposes its listeners with the panel', async () => {
     const { messages, viewState, disposed } = await resolve('/dir/a.ies');
-    const listeners = [...messages.disposables, ...viewState.disposables, ...vscode.textChanges.disposables];
+    const listeners = [...messages.disposables, ...viewState.disposables, ...fake.textChanges.disposables];
     expect(listeners).toHaveLength(3);
     for (const listener of listeners) expect(listener.dispose).not.toHaveBeenCalled();
     disposed.fire();
