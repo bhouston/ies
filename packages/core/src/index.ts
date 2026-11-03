@@ -276,8 +276,15 @@ export function summarizeIES(profile: IESProfile) {
 
 export { validateIES, diagnoseIES } from './diagnostics.js';
 export type { IESDiagnostic, IESDiagnosticCode, IESValidationOptions, IESValidationResult } from './diagnostics.js';
-export { calculateLuminousFlux, computePhotometricMetrics, getBeamAngles } from './metrics.js';
-export type { PhotometricGrid, PhotometricMetrics, BeamAngles, BeamAngleStatus } from './metrics.js';
+export { calculateFluxBreakdown, calculateLuminousFlux, computePhotometricMetrics, getBeamAngles } from './metrics.js';
+export type {
+  PhotometricGrid,
+  PhotometricMetrics,
+  BeamAngles,
+  BeamAngleStatus,
+  FluxBreakdown,
+  ZonalLumens,
+} from './metrics.js';
 export { LDTParseError, parseLDT, validateLDT, measuredCPlaneIndices, writeLDT } from './ldt.js';
 export type { LDTProfile, LDTLampSet, LDTDimensions } from './ldt.js';
 export {
