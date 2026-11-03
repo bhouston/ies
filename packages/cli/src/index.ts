@@ -6,7 +6,8 @@ import { parseIES, summarizeIES } from 'ies-core';
 export const help = `ies — IES lighting tools
 
 Usage:
-  ies inspect <file.ies> [--json]     Show metadata and peak intensity
+  ies inspect <file.ies> [--json]     Show format, light source and photometric statistics
+  ies stats <file.ies> [--json]       Alias for inspect
   ies validate <file.ies> [--json]    Validate an LM-63 photometric file
   ies convert <file.ies> [-o file]    Export parsed data as JSON (stdout by default)
   ies view <file.ies> [--port 0] [--open]  Serve a local interactive light preview
@@ -79,7 +80,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
   const [command, ...rest] = argv;
-  if (!['inspect', 'validate', 'convert', 'view'].includes(command!))
+  if (!['inspect', 'stats', 'validate', 'convert', 'view'].includes(command!))
     throw new Error(`Unknown command: ${command}. Run ies --help.`);
   let file: string | undefined;
   let json = false;
@@ -88,7 +89,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   let open = false;
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
-    if (arg === '--json' && (command === 'inspect' || command === 'validate')) json = true;
+    if (arg === '--json' && (command === 'inspect' || command === 'stats' || command === 'validate')) json = true;
     else if ((arg === '-o' || arg === '--output') && command === 'convert') {
       output = rest[++i];
       if (!output || output.startsWith('-')) throw new Error('Missing output file');
@@ -110,17 +111,32 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         ? JSON.stringify({ valid: true, file, ...summarizeIES(profile) }, null, 2)
         : `${file}: valid ${profile.version} (Type ${profile.photometricType === 1 ? 'C' : profile.photometricType === 2 ? 'B' : 'A'})`,
     );
-  } else if (command === 'inspect') {
+  } else if (command === 'inspect' || command === 'stats') {
     const summary = summarizeIES(profile);
     if (json) console.log(JSON.stringify(summary, null, 2));
-    else
-      console.log(
-        `${file}\n${summary.version} · Type ${summary.photometricType}\n${summary.verticalAngles} vertical × ${summary.horizontalAngles} horizontal angles\nPeak: ${summary.peakCandela} cd · Input: ${summary.inputWatts} W\n${Object.entries(
-          summary.metadata,
-        )
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('\n')}`,
-      );
+    else {
+      const dimensions = summary.dimensions;
+      const lines = [
+        file,
+        `Format: ${summary.format}`,
+        `Version: ${summary.version}`,
+        `Photometric type: Type ${summary.photometricTypeName} (${summary.photometricType})`,
+        `Photometry: ${summary.photometry}`,
+        `Manufacturer: ${summary.manufacturer}`,
+        `Luminaire: ${summary.luminaire}`,
+        `Light source: ${summary.lightSource}`,
+        `Lamp catalog: ${summary.lampCatalog}`,
+        `Lamp count: ${summary.lampCount}`,
+        `Lumens per lamp: ${summary.lumensPerLamp === -1 ? 'not specified (absolute photometry)' : `${summary.lumensPerLamp} lm`}`,
+        `Input power: ${summary.inputWatts} W`,
+        `Peak intensity: ${summary.peakCandela} cd`,
+        `Angles: ${summary.verticalAngles} vertical × ${summary.horizontalAngles} horizontal`,
+        `Dimensions (width × length × height): ${dimensions.width} × ${dimensions.length} × ${dimensions.height} ${summary.units}`,
+        `Tilt correction: ${summary.hasTilt ? 'embedded' : 'none'}`,
+      ];
+      const metadata = Object.entries(summary.metadata).map(([key, value]) => `${key}: ${value}`);
+      console.log([...lines, ...(metadata.length ? ['Metadata:', ...metadata] : [])].join('\n'));
+    }
   } else if (command === 'convert') {
     const converted = `${JSON.stringify(profile, null, 2)}\n`;
     if (output) await writeFile(output, converted, { flag: 'wx' });

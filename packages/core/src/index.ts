@@ -222,9 +222,16 @@ export function summarizeIES(profile: IESProfile) {
   let peakCandela = 0;
   for (const row of profile.candelaValues) for (const value of row) peakCandela = Math.max(peakCandela, value);
   return {
+    format: 'IES LM-63',
     version: profile.version,
     metadata: profile.metadata,
     photometricType: profile.photometricType,
+    photometricTypeName: profile.photometricType === 1 ? 'C' : profile.photometricType === 2 ? 'B' : 'A',
+    photometry: profile.lumensPerLamp === -1 ? 'absolute' : 'relative',
+    lightSource: profile.metadata.LAMP?.trim() || profile.metadata.LAMPCAT?.trim() || 'not specified',
+    lampCatalog: profile.metadata.LAMPCAT?.trim() || 'not specified',
+    luminaire: profile.metadata.LUMINAIRE?.trim() || 'not specified',
+    manufacturer: profile.metadata.MANUFAC?.trim() || 'not specified',
     lampCount: profile.lampCount,
     lumensPerLamp: profile.lumensPerLamp,
     inputWatts: profile.inputWatts,

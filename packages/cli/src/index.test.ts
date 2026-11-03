@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve as resolvePath } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -25,6 +25,42 @@ describe('CLI', () => {
     const summary = JSON.parse(cli('inspect', fixture, '--json'));
     expect(summary.peakCandela).toBeGreaterThan(100);
     expect(summary.photometricType).toBe(1);
+  });
+  it('provides the same complete summary through stats and inspect', () => {
+    const stats = JSON.parse(cli('stats', fixture, '--json'));
+    expect(stats).toEqual(JSON.parse(cli('inspect', fixture, '--json')));
+    expect(stats.format).toBe('IES LM-63');
+    expect(stats.version).toBe('LM-63-1995');
+    expect(stats.photometricType).toBe(1);
+    expect(stats.photometricTypeName).toBe('C');
+    expect(stats.photometry).toBe('absolute');
+    expect(stats.lightSource).toContain('321 lm');
+    expect(stats.manufacturer).toContain('BEGA');
+    const text = cli('stats', fixture);
+    expect(text).toBe(cli('inspect', fixture));
+    for (const line of [
+      'Format: IES LM-63',
+      'Version: LM-63-1995',
+      'Photometric type: Type C (1)',
+      'Light source:',
+      'Lamp count:',
+      'Lumens per lamp: not specified (absolute photometry)',
+      'Input power:',
+      'Peak intensity:',
+      'Angles:',
+      'Dimensions (width × length × height):',
+      'Tilt correction: none',
+    ])
+      expect(text).toContain(line);
+  });
+  it('returns a failure exit status for malformed file contents', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'ies-cli-invalid-'));
+    temporaryDirectories.push(directory);
+    const input = join(directory, 'invalid.ies');
+    await writeFile(input, 'This is not IES data');
+    const result = spawnSync(process.execPath, [bin, 'validate', input], { encoding: 'utf8' });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Missing TILT');
   });
   it('exports JSON without overwriting existing files', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'ies-cli-'));

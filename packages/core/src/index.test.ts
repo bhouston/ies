@@ -45,6 +45,39 @@ describe('parseIES', () => {
       expect(profile.metadata.LUMINAIRE).toBe('Unit\ncontinuation');
     },
   );
+  it('summarizes format and declared light source without guessing a technology', () => {
+    const profile = parseIES(source());
+    expect(summarizeIES(profile)).toMatchObject({
+      format: 'IES LM-63',
+      version: 'LM-63-2002',
+      photometricType: 1,
+      photometricTypeName: 'C',
+      photometry: 'absolute',
+      manufacturer: 'Example',
+      luminaire: 'Unit\ncontinuation',
+      lightSource: 'not specified',
+      lampCatalog: 'not specified',
+    });
+    const declared = parseIES(source().replace('[MANUFAC] Example', '[LAMP] LED module\n[LAMPCAT] LM123'));
+    expect(summarizeIES(declared)).toMatchObject({
+      manufacturer: 'not specified',
+      lightSource: 'LED module',
+      lampCatalog: 'LM123',
+    });
+    delete declared.metadata.LAMP;
+    expect(summarizeIES(declared).lightSource).toBe('LM123');
+  });
+  it('identifies relative photometry and Type A/B names in summaries', () => {
+    const typeB = parseIES(source({ type: 2, vertical: [-90, 0, 90] }).replace('1 -1 1', '1 800 1'));
+    expect(summarizeIES(typeB)).toMatchObject({
+      photometry: 'relative',
+      lumensPerLamp: 800,
+      photometricType: 2,
+      photometricTypeName: 'B',
+    });
+    const typeA = parseIES(source({ type: 3, vertical: [-90, 0, 90] }));
+    expect(summarizeIES(typeA).photometricTypeName).toBe('A');
+  });
   it('applies candela multiplier without peak normalization', () => {
     const profile = parseIES(source({ multiplier: 2 }));
     expect(profile.candelaValues).toEqual([[200, 100, 0]]);
