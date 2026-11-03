@@ -10,8 +10,11 @@ viewer.addEventListener('load', () => {
   status.textContent = 'Drag to orbit. Scroll to zoom. Edit the IES source to update the preview.';
 });
 viewer.addEventListener('error', (event) => {
-  const detail: unknown = (event as CustomEvent<unknown>).detail;
-  status.textContent = detail instanceof Error ? detail.message : 'Unable to preview this IES profile.';
+  const detail: unknown = event instanceof CustomEvent ? event.detail : undefined;
+  status.textContent =
+    typeof detail === 'object' && detail !== null && 'message' in detail && typeof detail.message === 'string'
+      ? detail.message
+      : 'Unable to preview this IES profile.';
 });
 window.addEventListener('message', (event: MessageEvent<unknown>) => {
   if (!isUpdateMessage(event.data)) return;
