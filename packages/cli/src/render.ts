@@ -123,8 +123,13 @@ export async function renderPhotometry(text: string, options: RenderOptions = {}
     const png = await page.screenshot({ type: 'png', animations: 'disabled', timeout: timeout * 1000 });
     return { png, width, height, gpu };
   } finally {
-    await browser?.close();
-    preview.server.closeAllConnections();
-    await new Promise<void>((resolve, reject) => preview.server.close((error) => (error ? reject(error) : resolve())));
+    try {
+      await browser?.close();
+    } finally {
+      preview.server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        preview.server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   }
 }

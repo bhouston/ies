@@ -30,3 +30,18 @@ ies validate luminaire.ies --strict --json
 Validation JSON includes `valid`, the selected file, any available summary and `diagnostics` with stable codes, severity, message and optional field. Even malformed-file parse errors produce a JSON result on stdout with a nonzero exit status. Missing required 2002/2019 metadata emits warnings; `--strict` makes those warnings fail validation without changing their severity. Default validation still accepts usable files with warnings. Text validation prints diagnostics on stderr. Read or command-line errors continue to use the CLI error stream.
 
 `inspect --json` also includes diagnostics. Type A/B files remain inspectable; their integrated flux, efficacy and beam calculations are explicitly unavailable. See the core documentation for the integration and beam-estimation assumptions.
+
+## Export viewer and chart images
+
+```sh
+ies render light.ies -o preview.png --width 1024 --height 768 --exposure 1 --json
+ies chart light.ies -o polar.svg
+ies chart light.ies -o topology.png --type topology --up-axis z
+ies chart light.ies -o isolux.png --type isolux --mounting-height 2 --extent 10 --resolution 61
+```
+
+`render` captures the shared black-background viewer, ground and wall as PNG. It launches an installed Chrome/Edge or cached Playwright Chromium; it does not download a browser. Set `IES_BROWSER` or `--browser <executable>` to choose one. The actual WebGL2 context must report a recognizable hardware renderer. Software rasterizers, including SwiftShader, llvmpipe and lavapipe, and masked/unknown renderer identities are rejected. GPU work finishes before image capture. JSON output reports the hardware vendor, renderer and WebGL version.
+
+`chart` exports the same React diagrams used by the interactive viewer, with no graph implementation duplicated in the CLI. Output extension chooses SVG or PNG; PNG uses Sharp's 2D SVG rasterizer. Default polar and Cartesian diagrams show the principal planes. `--axis vertical|horizontal --angle <degrees>` chooses an explicit slice. Topology uses `--up-axis x|y|z`; isolux uses `--mounting-height <meters>`, `--extent <meters>` and `--resolution <count>`. Available types are `polar`, `cartesian`, `topology` and `isolux`.
+
+Both commands accept `--width`, `--height`, `--json` and the one-based `--lamp-set` configuration selector. Render defaults to 1024×768; charts default to 900×700. Dimensions must be integers within 1–8192. Render exposure defaults to 1 and is nonnegative. `--timeout` defaults to 60 seconds, up to 600. Output paths must have existing parent directories. Export creates files exclusively, preserves existing files and removes its own partial output after failure. A still-image export does not measure rendering throughput.
