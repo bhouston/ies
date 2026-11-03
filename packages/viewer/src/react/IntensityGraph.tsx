@@ -114,9 +114,8 @@ export function IntensityGraph({
       if (!beam) return [];
       return (['beam', 'field'] as const).flatMap((kind) =>
         beam[`${kind}AngleStatus`] === 'ok'
-          ? [beam[`${kind}LeftDegrees`], beam[`${kind}RightDegrees`]].flatMap((angle) =>
-              angle === undefined ? [] : [{ i, kind, angle }],
-            )
+          ? // An ok status always has both crossings.
+            [beam[`${kind}LeftDegrees`]!, beam[`${kind}RightDegrees`]!].map((angle) => ({ i, kind, angle }))
           : [],
       );
     }) ?? [];
