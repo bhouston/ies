@@ -75,3 +75,5 @@ const direct = inspectPhotometry(source, 'ldt', 0); // zero-based alternative la
 ```
 
 The CLI and VS Code panel consume these same browser-safe models. `validatePhotometry` accepts a strict flag, returns diagnostic codes/severity/fields, and keeps structural parse errors separate from metadata warnings. `inspectParsedPhotometry` avoids reparsing a validated profile. Native LDT alternatives remain unselected unless the caller supplies an index; intensity/flux are unavailable until then. Inspection and validation are independent of Three.js rendering capabilities.
+
+See the [@ies-tools/core API reference](./api/core/index.md) for every export, generated from the source's TSDoc comments.

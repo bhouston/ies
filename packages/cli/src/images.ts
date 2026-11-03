@@ -1,7 +1,8 @@
 import { open, readFile, unlink } from 'node:fs/promises';
 import { extname } from 'node:path';
+import { lampSetIndex } from './options.js';
 import { inputFormat } from './photometry.js';
-import { chartPhotometry, type ChartOptions, type ChartType } from './chart.js';
+import { chartPhotometry, type ChartOptions } from './chart.js';
 import { imageDimensions, renderPhotometry, type RenderOptions } from './render.js';
 
 export interface ImageCommandOptions extends RenderOptions, ChartOptions {
@@ -9,94 +10,34 @@ export interface ImageCommandOptions extends RenderOptions, ChartOptions {
   output: string;
   json: boolean;
 }
-export function parseImageArguments(command: 'render' | 'chart', argv: string[]): ImageCommandOptions {
-  const options: Partial<ImageCommandOptions> = {};
-  const values = new Set([
-    '-o',
-    '--output',
-    '--width',
-    '--height',
-    '--exposure',
-    '--browser',
-    '--timeout',
-    '--type',
-    '--axis',
-    '--angle',
-    '--up-axis',
-    '--mounting-height',
-    '--extent',
-    '--resolution',
-    '--lamp-set',
-    '--format',
-  ]);
-  const renderOnly = new Set(['--exposure', '--browser', '--timeout']);
-  const chartOnly = new Set([
-    '--type',
-    '--axis',
-    '--angle',
-    '--up-axis',
-    '--mounting-height',
-    '--extent',
-    '--resolution',
-  ]);
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
-    if (arg === '--json') {
-      options.json = true;
-      continue;
-    }
-    if (values.has(arg)) {
-      if ((command === 'chart' && renderOnly.has(arg)) || (command === 'render' && chartOnly.has(arg)))
-        throw new Error(`Unknown ${command} option: ${arg}`);
-      const value = argv[++i];
-      if (value === undefined || value.startsWith('--')) throw new Error(`Missing value for ${arg}`);
-      switch (arg) {
-        case '-o':
-        case '--output':
-          options.output = value;
-          break;
-        case '--format':
-          if (value !== 'ies' && value !== 'ldt') throw new Error('--format must be ies or ldt');
-          options.inputFormat = value;
-          break;
-        case '--browser':
-          options.browser = value;
-          break;
-        case '--type':
-          options.type = value as ChartType;
-          break;
-        case '--axis':
-          options.axis = value as ChartOptions['axis'];
-          break;
-        case '--up-axis':
-          options.upAxis = value as ChartOptions['upAxis'];
-          break;
-        case '--lamp-set': {
-          const index = Number(value);
-          if (!Number.isSafeInteger(index) || index < 1)
-            throw new Error('--lamp-set must be a positive integer (1-based)');
-          options.lampSetIndex = index - 1;
-          break;
-        }
-        default: {
-          const numeric = Number(value);
-          if (!Number.isFinite(numeric)) throw new Error(`${arg} must be a finite number`);
-          if (arg === '--width') options.width = numeric;
-          else if (arg === '--height') options.height = numeric;
-          else if (arg === '--exposure') options.exposure = numeric;
-          else if (arg === '--timeout') options.timeout = numeric;
-          else if (arg === '--angle') options.angle = numeric;
-          else if (arg === '--mounting-height') options.mountingHeight = numeric;
-          else if (arg === '--extent') options.extent = numeric;
-          else if (arg === '--resolution') options.resolution = numeric;
-        }
-      }
-    } else if (arg.startsWith('-')) throw new Error(`Unknown option: ${arg}`);
-    else if (options.input) throw new Error('Expected exactly one input file');
-    else options.input = arg;
-  }
-  if (!options.input) throw new Error(`Missing input file. Run ies ${command} <file> -o <image>.`);
-  if (!options.output) throw new Error('An output image is required (-o or --output)');
+/** Arguments as yargs parses them for `ies render` and `ies chart`. */
+export interface ImageArguments extends Omit<RenderOptions, 'lampSetIndex' | 'inputFormat'> {
+  file: string;
+  output: string;
+  json?: boolean;
+  lampSet?: number;
+  format?: 'ies' | 'ldt';
+  type?: string;
+  axis?: string;
+  upAxis?: string;
+  angle?: number;
+  mountingHeight?: number;
+  extent?: number;
+  resolution?: number;
+}
+/** Range checks yargs cannot express, applied before any output file is created. */
+export function imageOptions(command: 'render' | 'chart', argv: ImageArguments): ImageCommandOptions {
+  const { file, lampSet, format, json, ...rest } = argv;
+  // Choices are checked below; yargs types them as plain strings.
+  const options = {
+    ...(rest as Omit<ImageCommandOptions, 'input' | 'json'>),
+    input: file,
+    json: json ?? false,
+    inputFormat: format,
+    lampSetIndex: lampSetIndex(lampSet),
+  };
+  for (const [name, value] of Object.entries(options))
+    if (typeof value === 'number' && !Number.isFinite(value)) throw new Error(`--${name} must be a finite number`);
   const extension = extname(options.output).toLowerCase();
   if (command === 'render' ? extension !== '.png' : extension !== '.png' && extension !== '.svg')
     throw new Error(command === 'render' ? 'Render output must use .png' : 'Chart output must use .svg or .png');
@@ -122,7 +63,7 @@ export function parseImageArguments(command: 'render' | 'chart', argv: string[])
     (!Number.isInteger(options.resolution) || options.resolution < 2 || options.resolution > 201)
   )
     throw new Error('Grid resolution must be an integer from 2 to 201');
-  return { ...options, input: options.input, output: options.output, json: options.json ?? false };
+  return options;
 }
 
 /** Reserve the output before expensive processing; remove only the newly-created placeholder on failure. */
@@ -144,31 +85,7 @@ export async function writeImageExclusively<T extends { data: Buffer }>(
   }
 }
 
-export const imageHelp = {
-  render: `ies render <file.ies|file.ldt> -o output.png
-  --width <pixels> --height <pixels>  Default 1024×768; maximum 8192 per side
-  --exposure <number>                 Default 1, nonnegative
-  --browser <executable>              Installed Chromium browser, or IES_BROWSER
-  --timeout <seconds>                Default 60, maximum 600
-  --format ies|ldt                   Optional explicit input format
-  --lamp-set <index> --json           One-based LDT configuration; JSON GPU report
-Requires confirmed hardware WebGL2; software and unknown renderers are rejected.`,
-  chart: `ies chart <file.ies|file.ldt> -o output.svg|output.png
-  --type polar|cartesian|topology|isolux
-  --width <pixels> --height <pixels>  Default 900×700; maximum 8192 per side
-  --axis vertical|horizontal --angle <degrees>
-  --up-axis x|y|z                    Topology orientation
-  --mounting-height <meters> --extent <meters> --resolution <count>
-  --format ies|ldt                   Optional explicit input format
-  --lamp-set <index> --json           One-based LDT configuration; JSON output report
-Uses the shared React diagrams; PNG rasterization is 2D and does not require WebGL.`,
-};
-export async function runImageCommand(command: 'render' | 'chart', argv: string[]): Promise<void> {
-  if (argv.length === 1 && ['--help', '-h'].includes(argv[0]!)) {
-    console.log(imageHelp[command]);
-    return;
-  }
-  const options = parseImageArguments(command, argv);
+export async function runImageCommand(command: 'render' | 'chart', options: ImageCommandOptions): Promise<void> {
   const text = await readFile(options.input, 'utf8');
   options.inputFormat = inputFormat(text, options.input, options.inputFormat);
   if (command === 'render') {

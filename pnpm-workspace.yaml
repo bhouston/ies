@@ -7,3 +7,7 @@ allowBuilds:
   keytar: true
   '@vscode/vsce-sign': true
   '@parcel/watcher': false
+minimumReleaseAgeExclude:
+  - '@clidoc/core@1.1.2'
+  - '@clidoc/yargs@1.1.2'
+  - '@clidoc/docusaurus@1.1.2'

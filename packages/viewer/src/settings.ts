@@ -8,11 +8,17 @@ export const TONE_MAPPING_OPTIONS = [
   { value: 'none', label: 'None' },
 ] as const;
 export type ToneMappingName = (typeof TONE_MAPPING_OPTIONS)[number]['value'];
+/** Scene and display settings shared by the React viewer and `<light-viewer>`. */
 export interface ViewerSettings {
+  /** Show the back wall. Defaults to true. */
   showWall: boolean;
+  /** Wall distance from the luminaire in meters. Defaults to 2. */
   wallDistance: number;
+  /** Floor distance below the luminaire in meters. Defaults to 2. */
   floorDistance: number;
+  /** Tone mapping operator. Defaults to `aces`. */
   toneMapping: ToneMappingName;
+  /** Nonnegative display exposure. Defaults to 1. */
   exposure: number;
 }
 export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({

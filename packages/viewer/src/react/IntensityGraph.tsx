@@ -9,21 +9,42 @@ import {
 } from '../graphs.js';
 
 const colors = ['#7dd3fc', '#fbbf24', '#86efac', '#f9a8d4', '#c4b5fd', '#5eead4', '#fdba74', '#d9f99d'];
+/** Props for {@link IntensityGraph}. */
 export interface IntensityGraphProps extends IntensityCurveOptions {
+  /** Type C profile to plot. */
   profile: IESProfile;
+  /** Polar or Cartesian intensity cuts, or a 3D intensity topology. Defaults to `polar`. */
   projection?: 'polar' | 'cartesian' | 'topology';
+  /** Vertical axis of the topology view. */
   upAxis?: UpAxis;
+  /** Camera projection of the topology view. */
   topologyProjection?: 'orthographic' | 'perspective';
+  /** Topology camera azimuth in degrees. */
   viewAzimuth?: number;
+  /** Topology camera elevation in degrees. */
   viewElevation?: number;
+  /** Topology surface style. */
   surface?: 'filled' | 'wireframe' | 'both';
+  /** Topology mesh segments around the horizontal C angle. */
   horizontalSegments?: number;
+  /** Topology mesh segments along the vertical gamma angle. */
   verticalSegments?: number;
   className?: string;
   style?: CSSProperties;
 }
 
-/** SVG photometric diagrams; all geometry is also available through @ies-tools/viewer/graphs. */
+/**
+ * SVG photometric intensity diagrams: complete polar or Cartesian cuts, or a 3D intensity topology.
+ * Needs no GPU; all geometry is also available through `@ies-tools/viewer/graphs`.
+ *
+ * @param props - See {@link IntensityGraphProps}.
+ *
+ * @example
+ * ```tsx
+ * <IntensityGraph profile={profile} principalPlanes />
+ * <IntensityGraph profile={profile} projection="cartesian" planes={[0, 45, 90]} />
+ * ```
+ */
 export function IntensityGraph({
   profile,
   projection = 'polar',

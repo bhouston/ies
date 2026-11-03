@@ -153,8 +153,8 @@ describe('dual-format CLI entry points', () => {
       ['stats', file],
     ])
       expect(cli(...args).status).toBe(1);
-    expect(cli('--help').stdout).toContain('--lamp-set N');
-    expect(cli('--help').stdout).toContain('--to ies|ldt|json');
+    expect(cli('inspect', '--help').stdout).toContain('--lamp-set');
+    expect(cli('convert', '--help').stdout).toContain('choices: "json", "ies", "ldt"');
   });
 });
 

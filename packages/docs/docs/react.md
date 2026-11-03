@@ -101,3 +101,5 @@ The compiled stylesheet supplies Tailwind utilities and the shared theme tokens.
 ## Shared inspection UI
 
 `PhotometryInfoPanel` and `ValidationChecks` are exported from `@ies-tools/viewer/react`. They render the shared core inspection and validation models used by the CLI. Import the compiled `@ies-tools/viewer/styles.css`, or include `@ies-tools/viewer/styles/viewer.css` in a Tailwind v4 entry stylesheet, then override the documented theme tokens for your host. The VS Code preview maps those tokens to editor colors.
+
+See the [@ies-tools/viewer/react API reference](./api/react/index.md) for every component and prop, generated from the source's TSDoc comments.

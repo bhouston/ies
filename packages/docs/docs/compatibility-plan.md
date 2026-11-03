@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Photometric compatibility comparison and plan
 
-This is a historical baseline and research plan from before the incremental implementation PRs. It is retained to explain the original comparison and priorities, rather than describe current feature support. For the implemented behavior, see [Core](./core.md), [Conversion](./conversion.md), [Graphs](./graphs.md) and [CLI](./cli.md). Research was performed on November 3, 2026 against:
+This is a historical baseline and research plan from before the incremental implementation PRs. It is retained to explain the original comparison and priorities, rather than describe current feature support. For the implemented behavior, see [Core](./core.md), [Conversion](./conversion.md), [Graphs](./graphs.md) and [CLI](./cli-reference/ies.md). Research was performed on November 3, 2026 against:
 
 - This project's initial implementation, including the expanded real-file tests.
 - [eulumdat-rs](https://github.com/holg/eulumdat-rs/tree/f07581600fcf339e5db14003d714f4b285d4d86d), commit `f07581600fcf339e5db14003d714f4b285d4d86d`.

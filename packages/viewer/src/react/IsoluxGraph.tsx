@@ -2,14 +2,27 @@ import { type CSSProperties } from 'react';
 import { type IESProfile } from '@ies-tools/core';
 import { buildIsoluxGrid, extractContours, formatGraphValue, niceTicks, type IsoluxOptions } from '../graphs.js';
 
+/** Props for {@link IsoluxGraph}. */
 export interface IsoluxGraphProps extends IsoluxOptions {
+  /** Type C profile to evaluate. */
   profile: IESProfile;
   /** Absolute lux levels. Omit to choose rounded levels from the grid maximum. */
   contours?: readonly number[];
+  /** Draw the lux heatmap beneath the contours. Defaults to true. */
   heatmap?: boolean;
   className?: string;
   style?: CSSProperties;
 }
+/**
+ * SVG ground-plane illuminance heatmap with lux contours, for a fixture at a mounting height and aim.
+ *
+ * @param props - See {@link IsoluxGraphProps}.
+ *
+ * @example
+ * ```tsx
+ * <IsoluxGraph profile={profile} mountingHeight={3} extent={[12, 8]} aimAngle={30} />
+ * ```
+ */
 export function IsoluxGraph({ profile, contours, heatmap = true, className, style, ...options }: IsoluxGraphProps) {
   const grid = buildIsoluxGrid(profile, options);
   const levels = contours ?? niceTicks(grid.maximum).filter((value) => value > 0 && value < grid.maximum);
