@@ -7,7 +7,6 @@ export const help = `ies — IES lighting tools
 
 Usage:
   ies inspect <file.ies> [--json]     Show format, light source and photometric statistics
-  ies stats <file.ies> [--json]       Alias for inspect
   ies validate <file.ies> [--json]    Validate an LM-63 photometric file
   ies convert <file.ies> [-o file]    Export parsed data as JSON (stdout by default)
   ies view <file.ies> [--port 0] [--open]  Serve a local interactive light preview
@@ -80,7 +79,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
   const [command, ...rest] = argv;
-  if (!['inspect', 'stats', 'validate', 'convert', 'view'].includes(command!))
+  if (!['inspect', 'validate', 'convert', 'view'].includes(command!))
     throw new Error(`Unknown command: ${command}. Run ies --help.`);
   let file: string | undefined;
   let json = false;
@@ -89,7 +88,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   let open = false;
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
-    if (arg === '--json' && (command === 'inspect' || command === 'stats' || command === 'validate')) json = true;
+    if (arg === '--json' && (command === 'inspect' || command === 'validate')) json = true;
     else if ((arg === '-o' || arg === '--output') && command === 'convert') {
       output = rest[++i];
       if (!output || output.startsWith('-')) throw new Error('Missing output file');
@@ -111,7 +110,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         ? JSON.stringify({ valid: true, file, ...summarizeIES(profile) }, null, 2)
         : `${file}: valid ${profile.version} (Type ${profile.photometricType === 1 ? 'C' : profile.photometricType === 2 ? 'B' : 'A'})`,
     );
-  } else if (command === 'inspect' || command === 'stats') {
+  } else if (command === 'inspect') {
     const summary = summarizeIES(profile);
     if (json) console.log(JSON.stringify(summary, null, 2));
     else {

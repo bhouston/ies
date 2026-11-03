@@ -26,9 +26,8 @@ describe('CLI', () => {
     expect(summary.peakCandela).toBeGreaterThan(100);
     expect(summary.photometricType).toBe(1);
   });
-  it('provides the same complete summary through stats and inspect', () => {
-    const stats = JSON.parse(cli('stats', fixture, '--json'));
-    expect(stats).toEqual(JSON.parse(cli('inspect', fixture, '--json')));
+  it('reports complete file and light statistics through inspect', () => {
+    const stats = JSON.parse(cli('inspect', fixture, '--json'));
     expect(stats.format).toBe('IES LM-63');
     expect(stats.version).toBe('LM-63-1995');
     expect(stats.photometricType).toBe(1);
@@ -36,8 +35,7 @@ describe('CLI', () => {
     expect(stats.photometry).toBe('absolute');
     expect(stats.lightSource).toContain('321 lm');
     expect(stats.manufacturer).toContain('BEGA');
-    const text = cli('stats', fixture);
-    expect(text).toBe(cli('inspect', fixture));
+    const text = cli('inspect', fixture);
     for (const line of [
       'Format: IES LM-63',
       'Version: LM-63-1995',
