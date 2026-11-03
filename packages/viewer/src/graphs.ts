@@ -42,6 +42,17 @@ export function niceTicks(maximum: number, intervals = 4): number[] {
   if (!Number.isFinite(last * step)) return Array.from({ length: intervals + 1 }, (_, i) => (i / intervals) * maximum);
   return Array.from({ length: last + 1 }, (_, i) => Number((i * step).toPrecision(12)));
 }
+/**
+ * SVG viewBox for a `width`×`height` graph layout, widened or heightened to `aspectRatio` (width / height)
+ * with the layout centered. Without an aspect ratio the viewBox is the layout itself.
+ */
+export function graphFrame(width: number, height: number, aspectRatio?: number) {
+  if (aspectRatio === undefined) return { x: 0, y: 0, width, height };
+  finite(aspectRatio, 'Graph aspect ratio', Number.MIN_VALUE);
+  const frameWidth = Math.max(width, height * aspectRatio),
+    frameHeight = frameWidth / aspectRatio;
+  return { x: (width - frameWidth) / 2, y: (height - frameHeight) / 2, width: frameWidth, height: frameHeight };
+}
 export function formatGraphValue(value: number): string {
   if (value !== 0 && (Math.abs(value) < 0.01 || Math.abs(value) >= 100000)) return value.toExponential(1);
   return Number(value.toPrecision(4)).toString();

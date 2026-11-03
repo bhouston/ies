@@ -4,6 +4,7 @@ import {
   buildIsoluxGrid,
   extractContours,
   formatGraphValue,
+  graphFrame,
   isoluxContourLevels,
   type IsoluxOptions,
 } from '../graphs.js';
@@ -22,6 +23,8 @@ export interface IsoluxGraphProps extends IsoluxOptions {
   colorScale?: 'log' | 'linear';
   /** Draw the lux heatmap beneath the contours. Defaults to true. */
   heatmap?: boolean;
+  /** Viewbox width / height; the background fills it and the graph is centered. Defaults to the native layout. */
+  aspectRatio?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -107,6 +110,7 @@ export function IsoluxGraph({
   minContour,
   colorScale = 'log',
   heatmap = true,
+  aspectRatio,
   className,
   style,
   ...options
@@ -121,6 +125,7 @@ export function IsoluxGraph({
     drawn.slice(i * 5, i * 5 + 5),
   );
   const extraHeight = (legendRows.length - 1) * 18;
+  const frame = graphFrame(520, 560 + extraHeight, aspectRatio);
   const [width, depth] = grid.extent;
   const scale = 370 / Math.max(width, depth),
     plotWidth = width * scale,
@@ -177,8 +182,8 @@ export function IsoluxGraph({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="520"
-      height={560 + extraHeight}
+      width={frame.width}
+      height={frame.height}
       className={className}
       style={{
         width: '100%',
@@ -189,14 +194,14 @@ export function IsoluxGraph({
         color: '#ddd',
         ...style,
       }}
-      viewBox={`0 0 520 ${560 + extraHeight}`}
+      viewBox={`${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
       // SVG contains the graph itself, with a textual image description.
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="img"
       aria-label={title}
     >
       <title>{title}</title>
-      <rect width="520" height={560 + extraHeight} fill="#111" />
+      <rect x={frame.x} y={frame.y} width={frame.width} height={frame.height} fill="#111" />
       <text x="24" y="28" fill="currentColor" fontSize="14">
         Ground illuminance · lux
       </text>

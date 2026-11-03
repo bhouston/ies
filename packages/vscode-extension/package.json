@@ -51,13 +51,61 @@
     "ovsx": "^1.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   },
   "contributes": {
     "commands": [
       {
         "command": "ies.openPreview",
-        "title": "IES: Open Light Preview"
+        "title": "Open Light Preview",
+        "category": "IES",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "ies.openAsText",
+        "title": "Open as Text",
+        "category": "IES",
+        "icon": "$(go-to-file)"
+      }
+    ],
+    "languages": [
+      {
+        "id": "ies",
+        "aliases": [
+          "IES Photometric (LM-63)",
+          "ies"
+        ],
+        "extensions": [
+          ".ies",
+          ".IES"
+        ],
+        "configuration": "./ies.language-configuration.json"
+      },
+      {
+        "id": "eulumdat",
+        "aliases": [
+          "EULUMDAT (LDT)",
+          "eulumdat"
+        ],
+        "extensions": [
+          ".ldt",
+          ".LDT"
+        ],
+        "configuration": "./eulumdat.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ies",
+        "scopeName": "source.ies",
+        "path": "./syntaxes/ies.tmLanguage.json"
+      },
+      {
+        "language": "eulumdat",
+        "scopeName": "source.eulumdat",
+        "path": "./syntaxes/eulumdat.tmLanguage.json"
       }
     ],
     "customEditors": [
@@ -82,6 +130,24 @@
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "ies.openPreview",
+          "when": "resourceLangId =~ /^(ies|eulumdat)$/ && activeCustomEditorId != 'ies.lightPreview'",
+          "group": "navigation"
+        },
+        {
+          "command": "ies.openAsText",
+          "when": "activeCustomEditorId == 'ies.lightPreview'",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ies.openAsText",
+          "when": "activeCustomEditorId == 'ies.lightPreview'"
+        }
+      ],
       "explorer/context": [
         {
           "command": "ies.openPreview",

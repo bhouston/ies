@@ -49,6 +49,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
     import('@ies-tools/viewer/react'),
   ]);
   const style = { width, height, maxWidth: 'none' };
+  const aspectRatio = width / height;
   const element =
     type === 'isolux'
       ? createElement(IsoluxGraph, {
@@ -59,6 +60,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
           contourLevels: options.contours,
           minContour: options.minContour,
           colorScale: options.colorScale,
+          aspectRatio,
           style,
         })
       : createElement(IntensityGraph, {
@@ -68,6 +70,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
           angle,
           upAxis,
           principalPlanes: axis === 'vertical' && options.angle === undefined,
+          aspectRatio,
           style,
         });
   let svg = renderToStaticMarkup(element);

@@ -84,7 +84,7 @@ describe('React presentation without a GPU', () => {
         expect(Math.abs(a.x - b.x) >= (a.text.length + b.text.length) * 3 + 6 || Math.abs(a.y - b.y) >= 14).toBe(true);
     expect(new Set(labels.map((label) => label.y)).size).toBeGreaterThan(1);
     expect(markup).toContain('href="data:image/png;base64,');
-    expect(markup).not.toContain('<rect x="0');
+    expect(markup.match(/<rect/g)?.length).toBeLessThanOrEqual(3);
     expect(markup).toContain('U0 ');
     expect(markup).toContain('log colour');
   });

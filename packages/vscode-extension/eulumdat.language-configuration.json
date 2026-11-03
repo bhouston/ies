@@ -1,0 +1,6 @@
+{
+  "brackets": [["[", "]"]],
+  "autoClosingPairs": [{ "open": "[", "close": "]" }],
+  "surroundingPairs": [["[", "]"]],
+  "wordPattern": "[-+]?(?:\\d+(?:[.,]\\d*)?|[.,]\\d+)(?:[eE][-+]?\\d+)?|[^\\s\\[\\]]+"
+}
