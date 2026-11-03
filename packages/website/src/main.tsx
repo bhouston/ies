@@ -9,6 +9,7 @@ import {
 } from 'ies-core';
 import { LightViewer } from 'ies-viewer/react';
 import { GraphPanel } from './GraphPanel.js';
+import 'ies-viewer/styles.css';
 import './style.css';
 
 function App() {
@@ -64,7 +65,7 @@ function App() {
     }
   };
   return (
-    <main>
+    <main className="dark">
       <header>
         <div>
           <p className="eyebrow">PHOTOMETRIC WORKBENCH</p>
