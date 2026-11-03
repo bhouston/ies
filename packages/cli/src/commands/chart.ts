@@ -22,7 +22,10 @@ export const command = defineCommand({
         default: 'vertical',
         describe: 'Sweep axis',
       })
-      .option('angle', { type: 'number', default: 0, describe: 'Fixed plane angle in degrees' })
+      .option('angle', {
+        type: 'number',
+        describe: 'Fixed plane angle in degrees; omit for both principal planes on a vertical sweep',
+      })
       .option('up-axis', {
         type: 'string',
         choices: ['x', 'y', 'z'] as const,
