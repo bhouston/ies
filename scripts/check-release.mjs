@@ -35,8 +35,8 @@ try {
     join(consumer, 'check.mjs'),
     `
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { parseIES, sampleIntensity } from 'ies-core';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { parseIES, parsePhotometry, sampleIntensity, serializeIES, serializeLDT } from 'ies-core';
 import * as viewer from 'ies-viewer';
 import * as react from 'ies-viewer/react';
 import * as graphs from 'ies-viewer/graphs';
@@ -62,7 +62,18 @@ assert.ok(Array.isArray(graphs.extractContours(ground, [1])));
   });
   assert.match(help, /inspect/);
   assert.match(help, /validate/);
-  console.log('Production tarballs, Node imports, React exports and CLI entry point verified.');
+  const cli = join(consumer, 'node_modules', '.bin', 'ies');
+  const inspect = JSON.parse(
+    execFileSync(cli, ['inspect', 'fixture.ldt', '--json'], { cwd: consumer, encoding: 'utf8' }),
+  );
+  assert.equal(inspect.sourceFormat, 'ldt');
+  assert.equal(inspect.format, 'EULUMDAT LDT');
+  const native = JSON.parse(
+    execFileSync(cli, ['convert', 'fixture.ldt', '--to', 'json'], { cwd: consumer, encoding: 'utf8' }),
+  );
+  assert.equal(native.format, 'ldt');
+  assert.ok(native.lampSets.length > 0);
+  console.log('Production tarballs, IES/LDT models, source loading, React exports and CLI entry points verified.');
 } finally {
   rmSync(consumer, { recursive: true, force: true });
 }
