@@ -39,11 +39,17 @@ import { readFileSync } from 'node:fs';
 import { parseIES, sampleIntensity } from 'ies-core';
 import * as viewer from 'ies-viewer';
 import * as react from 'ies-viewer/react';
+import * as graphs from 'ies-viewer/graphs';
 const profile = parseIES(readFileSync(process.argv[2], 'utf8'));
 assert.ok(sampleIntensity(profile, 0, 0) >= 0);
 assert.ok(Object.keys(viewer).length > 0);
 assert.ok(react.LightViewer);
 assert.ok(react.IntensityGraph);
+assert.ok(react.IsoluxGraph);
+assert.ok(graphs.buildIntensityCurves(profile, { principalPlanes: true }).curves.length === 2);
+const ground = graphs.buildIsoluxGrid(profile, { resolution: 5 });
+assert.ok(Number.isFinite(ground.maximum));
+assert.ok(Array.isArray(graphs.extractContours(ground, [1])));
 `,
   );
   execFileSync(process.execPath, ['check.mjs', join(root, 'fixtures/007cfb11e343e2f42e3b476be4ab684e.ies')], {
