@@ -17,10 +17,10 @@ Use the custom element in any browser application, independently of React. The q
 <light-viewer src="/lights/luminaire.ies" exposure="1" style="height: 600px"></light-viewer>
 ```
 
-This URL always serves the latest release; add a version such as `@ies-tools/viewer@0.1.0` to pin one. To self-host instead, copy `@ies-tools/viewer/dist/light-viewer.js` to your application's public assets and point the script at it, or import the registration module in a bundler:
+This URL always serves the latest release; add a version such as `@ies-tools/viewer@1.1.0` to pin one. To self-host instead, copy `@ies-tools/viewer/dist/light-viewer.js` to your application's public assets and point the script at it, or `import '@ies-tools/viewer/element'` in a bundler. To script the element:
 
 ```js
-import '@ies-tools/viewer/element';
+import 'https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js';
 
 const viewer = document.querySelector('light-viewer');
 viewer.addEventListener('load', (event) => console.log(event.detail.profile));
@@ -55,6 +55,7 @@ The currently pinned Three.js loader has known texture layout limitations for so
 ## EULUMDAT and source hints
 
 ```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ldt" format="ldt" lamp-set-index="1"></light-viewer>
 ```
 
@@ -78,6 +79,7 @@ The imperative controller keeps its original `load(text)` return value, a compat
 The gear button opens a built-in overlay, shared by browser embeds and VS Code. It controls the back wall, the helper, wall distance, floor distance (light mounting height), tone mapping, and exposure. Distances are in meters. Changing a source preserves these settings.
 
 ```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer
   src="/lights/luminaire.ies"
   settings-panel="open"
@@ -106,6 +108,7 @@ The `settings` property returns a copy. Assigning a partial settings object vali
 Add `charts="true"` to show a tab bar: the 3D view first, then polar, Cartesian, topology and isolux charts of the loaded light. The isolux chart uses the floor distance as mounting height. The options overlay applies to the 3D tab only.
 
 ```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ies" charts="true"></light-viewer>
 ```
 

@@ -15,7 +15,7 @@ The shared components include polar, Cartesian, topology and isolux diagrams. `i
 
 The viewer places a downward-facing light above a ground plane and in front of a wall, against a black background. It uses the IES angular intensity distribution to illuminate both receiving planes.
 
-To embed the viewer on any web page, load the `<light-viewer>` element from jsDelivr (recommended; no install or build step):
+Embed the viewer on any web page with the `<light-viewer>` element:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
