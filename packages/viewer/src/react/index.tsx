@@ -1,20 +1,30 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { parseIES, sampleIntensity, type IESProfile } from 'ies-core';
+import { sampleIntensity, type IESProfile, type PhotometricDocument } from 'ies-core';
+import { createPhotometrySourceLoader, type PhotometryFormat, type PhotometryLoadInfo } from '../source.js';
 import { createLightViewer } from '../viewer.js';
 import { intensitySamples } from '../photometry.js';
 
 export interface LightViewerProps {
-  /** Supply a profile, raw IES text, or a URL. Profile takes precedence. */
+  /** A native-source document takes precedence, followed by profile, text, iesText, and src. */
+  document?: PhotometricDocument;
+  text?: string;
+  format?: PhotometryFormat;
+  /** Zero-based LDT alternative lamp configuration. */
+  lampSetIndex?: number;
   profile?: IESProfile;
   iesText?: string;
   src?: string;
   exposure?: number;
   className?: string;
   style?: CSSProperties;
-  onLoad?: (profile: IESProfile) => void;
+  onLoad?: (profile: IESProfile, info: PhotometryLoadInfo) => void;
   onError?: (error: Error) => void;
 }
 export function LightViewer({
+  document: photometry,
+  text,
+  format,
+  lampSetIndex,
   profile,
   iesText,
   src,
@@ -34,6 +44,7 @@ export function LightViewer({
   useEffect(() => {
     if (!container.current) return;
     const request = new AbortController();
+    const loader = createPhotometrySourceLoader();
     let viewer: ReturnType<typeof createLightViewer> | undefined;
     try {
       viewer = createLightViewer(container.current);
@@ -50,18 +61,12 @@ export function LightViewer({
     }
     const load = async () => {
       try {
-        let next = profile;
-        if (!next && iesText) next = parseIES(iesText);
-        if (!next && src) {
-          const response = await fetch(src, { signal: request.signal });
-          if (!response.ok) throw new Error(`Failed to load IES: HTTP ${response.status}`);
-          next = parseIES(await response.text());
-        }
+        const next = await loader.load({ document: photometry, profile, text, iesText, src, format, lampSetIndex });
         if (request.signal.aborted) return;
         if (next) {
-          viewer!.setProfile(next);
+          viewer!.setDocument(next);
           setError('');
-          callbacks.current.onLoad?.(next);
+          callbacks.current.onLoad?.(next.profile, { document: next, sourceFormat: next.sourceFormat });
         }
       } catch (reason) {
         if (request.signal.aborted) return;
@@ -73,10 +78,11 @@ export function LightViewer({
     void load();
     return () => {
       request.abort();
+      loader.cancel();
       viewer?.dispose();
       controller.current = undefined;
     };
-  }, [profile, iesText, src]);
+  }, [photometry, profile, text, iesText, src, format, lampSetIndex]);
   useEffect(() => {
     try {
       controller.current?.setExposure(exposure);
@@ -86,7 +92,7 @@ export function LightViewer({
     }
     // A new document recreates the controller, so reapply exposure to that controller.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [exposure, profile, iesText, src]);
+  }, [exposure, photometry, profile, text, iesText, src, format, lampSetIndex]);
   return (
     <div className={className} style={{ height: 480, position: 'relative', background: '#000', ...style }}>
       <div ref={container} style={{ width: '100%', height: '100%' }} />
