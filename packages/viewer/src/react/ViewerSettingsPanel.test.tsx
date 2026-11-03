@@ -74,12 +74,32 @@ describe('shared React viewer controls', () => {
     });
     expect(settings.showWall).toBe(false);
     await act(async () => {
+      const field = container.querySelector<HTMLInputElement>('[name="wallDistance"]')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, '3');
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(settings.wallDistance).toBe(3);
+    await act(async () => {
       root!.render(<LightViewer profile={profile()} onLoad={onLoad} />);
     });
     expect(viewer.setDocument).toHaveBeenCalledTimes(2);
     expect(mocks.createLightViewer).toHaveBeenCalledOnce();
     expect(settings.showWall).toBe(false);
     expect(container.querySelector<HTMLInputElement>('[name="showWall"]')!.checked).toBe(false);
+    await act(async () => {
+      root!.render(<LightViewer profile={profile()} exposure={0.25} onLoad={onLoad} />);
+    });
+    expect(settings.showWall).toBe(false);
+    expect(settings.exposure).toBe(0.25);
+    expect(settings.wallDistance).toBe(3);
+    expect(container.querySelector<HTMLInputElement>('[name="showWall"]')!.checked).toBe(false);
+    expect(mocks.createLightViewer).toHaveBeenCalledOnce();
+    // Removing a supplied setting leaves its current value available to the panel.
+    await act(async () => {
+      root!.render(<LightViewer profile={profile()} onLoad={onLoad} />);
+    });
+    expect(settings.exposure).toBe(0.25);
+    expect(settings.showWall).toBe(false);
     await act(async () => {
       root!.unmount();
     });

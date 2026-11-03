@@ -28,6 +28,10 @@ export interface LightViewerProps extends Partial<ViewerSettings> {
   onError?: (error: Error) => void;
   onSettingsChange?: (detail: ViewerSettingsChangeDetail) => void;
 }
+function providedSettings(settings: Partial<ViewerSettings>): Partial<ViewerSettings> {
+  return Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined));
+}
+
 export function LightViewer({
   document: photometry,
   text,
@@ -36,11 +40,11 @@ export function LightViewer({
   profile,
   iesText,
   src,
-  exposure = 1,
-  showWall = true,
-  wallDistance = 2,
-  floorDistance = 2,
-  toneMapping = 'aces',
+  exposure,
+  showWall,
+  wallDistance,
+  floorDistance,
+  toneMapping,
   settingsPanel = 'closed',
   className,
   style,
@@ -64,7 +68,7 @@ export function LightViewer({
   const setPanelMode = (mode: SettingsPanelMode) => setPanelState({ external: settingsPanel, mode });
   const [panelSettings, setPanelSettings] = useState<ViewerSettings>(() => {
     try {
-      return resolveViewerSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping });
+      return resolveViewerSettings(providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping }));
     } catch {
       return { ...DEFAULT_VIEWER_SETTINGS };
     }
@@ -129,8 +133,8 @@ export function LightViewer({
   useEffect(() => {
     let active = true;
     try {
-      const next = resolveViewerSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping });
-      controller.current?.setSettings(next);
+      const patch = providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping });
+      controller.current?.setSettings(patch);
     } catch (reason) {
       const failure = reason instanceof Error ? reason : new Error(String(reason));
       queueMicrotask(() => {
