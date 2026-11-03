@@ -8,7 +8,7 @@ module.exports = {
   url: process.env.SITE_URL ?? 'https://ies.ben3d.ca',
   baseUrl: process.env.BASE_URL ?? '/',
   organizationName: 'bhouston',
-  projectName: 'ies',
+  projectName: 'ies-tools',
   onBrokenLinks: 'throw',
   markdown: { format: 'md' },
   presets: [
@@ -39,7 +39,7 @@ module.exports = {
             { to: '/docs/api/react', label: '@ies-tools/viewer/react' },
           ],
         },
-        { href: 'https://github.com/bhouston/ies', label: 'GitHub', position: 'right' },
+        { href: 'https://github.com/bhouston/ies-tools', label: 'GitHub', position: 'right' },
       ],
     },
     footer: {

@@ -72,7 +72,7 @@ function App() {
           <h1>Light, specified.</h1>
           <p>Inspect an IES or EULUMDAT distribution on a floor and wall. Files stay in your browser.</p>
         </div>
-        <a href="https://github.com/bhouston/ies">GitHub ↗</a>
+        <a href="https://github.com/bhouston/ies-tools">GitHub ↗</a>
       </header>
       <section className="toolbar">
         <label className="file">
