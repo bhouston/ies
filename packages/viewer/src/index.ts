@@ -7,3 +7,11 @@ export { createCandelaTexture } from './texture.js';
 export { createPhotometrySourceLoader, parseLampSetIndex } from './source.js';
 export type { PhotometryFormat, PhotometrySource, PhotometryLoadInfo, PhotometryFetch } from './source.js';
 export * from './graphs.js';
+
+export { DEFAULT_VIEWER_SETTINGS, TONE_MAPPING_OPTIONS, resolveViewerSettings } from './settings.js';
+export type {
+  ViewerSettings,
+  ToneMappingName,
+  ViewerSettingsChangeDetail,
+  ViewerSettingsListener,
+} from './settings.js';

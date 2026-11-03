@@ -66,3 +66,28 @@ viewer.addEventListener('load', (event) => {
 The `photometry` property accepts a shared in-memory document and preserves its source geometry and metadata without converting to an IES string. Assigning raw text replaces that document input; changing `src` replaces both explicit text and document inputs. Source changes cancel older fetches, and stale responses cannot replace a newer selection. Removing the element cancels loading and disposes the controller; reconnecting recreates it with the selected input.
 
 The imperative controller keeps its original `load(text)` return value, a compatible `IESProfile`, while accepting either source format. Use `loadDocument(text, format?, { lampSetIndex? })` to receive the complete native-source document, or read the controller's `document` after loading. `load(text, format?, { lampSetIndex? })` accepts the same optional input hint and zero-based selection.
+
+## Viewer options
+
+The gear button opens a built-in overlay, shared by browser embeds and VS Code. It controls the back wall, wall distance, floor distance (light mounting height), tone mapping, and exposure. Distances are in meters. Changing a source preserves these settings.
+
+```html
+<light-viewer
+  src="/lights/luminaire.ies"
+  settings-panel="open"
+  show-wall="true"
+  wall-distance="2"
+  floor-distance="2"
+  tone-mapping="aces"
+  exposure="1"
+></light-viewer>
+```
+
+`settings-panel` is `closed` by default (gear visible), `open`, or `hidden` (no controls, useful for image export). Escape, the close button, and clicking outside dismiss the overlay. A missing `show-wall` attribute enables the wall; use `show-wall="false"` to hide it. Distances accept 0.1–100 meters. Exposure accepts any finite nonnegative value, including zero. Tone mapping accepts `aces` (default), `agx`, `neutral`, `reinhard`, `cineon`, `linear`, and `none`.
+
+```js
+viewer.settings = { showWall: false, floorDistance: 3, toneMapping: 'agx', exposure: 2 };
+viewer.addEventListener('settingschange', (event) => console.log(event.detail.settings));
+```
+
+The `settings` property returns a copy. Assigning a partial settings object validates it atomically, reflects the attributes and updates the controls. The bubbling, composed `settingschange` event supplies `{ settings, previousSettings }` once per effective change. Removing and reinserting the element preserves settings. The imperative controller offers `getSettings()`, `setSettings(patch)` and `settingschange` listeners. Its existing `height` option remains an alias for `floorDistance`, and `setExposure()` remains supported. Floor distance changes move the fixture above the fixed ground; wall distance moves the receiver behind it. The camera preserves its orbit direction while fitting distance changes.

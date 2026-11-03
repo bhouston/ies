@@ -1,0 +1,78 @@
+export const TONE_MAPPING_OPTIONS = [
+  { value: 'aces', label: 'ACES Filmic' },
+  { value: 'agx', label: 'AgX' },
+  { value: 'neutral', label: 'Neutral' },
+  { value: 'reinhard', label: 'Reinhard' },
+  { value: 'cineon', label: 'Cineon' },
+  { value: 'linear', label: 'Linear' },
+  { value: 'none', label: 'None' },
+] as const;
+export type ToneMappingName = (typeof TONE_MAPPING_OPTIONS)[number]['value'];
+export interface ViewerSettings {
+  showWall: boolean;
+  wallDistance: number;
+  floorDistance: number;
+  toneMapping: ToneMappingName;
+  exposure: number;
+}
+export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
+  showWall: true,
+  wallDistance: 2,
+  floorDistance: 2,
+  toneMapping: 'aces',
+  exposure: 1,
+});
+export const VIEWER_SETTINGS_ATTRIBUTES = [
+  'show-wall',
+  'wall-distance',
+  'floor-distance',
+  'tone-mapping',
+  'exposure',
+] as const;
+export interface ViewerSettingsChangeDetail {
+  settings: ViewerSettings;
+  previousSettings: ViewerSettings;
+}
+export type ViewerSettingsListener = (event: CustomEvent<ViewerSettingsChangeDetail>) => void;
+
+/** Validate the whole patch before publishing a new state. No partial mutations or silent clamping. */
+export function resolveViewerSettings(
+  patch: Partial<ViewerSettings>,
+  current: Readonly<ViewerSettings> = DEFAULT_VIEWER_SETTINGS,
+): ViewerSettings {
+  for (const key of Object.keys(patch))
+    if (!Object.hasOwn(DEFAULT_VIEWER_SETTINGS, key)) throw new Error(`Unknown viewer setting: ${key}`);
+  const next = { ...current, ...patch };
+  if (typeof next.showWall !== 'boolean') throw new TypeError('showWall must be a boolean');
+  if (!TONE_MAPPING_OPTIONS.some((option) => option.value === next.toneMapping))
+    throw new RangeError('Unsupported toneMapping function');
+  for (const [key, min, max] of [
+    ['wallDistance', 0.1, 100],
+    ['floorDistance', 0.1, 100],
+    ['exposure', 0, Infinity],
+  ] as const) {
+    const value = next[key];
+    if (!Number.isFinite(value) || value < min || value > max)
+      throw new RangeError(`${key} must be a finite number from ${min} to ${max}`);
+  }
+  return next;
+}
+export function settingsEqual(a: Readonly<ViewerSettings>, b: Readonly<ViewerSettings>): boolean {
+  return (Object.keys(DEFAULT_VIEWER_SETTINGS) as (keyof ViewerSettings)[]).every((key) => a[key] === b[key]);
+}
+export function viewerSettingFromAttribute(name: string, value: string | null): Partial<ViewerSettings> {
+  const number = (key: 'wallDistance' | 'floorDistance' | 'exposure') => ({
+    [key]: value === null ? DEFAULT_VIEWER_SETTINGS[key] : value.trim() ? Number(value) : NaN,
+  });
+  if (name === 'show-wall') {
+    if (value === null || value === '' || value === 'true') return { showWall: true };
+    if (value === 'false') return { showWall: false };
+    throw new RangeError('show-wall must be empty, true, or false');
+  }
+  if (name === 'wall-distance') return number('wallDistance');
+  if (name === 'floor-distance') return number('floorDistance');
+  if (name === 'exposure') return number('exposure');
+  if (name === 'tone-mapping')
+    return { toneMapping: (value ?? DEFAULT_VIEWER_SETTINGS.toneMapping) as ToneMappingName };
+  return {};
+}
