@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { getPreviewHtml } from './previewHtml.js';
+import { createPreviewUpdate } from './previewData.js';
 import { isReadyMessage } from './protocol.js';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -10,9 +11,10 @@ export function activate(context: vscode.ExtensionContext): void {
       const script = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'preview.js'));
       const style = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'preview.css'));
       const update = (): void => {
+        const message = createPreviewUpdate(document.getText(), /\.ldt$/i.test(document.uri.path) ? 'ldt' : 'ies');
         // VS Code's Webview.postMessage has no targetOrigin argument.
         // oxlint-disable-next-line unicorn/require-post-message-target-origin
-        void panel.webview.postMessage({ type: 'update', text: document.getText() });
+        void panel.webview.postMessage(message);
       };
       const messages = panel.webview.onDidReceiveMessage((message: unknown) => {
         if (isReadyMessage(message)) update();
@@ -39,7 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ies.openPreview', async (uri?: vscode.Uri) => {
       const target = uri ?? vscode.window.activeTextEditor?.document.uri;
       if (!target) {
-        void vscode.window.showInformationMessage('Open an IES file to preview its lighting distribution.');
+        void vscode.window.showInformationMessage('Open an IES or LDT file to preview its lighting distribution.');
         return;
       }
       await vscode.commands.executeCommand('vscode.openWith', target, 'ies.lightPreview');
