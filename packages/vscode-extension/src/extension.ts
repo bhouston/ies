@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getPreviewHtml } from './previewHtml.js';
 import { createPreviewUpdate } from './previewData.js';
 import { isReadyMessage } from './protocol.js';
+import { registerLanguageFeatures } from './languageProviders.js';
 
 export function activate(context: vscode.ExtensionContext): void {
   const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'media');
@@ -56,4 +57,5 @@ export function activate(context: vscode.ExtensionContext): void {
       if (target) await vscode.commands.executeCommand('vscode.openWith', target, 'default');
     }),
   );
+  registerLanguageFeatures(context);
 }
