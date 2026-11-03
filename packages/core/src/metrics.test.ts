@@ -154,6 +154,10 @@ describe('principal-plane beam and field estimates', () => {
       fieldAngleDegrees: 120,
       beamAngleStatus: 'ok',
       fieldAngleStatus: 'ok',
+      beamLeftDegrees: -30,
+      beamRightDegrees: 30,
+      fieldLeftDegrees: -60,
+      fieldRightDegrees: 60,
     });
     expect(computePhotometricMetrics(profile).beamAngles.map((cut) => cut.horizontalDegrees)).toEqual([0, 90]);
   });

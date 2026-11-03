@@ -2,7 +2,15 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { parseIES } from '@ies-tools/core';
-import { IntensityGraph, IsoluxGraph, LightViewer } from './index.js';
+import {
+  ConeDiagramGraph,
+  IntensityGraph,
+  IntensityTableGraph,
+  IsoluxGraph,
+  LightViewer,
+  LuminanceTableGraph,
+} from './index.js';
+import { ChartTabs, VIEWER_TABS } from './ChartTabs.js';
 import { buildIntensityCurves } from '../graphs.js';
 const profile = parseIES(`IESNA:LM-63-2002
 TILT=NONE
@@ -261,6 +269,40 @@ ${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
     expect(invalid({ projection: 'topology', surface: 'dots' })).toThrow('surface');
     expect(invalid({ colorScale: 'cubic' }, IsoluxGraph)).toThrow('Colour scale');
     expect(invalid({ contours: [-1] }, IsoluxGraph)).toThrow('nonnegative');
+  });
+  it.each([
+    ['cone', 'Cone diagram, centre intensity 100 candela'],
+    ['luminance', 'Average luminance'],
+    ['intensity-table', 'Luminous intensity table in cd'],
+  ] as const)('shows the %s chart tab', (tab, text) => {
+    expect(VIEWER_TABS.map(([value]) => value)).toContain(tab);
+    const markup = renderToStaticMarkup(
+      createElement(ChartTabs, { tab, onTabChange: () => {}, profile, mountingHeight: 2 }),
+    );
+    expect(markup).toContain('role="tabpanel"');
+    expect(markup).toContain(text);
+    expect(markup).not.toContain('NaN');
+  });
+  it('renders cone, luminance and intensity tables with their values', () => {
+    const cone = renderToStaticMarkup(createElement(ConeDiagramGraph, { profile, maxDistance: 3 }));
+    expect(cone).toContain('25 lx');
+    expect(cone).toContain('Field Ø C90');
+    const sized = { ...profile, dimensions: { width: 0.1, length: 0.1, height: 0 } };
+    const luminance = renderToStaticMarkup(createElement(LuminanceTableGraph, { profile: sized }));
+    expect(luminance).toContain('Luminous intensity · cd');
+    expect(luminance).not.toContain('Luminance unavailable');
+    const dark = renderToStaticMarkup(createElement(LuminanceTableGraph, { profile }));
+    expect(dark).toContain('Luminance unavailable');
+    const table = renderToStaticMarkup(createElement(IntensityTableGraph, { profile, unit: 'cd/klm' }));
+    expect(table).toContain('cd/klm');
+    expect(table).toContain('fill-opacity');
+  });
+  it('explains that table charts need Type C photometry', () => {
+    const typeB = { ...profile, photometricType: 2 as const };
+    for (const component of [ConeDiagramGraph, LuminanceTableGraph, IntensityTableGraph])
+      expect(renderToStaticMarkup(createElement(component, { profile: typeB }))).toContain(
+        'available for Type C photometry only',
+      );
   });
   it('renders a server placeholder without constructing a WebGL context', () => {
     const markup = renderToStaticMarkup(createElement(LightViewer, { profile }));

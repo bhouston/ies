@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type IESProfile } from '@ies-tools/core';
 import { IntensityGraph } from './IntensityGraph.js';
 import { IsoluxGraph } from './IsoluxGraph.js';
+import { ConeDiagramGraph, IntensityTableGraph, LuminanceTableGraph } from './TableCharts.js';
 
 export const VIEWER_TABS = [
   ['3d', '3D view'],
@@ -9,6 +10,9 @@ export const VIEWER_TABS = [
   ['cartesian', 'Cartesian'],
   ['topology', 'Topology'],
   ['isolux', 'Isolux'],
+  ['cone', 'Cone'],
+  ['luminance', 'Luminance'],
+  ['intensity-table', 'Intensity table'],
 ] as const;
 export type ViewerTab = (typeof VIEWER_TABS)[number][0];
 /** Props for {@link ChartTabs}. */
@@ -57,6 +61,13 @@ export function ChartTabs({ tab, onTabChange, profile, mountingHeight }: ChartTa
             <p className="text-muted-foreground">Loading photometry…</p>
           ) : profile.photometricType !== 1 ? (
             <p role="alert">Charts support Type C photometry only.</p>
+          ) : tab === 'cone' ? (
+            <ConeDiagramGraph profile={profile} style={{ maxHeight: '100%' }} />
+          ) : tab === 'luminance' ? (
+            <LuminanceTableGraph profile={profile} style={{ maxHeight: '100%' }} />
+          ) : tab === 'intensity-table' ? (
+            // Wide grids keep readable cells; auto margins keep an overflowing table scrollable from its start.
+            <IntensityTableGraph profile={profile} style={{ width: 'auto', maxWidth: 'none', margin: 'auto' }} />
           ) : tab === 'isolux' ? (
             <IsoluxGraph profile={profile} mountingHeight={mountingHeight} style={{ maxHeight: '100%' }} />
           ) : (

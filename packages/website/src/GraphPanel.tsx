@@ -1,9 +1,17 @@
 import { useState } from 'react';
 import { type IESProfile } from '@ies-tools/core';
-import { IntensityGraph, IsoluxGraph } from '@ies-tools/viewer/react';
+import {
+  ConeDiagramGraph,
+  IntensityGraph,
+  IntensityTableGraph,
+  IsoluxGraph,
+  LuminanceTableGraph,
+} from '@ies-tools/viewer/react';
 
 export function GraphPanel({ profile }: { profile?: IESProfile }) {
-  const [projection, setProjection] = useState<'polar' | 'cartesian' | 'topology' | 'isolux'>('polar');
+  const [projection, setProjection] = useState<
+    'polar' | 'cartesian' | 'topology' | 'isolux' | 'cone' | 'luminance' | 'intensity-table'
+  >('polar');
   const [axis, setAxis] = useState<'vertical' | 'horizontal'>('vertical');
   const [angle, setAngle] = useState(0);
   const [curves, setCurves] = useState<'single' | 'principal' | 'overlay'>('principal');
@@ -31,6 +39,9 @@ export function GraphPanel({ profile }: { profile?: IESProfile }) {
             <option value="cartesian">Cartesian</option>
             <option value="topology">Intensity topology</option>
             <option value="isolux">Isolux footprint</option>
+            <option value="cone">Cone diagram</option>
+            <option value="luminance">Glare luminance table</option>
+            <option value="intensity-table">Intensity table</option>
           </select>
         </label>
         {(projection === 'polar' || projection === 'cartesian') && (
@@ -174,6 +185,14 @@ export function GraphPanel({ profile }: { profile?: IESProfile }) {
         <p className="muted">Open a photometric file to inspect its graphs.</p>
       ) : profile.photometricType !== 1 ? (
         <p role="alert">Graphs support Type C photometry. Type A/B coordinate conversion is not available.</p>
+      ) : projection === 'cone' ? (
+        <ConeDiagramGraph profile={profile} />
+      ) : projection === 'luminance' ? (
+        <LuminanceTableGraph profile={profile} />
+      ) : projection === 'intensity-table' ? (
+        <div style={{ overflowX: 'auto' }}>
+          <IntensityTableGraph profile={profile} style={{ width: 'auto', maxWidth: 'none' }} />
+        </div>
       ) : projection === 'isolux' ? (
         <IsoluxGraph
           profile={profile}

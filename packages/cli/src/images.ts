@@ -2,7 +2,7 @@ import { open, readFile, unlink } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { lampSetIndex } from './options.js';
 import { inputFormat } from './photometry.js';
-import { chartPhotometry, type ChartOptions } from './chart.js';
+import { CHART_TYPES, chartPhotometry, type ChartOptions } from './chart.js';
 import { imageDimensions, renderPhotometry, type RenderOptions } from './render.js';
 
 export interface ImageCommandOptions extends RenderOptions, ChartOptions {
@@ -24,6 +24,10 @@ export interface ImageArguments extends Omit<RenderOptions, 'lampSetIndex' | 'in
   mountingHeight?: number;
   extent?: number;
   resolution?: number;
+  maxDistance?: number;
+  unit?: string;
+  maxColumns?: number;
+  maxRows?: number;
   logScale?: boolean;
   contours?: string;
   minContour?: number;
@@ -53,8 +57,8 @@ export function imageOptions(command: 'render' | 'chart', argv: ImageArguments):
   if (options.exposure !== undefined && options.exposure < 0) throw new Error('Exposure must be nonnegative');
   if (options.timeout !== undefined && (options.timeout <= 0 || options.timeout > 600))
     throw new Error('Timeout must be between 0 and 600 seconds');
-  if (options.type !== undefined && !['polar', 'cartesian', 'topology', 'isolux'].includes(options.type))
-    throw new Error('Chart type must be polar, cartesian, topology or isolux');
+  if (options.type !== undefined && !(CHART_TYPES as readonly string[]).includes(options.type))
+    throw new Error(`Chart type must be one of ${CHART_TYPES.join(', ')}`);
   if (options.axis !== undefined && !['vertical', 'horizontal'].includes(options.axis))
     throw new Error('Axis must be vertical or horizontal');
   if (options.upAxis !== undefined && !['x', 'y', 'z'].includes(options.upAxis))
@@ -68,6 +72,19 @@ export function imageOptions(command: 'render' | 'chart', argv: ImageArguments):
     (!Number.isInteger(options.resolution) || options.resolution < 2 || options.resolution > 201)
   )
     throw new Error('Grid resolution must be an integer from 2 to 201');
+  if (
+    options.maxDistance !== undefined &&
+    (!Number.isInteger(options.maxDistance) || options.maxDistance < 1 || options.maxDistance > 50)
+  )
+    throw new Error('Maximum distance must be an integer from 1 to 50');
+  if (options.unit !== undefined && !['cd', 'cd/klm'].includes(options.unit))
+    throw new Error('Unit must be cd or cd/klm');
+  for (const [name, value] of [
+    ['columns', options.maxColumns],
+    ['rows', options.maxRows],
+  ] as const)
+    if (value !== undefined && (!Number.isInteger(value) || value < 2))
+      throw new Error(`Maximum ${name} must be an integer of at least 2`);
   if (
     options.contours?.some(
       (level, i, levels) => !(level >= 0) || !Number.isFinite(level) || (i > 0 && level <= levels[i - 1]!),
@@ -125,6 +142,7 @@ export async function runImageCommand(command: 'render' | 'chart', options: Imag
       format: image.format,
       width: image.width,
       height: image.height,
+      ...(image.values !== undefined && { values: image.values }),
     };
     console.log(
       options.json

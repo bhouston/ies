@@ -11,7 +11,7 @@ IES and EULUMDAT photometric lighting tools for JavaScript and TypeScript, model
 | `ies-website`          | React demo with local file input                                   |
 | `ies-docs`             | Docusaurus documentation built as a GitHub Pages artifact          |
 
-The shared components include polar, Cartesian, topology and isolux diagrams. `ies render` exports hardware-rendered PNGs; `ies chart` exports the same diagrams as SVG or PNG.
+The shared components include polar, Cartesian, topology and isolux diagrams, a cone diagram, a glare-angle luminance table and an intensity table. `ies render` exports hardware-rendered PNGs; `ies chart` exports the same diagrams as SVG or PNG.
 
 The viewer places a downward-facing light above a ground plane and in front of a wall, against a black background. It uses the IES angular intensity distribution to illuminate both receiving planes.
 

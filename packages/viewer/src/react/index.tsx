@@ -216,3 +216,5 @@ export type { GraphAxis, UpAxis, Point2 } from '../graphs.js';
 export { DEFAULT_VIEWER_SETTINGS, TONE_MAPPING_OPTIONS } from '../settings.js';
 export type { ViewerSettings, ViewerSettingsChangeDetail, ToneMappingName } from '../settings.js';
 export type { PhotometryFormat, PhotometryLoadInfo } from '../source.js';
+export { ConeDiagramGraph, IntensityTableGraph, LuminanceTableGraph } from './TableCharts.js';
+export type { ConeDiagramGraphProps, IntensityTableGraphProps, LuminanceTableGraphProps } from './TableCharts.js';

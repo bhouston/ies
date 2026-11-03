@@ -13,6 +13,9 @@ The same graphs, exported from an asymmetric BEGA luminaire with `ies chart`:
 <img src="/img/charts/cartesian.png" alt="Cartesian luminous intensity chart of the C0–C180 and C90–C270 planes" width="49%" />
 <img src="/img/charts/topology.png" alt="3D luminous intensity topology surface" width="49%" />
 <img src="/img/charts/isolux.png" alt="Isolux ground illuminance plot with contours" width="49%" />
+<img src="/img/charts/cone.png" alt="Cone diagram with centre illuminance and beam and field diameters by distance" width="49%" />
+<img src="/img/charts/luminance.png" alt="Glare-angle average luminance and intensity tables" width="49%" />
+<img src="/img/charts/intensity-table.png" alt="Heat-tinted luminous intensity table" width="49%" />
 </p>
 
 ## Complete intensity cuts
@@ -107,6 +110,24 @@ Fixture aiming is a geometric rotation. It does **not** automatically change the
 
 This is direct illumination from measured angular intensity. It does not simulate indirect light, occlusion, luminaire aperture near-field effects, or room reflections. Type A/B data are rejected until a validated coordinate transform is available. Invalid dimensions, angles, sample counts and contour grids throw descriptive errors instead of producing invalid SVG.
 
+## Cone diagram, glare luminance and intensity tables
+
+```tsx
+import { ConeDiagramGraph, IntensityTableGraph, LuminanceTableGraph } from '@ies-tools/viewer/react';
+
+<ConeDiagramGraph profile={profile} maxDistance={6} />;
+<LuminanceTableGraph profile={profile} />;
+<IntensityTableGraph profile={profile} unit="cd/klm" maxColumns={12} />;
+```
+
+These three charts are Type C only; other photometric types render an "available for Type C photometry only" message instead of values.
+
+**Cone diagram.** For distances 1…`maxDistance` metres (default 5, integer 1–50; or explicit `distances`), the centre illuminance is `E = I(γ = 0) / d²` on a plane facing the luminaire. Beam (50 %) and field (10 %) diameters use the per-side crossings reported by `getBeamAngles` (`beamLeftDegrees`, `beamRightDegrees`, `fieldLeftDegrees`, `fieldRightDegrees`; signed vertical angles, negative in the opposite C-plane) in the C0–C180 and C90–C270 planes: `Ø = d · (tan right − tan left)`, which equals `d · (tan|left| + tan|right|)` for crossings on both sides of nadir. A diameter is shown as — when a crossing is missing or at/after 90°. The SVG shows the C0–C180 side view with the beam and field cones plus a table of distance, E centre and the four diameters.
+
+**Glare-angle luminance.** Average luminance `L(C, γ) = I(C, γ) / A_proj` in cd/m² over the luminous opening declared in the file, for γ = 45°, 50°, …, 85° and C = 0°, 45°, …, 315° (override with `gammas` and `cPlanes`). `A_proj = A_bottom · cos γ + A_side(C) · sin γ`. Dimensions are converted from feet when needed. IES length runs along C0–C180 and width along C90–C270, so a rectangular opening's side silhouette from plane C is `height × (width·|cos C| + length·|sin C|)`. A negative width declares a circular opening of diameter |width|, with bottom area `π·d²/4` and side area `height × d`. A second table shows the sampled intensity at the same angles. A zero luminous area shows a message instead of luminance values. Intensity is sampled with the same interpolation as the other charts.
+
+**Intensity table.** The measured candela grid with γ rows and C columns, in `cd` or `cd/klm` (normalized by the declared lamp flux; absolute photometry stays in cd). Each cell has a subtle heat-map tint with alpha ∝ √(value / peak). Cells keep a readable minimum width, so large grids widen the SVG; the viewer tab scrolls it. For fixed-size images, `maxColumns` and `maxRows` keep evenly spaced angles, always including the first and last.
+
 ## Calculation and geometry APIs
 
 ```ts
@@ -118,6 +139,9 @@ import {
   extractContours,
   isoluxContourLevels,
   niceTicks,
+  buildConeDiagram,
+  buildLuminanceTable,
+  buildIntensityTable,
 } from '@ies-tools/viewer/graphs';
 
 const cuts = buildIntensityCurves(profile, { principalPlanes: true });
@@ -135,6 +159,13 @@ const levels = isoluxContourLevels(grid.maximum, { minContour: 1 }); // [1, 2, 5
 const contours = extractContours(grid, levels);
 // contours[].segments: [[x1, z1], [x2, z2]] in physical ground coordinates.
 const ticks = niceTicks(grid.maximum);
+
+const cone = buildConeDiagram(profile, { maxDistance: 5 });
+// cone.rows[]: { distance, illuminance, beamDiameters: [c0, c90], fieldDiameters: [c0, c90] }
+const glare = buildLuminanceTable(profile);
+// glare.luminance[gammaIndex][cIndex] in cd/m² (null for zero area); glare.intensity in cd.
+const table = buildIntensityTable(profile, { unit: 'cd/klm' });
+// table.values[gammaIndex][cIndex], with table.gammas, table.cPlanes and table.unit.
 ```
 
 `extractContours` uses marching squares with linearly interpolated edge crossings and a center-value saddle decision. Flat fields and exact-corner degeneracies produce no zero-length segments. Segments are unstitched so consumers can render or join them as appropriate. The grid and contour approximation improves with resolution; it is not an analytic boundary solver.

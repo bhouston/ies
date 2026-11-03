@@ -445,3 +445,168 @@ export function extractContours(grid: ContourGrid, levels: readonly number[]): C
     return { level, segments };
   });
 }
+
+/** Shared heat-map colormap (dark blue → yellow) for a fraction in [0, 1]. */
+export function heatColor(fraction: number): string {
+  const t = Math.max(0, Math.min(1, fraction));
+  return `hsl(${235 - t * 195} 80% ${15 + t * 50}%)`;
+}
+
+export interface ConeOptions {
+  /** Distances below the luminaire in metres. Overrides `maxDistance`. */
+  distances?: readonly number[];
+  /** Use distances 1, 2, …, maxDistance metres; integer 1–50, default 5. */
+  maxDistance?: number;
+  lampTilt?: number;
+}
+export interface ConePlane {
+  /** C plane of the positive side of the opposed cut (0 or 90). */
+  plane: number;
+  beam: BeamAngles;
+}
+export interface ConeRow {
+  distance: number;
+  /** Centre illuminance on a plane normal to nadir, I(γ = 0) / d², in lux. */
+  illuminance: number;
+  /** Beam (50 %) diameter in metres in the C0–C180 and C90–C270 planes; null without both crossings below 90°. */
+  beamDiameters: [number | null, number | null];
+  /** Field (10 %) diameter in metres in the C0–C180 and C90–C270 planes. */
+  fieldDiameters: [number | null, number | null];
+}
+export interface ConeDiagram {
+  centerIntensity: number;
+  planes: [ConePlane, ConePlane];
+  rows: ConeRow[];
+}
+const coneDiameter = (distance: number, left?: number, right?: number) =>
+  left === undefined || right === undefined || Math.abs(left) >= 90 || Math.abs(right) >= 90
+    ? null
+    : // Signed form; equals d·(tan|left| + tan|right|) when the crossings straddle nadir.
+      distance * (Math.tan(radians(right)) - Math.tan(radians(left)));
+/** Centre illuminance and beam/field diameters at a series of distances below the luminaire. */
+export function buildConeDiagram(profile: IESProfile, options: ConeOptions = {}): ConeDiagram {
+  typeC(profile);
+  const lampTilt = finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180);
+  const distances =
+    options.distances ??
+    Array.from({ length: count(options.maxDistance ?? 5, 'Maximum distance', 1, 50) }, (_, i) => i + 1);
+  count(distances.length, 'Distance count', 1, 50);
+  distances.forEach((d) => finite(d, 'Distance', 0.01, 100000));
+  const centerIntensity = sample(profile, 0, 0, lampTilt);
+  const planes: [ConePlane, ConePlane] = [
+    { plane: 0, beam: getBeamAngles(profile, 0, lampTilt) },
+    { plane: 90, beam: getBeamAngles(profile, 90, lampTilt) },
+  ];
+  const rows = distances.map((distance) => ({
+    distance,
+    illuminance: centerIntensity / distance ** 2,
+    beamDiameters: planes.map(({ beam }) =>
+      coneDiameter(distance, beam.beamLeftDegrees, beam.beamRightDegrees),
+    ) as ConeRow['beamDiameters'],
+    fieldDiameters: planes.map(({ beam }) =>
+      coneDiameter(distance, beam.fieldLeftDegrees, beam.fieldRightDegrees),
+    ) as ConeRow['fieldDiameters'],
+  }));
+  return { centerIntensity, planes, rows };
+}
+
+export interface LuminanceTableOptions {
+  /** Vertical angles γ in degrees; default 45, 50, …, 85. */
+  gammas?: readonly number[];
+  /** Horizontal C angles in degrees; default 0, 45, …, 315. */
+  cPlanes?: readonly number[];
+  lampTilt?: number;
+}
+export interface LuminanceTable {
+  gammas: number[];
+  cPlanes: number[];
+  /** intensity[gammaIndex][cIndex] in candela. */
+  intensity: number[][];
+  /** luminance[gammaIndex][cIndex] in cd/m²; null when the luminous opening has no projected area. */
+  luminance: (number | null)[][] | null;
+  /** Luminous opening in metres; negative IES width means circular with diameter |width|. */
+  opening: { shape: 'rectangular' | 'circular'; width: number; length: number; height: number };
+  bottomArea: number;
+}
+/**
+ * Average luminance L = I / A_proj with A_proj = A_bottom·cos γ + A_side(C)·sin γ. A_side is the
+ * opening's side silhouette seen from plane C: height × (width·|cos C| + length·|sin C|), or height ×
+ * diameter for a circular opening. IES length runs along C0–C180 and width along C90–C270.
+ */
+export function buildLuminanceTable(profile: IESProfile, options: LuminanceTableOptions = {}): LuminanceTable {
+  typeC(profile);
+  const lampTilt = finite(options.lampTilt ?? 0, 'Lamp tilt', -180, 180);
+  const gammas = [...(options.gammas ?? [45, 50, 55, 60, 65, 70, 75, 80, 85])];
+  const cPlanes = [...(options.cPlanes ?? [0, 45, 90, 135, 180, 225, 270, 315])];
+  gammas.forEach((g) => finite(g, 'Vertical angle', 0, 180));
+  cPlanes.forEach((c) => finite(c, 'Horizontal angle', 0, 360));
+  const scale = profile.units === 'feet' ? 0.3048 : 1;
+  const circular = profile.dimensions.width < 0;
+  const width = Math.abs(profile.dimensions.width) * scale;
+  const length = circular ? width : Math.abs(profile.dimensions.length) * scale;
+  const height = Math.abs(profile.dimensions.height) * scale;
+  const bottomArea = circular ? (Math.PI * width * width) / 4 : width * length;
+  const intensity = gammas.map((g) => cPlanes.map((c) => sample(profile, g, c, lampTilt)));
+  const hasArea = bottomArea > 0 || height * (width + length) > 0;
+  const luminance = hasArea
+    ? gammas.map((g, i) =>
+        cPlanes.map((c, j) => {
+          const side =
+            height *
+            (circular ? width : width * Math.abs(Math.cos(radians(c))) + length * Math.abs(Math.sin(radians(c))));
+          const area = bottomArea * Math.cos(radians(g)) + side * Math.sin(radians(g));
+          return area > 1e-12 ? intensity[i]![j]! / area : null;
+        }),
+      )
+    : null;
+  return {
+    gammas,
+    cPlanes,
+    intensity,
+    luminance,
+    opening: { shape: circular ? 'circular' : 'rectangular', width, length, height },
+    bottomArea,
+  };
+}
+
+export interface IntensityTableOptions {
+  /** `cd` (default) or `cd/klm`, normalized by declared lamp flux. Absolute photometry stays in cd. */
+  unit?: 'cd' | 'cd/klm';
+  /** Keep at most this many evenly spaced C columns, always including the first and last. */
+  maxColumns?: number;
+  /** Keep at most this many evenly spaced γ rows, always including the first and last. */
+  maxRows?: number;
+}
+export interface IntensityTable {
+  unit: 'cd' | 'cd/klm';
+  /** Row angles γ. */
+  gammas: number[];
+  /** Column angles C. */
+  cPlanes: number[];
+  /** values[gammaIndex][cIndex]. */
+  values: number[][];
+  maximum: number;
+}
+function spread(length: number, maximum: number | undefined, name: string): number[] {
+  const keep = maximum === undefined ? length : Math.min(length, count(maximum, name, 2, 10000));
+  if (keep === length || length < 2) return Array.from({ length }, (_, i) => i);
+  return [...new Set(Array.from({ length: keep }, (_, i) => Math.round((i * (length - 1)) / (keep - 1))))];
+}
+/** The measured candela grid with γ rows and C columns, optionally in cd/klm. */
+export function buildIntensityTable(profile: IESProfile, options: IntensityTableOptions = {}): IntensityTable {
+  typeC(profile);
+  const requested = choice(options.unit ?? 'cd', ['cd', 'cd/klm'], 'Intensity unit');
+  const flux = profile.lampCount * profile.lumensPerLamp;
+  const unit = requested === 'cd/klm' && flux > 0 ? 'cd/klm' : 'cd';
+  const factor = unit === 'cd/klm' ? 1000 / flux : 1;
+  const rows = spread(profile.verticalAngles.length, options.maxRows, 'Maximum rows');
+  const columns = spread(profile.horizontalAngles.length, options.maxColumns, 'Maximum columns');
+  const values = rows.map((v) => columns.map((h) => profile.candelaValues[h]![v]! * factor));
+  return {
+    unit,
+    gammas: rows.map((v) => profile.verticalAngles[v]!),
+    cPlanes: columns.map((h) => profile.horizontalAngles[h]!),
+    values,
+    maximum: values.reduce((max, row) => row.reduce((m, value) => Math.max(m, value), max), 0),
+  };
+}

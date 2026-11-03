@@ -19,7 +19,7 @@ Open an `.ies` or `.ldt` file to use the IES and LDT Light Viewer custom editor,
 
 The text editor highlights both formats. IES files use the **IES Photometric (LM-63)** language mode, which colors the format line, `[KEYWORD]` tags and values, user `[_KEYWORDS]`, `[MORE]` continuations, `TILT=` lines and numbers. LDT files use the **EULUMDAT (LDT)** mode, which distinguishes numeric lines from text lines. Use **Open as Text** in the preview's title bar and **Open Light Preview** in the text editor's title bar to switch views.
 
-The preview reuses the shared Three.js `<light-viewer>` element, with a floor, wall and black background, plus tabs for polar, Cartesian, topology and isolux charts. Its script is bundled into the extension, with no CDN or authentication dependency. File text is sent through the webview message protocol rather than interpolated into HTML. The webview uses a content security policy and restricts local resources to its media directory.
+The preview reuses the shared Three.js `<light-viewer>` element, with a floor, wall and black background, plus tabs for polar, Cartesian, topology, isolux, cone, luminance and intensity-table charts. Its script is bundled into the extension, with no CDN or authentication dependency. File text is sent through the webview message protocol rather than interpolated into HTML. The webview uses a content security policy and restricts local resources to its media directory.
 
 If a file cannot be parsed, the preview displays an error. Rendering requires hardware WebGL2 and Type C photometry. An invalid file remains editable in VS Code's text editor.
 
