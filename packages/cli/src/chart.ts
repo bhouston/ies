@@ -13,6 +13,8 @@ export interface ChartOptions {
   mountingHeight?: number;
   extent?: number;
   resolution?: number;
+  /** Log-scale intensity (three decades) for polar and Cartesian charts. */
+  logScale?: boolean;
   lampSetIndex?: number;
   inputFormat?: 'ies' | 'ldt';
 }
@@ -60,6 +62,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
           angle,
           upAxis,
           principalPlanes: axis === 'vertical' && options.angle === undefined,
+          logScale: options.logScale ?? false,
           style,
         });
   let svg = renderToStaticMarkup(element);

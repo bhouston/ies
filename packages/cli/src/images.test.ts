@@ -194,6 +194,15 @@ describe('shared graph exports', () => {
       expect(metadata).toMatchObject({ width: 420, height: 300, format: 'png' });
     },
   );
+  it('passes --log-scale through to a log-scale polar chart', async () => {
+    expect((await parseImageArguments('chart', [fixture, '-o', 'out.svg'])).logScale).toBe(false);
+    expect((await parseImageArguments('chart', [fixture, '-o', 'out.svg', '--log-scale'])).logScale).toBe(true);
+    const text = await readFile(fixture, 'utf8');
+    const linear = (await chartPhotometry(text)).data.toString();
+    const log = (await chartPhotometry(text, { logScale: true })).data.toString();
+    expect(linear).not.toContain('cd (log)');
+    expect(log).toContain('cd (log)');
+  });
   it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
     const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
     native.lampSets[0]!.lampCount = 1;

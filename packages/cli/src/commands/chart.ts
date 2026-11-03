@@ -26,6 +26,11 @@ export const command = defineCommand({
         type: 'number',
         describe: 'Fixed plane angle in degrees; omit for both principal planes on a vertical sweep',
       })
+      .option('log-scale', {
+        type: 'boolean',
+        default: false,
+        describe: 'Polar and Cartesian: log intensity scale spanning three decades below the peak',
+      })
       .option('up-axis', {
         type: 'string',
         choices: ['x', 'y', 'z'] as const,

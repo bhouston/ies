@@ -24,6 +24,7 @@ export interface ImageArguments extends Omit<RenderOptions, 'lampSetIndex' | 'in
   mountingHeight?: number;
   extent?: number;
   resolution?: number;
+  logScale?: boolean;
 }
 /** Range checks yargs cannot express, applied before any output file is created. */
 export function imageOptions(command: 'render' | 'chart', argv: ImageArguments): ImageCommandOptions {

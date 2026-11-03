@@ -133,6 +133,9 @@ describe('solid-angle flux integration', () => {
   });
 });
 
+/** γ where cosⁿγ = fraction, in degrees. */
+const crossing = (fraction: number, n: number) => (Math.acos(fraction ** (1 / n)) * 180) / Math.PI;
+
 describe('principal-plane beam and field estimates', () => {
   it('finds full opposed-plane 50% and 10% threshold widths', () => {
     const profile = parseIES(iesSource({ vertical: [0, 15, 30, 60, 90], values: [[100, 75, 50, 10, 0]] }));
@@ -161,6 +164,21 @@ describe('principal-plane beam and field estimates', () => {
     const cut = getBeamAngles(profile);
     expect(cut.peakDirectionDegrees).toBe(30);
     expect(cut.beamAngleDegrees).toBeCloseTo(24.375, 10);
+    expect(cut.beamLeftDegrees).toBeCloseTo(20.625, 10);
+    expect(cut.beamRightDegrees).toBeCloseTo(45, 10);
+  });
+  it('reports signed per-side crossings of an analytic cosⁿγ cut', () => {
+    // C0 side I = 100cos⁴γ, C180 side I = 100cos²γ: 50% at acos(0.5^(1/n)), 10% at acos(0.1^(1/n)).
+    const vertical = Array.from({ length: 91 }, (_, i) => i);
+    const side = (n: number) => vertical.map((v) => 100 * Math.cos((v * Math.PI) / 180) ** n);
+    const profile = parseIES(iesSource({ vertical, horizontal: [0, 180], values: [side(4), side(2)] }));
+    const cut = getBeamAngles(profile);
+    expect(cut.beamLeftDegrees).toBeCloseTo(-crossing(0.5, 2), 1);
+    expect(cut.beamRightDegrees).toBeCloseTo(crossing(0.5, 4), 1);
+    expect(cut.fieldLeftDegrees).toBeCloseTo(-crossing(0.1, 2), 1);
+    expect(cut.fieldRightDegrees).toBeCloseTo(crossing(0.1, 4), 1);
+    expect(cut.beamAngleDegrees).toBeCloseTo(cut.beamRightDegrees! - cut.beamLeftDegrees!, 10);
+    expect(getBeamAngles(parseIES(iesSource())).beamLeftDegrees).toBeUndefined();
   });
   it('returns null and an explicit status for multiple disconnected lobes', () => {
     const profile = parseIES(iesSource({ vertical: [0, 15, 30, 60, 90], values: [[100, 0, 100, 0, 0]] }));
