@@ -35,6 +35,16 @@ Split the editor into two groups. In one copy, select **Open as Text** in the ti
 
 If an edit makes the file incomplete or invalid, the information panel shows the current diagnostics instead of retaining outdated statistics. Inspection and validation remain available when a file cannot be rendered in 3D.
 
+## Syntax highlighting
+
+Opened as text, IES files use the **IES Photometric (LM-63)** language mode, which colors the format line, `[KEYWORD]` tags and values, user `[_KEYWORDS]`, `[MORE]` continuations, the `TILT=` line and numbers:
+
+<img src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/vscode-extension/images/ies-syntax.png" alt="Syntax highlighting of an IES LM-63 file header in the Dark Modern theme: the format line, bracketed keywords and values, a user keyword, a MORE continuation, the TILT=NONE line and numeric header and angle lines in distinct colors" width="686" />
+
+LDT files use the **EULUMDAT (LDT)** language mode, which distinguishes numeric lines from text lines:
+
+<img src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/vscode-extension/images/ldt-syntax.png" alt="Syntax highlighting of the top of an EULUMDAT file in the Dark Modern theme: text lines such as the manufacturer and luminaire name colored differently from the numeric lines between them" width="334" />
+
 ## Text editor features
 
 When you open an `.ies` or `.ldt` file as text (**IES: Open as Text**, or **Reopen Editor With → Text Editor**):
