@@ -85,7 +85,7 @@ Changing a source cancels its previous fetch and suppresses stale completions an
 
 ### Scene settings
 
-`LightViewer` also accepts `showWall`, `wallDistance`, `floorDistance`, `toneMapping` and `exposure` props. These update the current renderer without reloading the source. `onSettingsChange({ settings, previousSettings })` observes effective changes. Defaults are a visible wall, 2-meter wall/floor distances, ACES tone mapping and exposure 1. The built-in gear overlay uses the same `ViewerSettingsPanel` React component as the custom element. `settingsPanel="closed"` (default), `"open"` or `"hidden"` controls its initial display. Source changes retain the current renderer and user-selected scene settings; changing provided scene props applies only those values. Omitted props leave the current panel setting intact; removing a previously provided prop keeps its current value and lets the panel control it.
+`LightViewer` also accepts `showWall`, `wallDistance`, `floorDistance`, `toneMapping`, `exposure` and `helper` props. These update the current renderer without reloading the source. `onSettingsChange({ settings, previousSettings })` observes effective changes. Defaults are a visible wall, 2-meter wall/floor distances, ACES tone mapping and exposure 1. The built-in gear overlay uses the same `ViewerSettingsPanel` React component as the custom element. `settingsPanel="closed"` (default), `"open"` or `"hidden"` controls its initial display. Source changes retain the current renderer and user-selected scene settings; changing provided scene props applies only those values. Omitted props leave the current panel setting intact; removing a previously provided prop keeps its current value and lets the panel control it.
 
 ## Shared viewer styling
 

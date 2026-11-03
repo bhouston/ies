@@ -20,6 +20,8 @@ export interface ViewerSettings {
   toneMapping: ToneMappingName;
   /** Nonnegative display exposure. Defaults to 1. */
   exposure: number;
+  /** Show the blue beam-extent helper lines (cone or spheres). Defaults to true. */
+  helper: boolean;
 }
 export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   showWall: true,
@@ -27,6 +29,7 @@ export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   floorDistance: 2,
   toneMapping: 'aces',
   exposure: 1,
+  helper: true,
 });
 export const VIEWER_SETTINGS_ATTRIBUTES = [
   'show-wall',
@@ -34,6 +37,7 @@ export const VIEWER_SETTINGS_ATTRIBUTES = [
   'floor-distance',
   'tone-mapping',
   'exposure',
+  'helper',
 ] as const;
 export interface ViewerSettingsChangeDetail {
   settings: ViewerSettings;
@@ -50,6 +54,7 @@ export function resolveViewerSettings(
     if (!Object.hasOwn(DEFAULT_VIEWER_SETTINGS, key)) throw new Error(`Unknown viewer setting: ${key}`);
   const next = { ...current, ...patch };
   if (typeof next.showWall !== 'boolean') throw new TypeError('showWall must be a boolean');
+  if (typeof next.helper !== 'boolean') throw new TypeError('helper must be a boolean');
   if (!TONE_MAPPING_OPTIONS.some((option) => option.value === next.toneMapping))
     throw new RangeError('Unsupported toneMapping function');
   for (const [key, min, max] of [
@@ -70,10 +75,11 @@ export function viewerSettingFromAttribute(name: string, value: string | null): 
   const number = (key: 'wallDistance' | 'floorDistance' | 'exposure') => ({
     [key]: value === null ? DEFAULT_VIEWER_SETTINGS[key] : value.trim() ? Number(value) : NaN,
   });
-  if (name === 'show-wall') {
-    if (value === null || value === '' || value === 'true') return { showWall: true };
-    if (value === 'false') return { showWall: false };
-    throw new RangeError('show-wall must be empty, true, or false');
+  if (name === 'show-wall' || name === 'helper') {
+    const key = name === 'helper' ? 'helper' : 'showWall';
+    if (value === null || value === '' || value === 'true') return { [key]: true };
+    if (value === 'false') return { [key]: false };
+    throw new RangeError(`${name} must be empty, true, or false`);
   }
   if (name === 'wall-distance') return number('wallDistance');
   if (name === 'floor-distance') return number('floorDistance');

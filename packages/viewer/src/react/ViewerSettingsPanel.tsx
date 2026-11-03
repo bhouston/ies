@@ -115,16 +115,23 @@ export function ViewerSettingsPanel({
             ×
           </button>
         </div>
-        <label className="my-3 flex items-center justify-between gap-3">
-          Back wall
-          <input
-            name="showWall"
-            type="checkbox"
-            checked={settings.showWall}
-            className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
-            onChange={(event) => change({ showWall: event.currentTarget.checked })}
-          />
-        </label>
+        {(
+          [
+            ['showWall', 'Back wall'],
+            ['helper', 'Helper'],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="my-3 flex items-center justify-between gap-3">
+            {label}
+            <input
+              name={key}
+              type="checkbox"
+              checked={settings[key]}
+              className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => change({ [key]: event.currentTarget.checked })}
+            />
+          </label>
+        ))}
         {(
           [
             ['wallDistance', 'Wall distance (m)', 0.1, 100],

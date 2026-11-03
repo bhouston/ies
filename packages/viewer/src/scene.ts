@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { type IESProfile } from '@ies-tools/core';
 import { type ViewerSettings } from './settings.js';
 
 export const TONE_MAPPING = {
@@ -51,7 +52,13 @@ export function createLightScene(settings: ViewerSettings) {
   );
   fixture.position.set(0, uniforms.lightHeight.value, 0);
   scene.add(fixture);
-  const objects = { scene, uniforms, material, floor, wall, fixture };
+  const helper = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x3b82f6, toneMapped: false }),
+  );
+  scene.add(helper);
+  // Set from the loaded profile; undefined until then, which hides the helper.
+  const objects = { scene, uniforms, material, floor, wall, fixture, helper, cutoff: undefined as number | undefined };
   applyLightSceneSettings(objects, settings);
   return objects;
 }
@@ -66,6 +73,54 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   objects.fixture.position.y = settings.floorDistance;
   objects.uniforms.lightHeight.value = settings.floorDistance;
   objects.uniforms.exposure.value = settings.exposure;
+  objects.helper.visible = settings.helper && objects.cutoff !== undefined;
+  if (objects.helper.visible)
+    objects.helper.geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(helperLines(objects.cutoff!, settings.floorDistance), 3),
+    );
+}
+
+/** Largest vertical angle (0° = nadir) whose intensity exceeds 1% of the peak, in degrees. */
+export function cutoffAngle(profile: IESProfile): number {
+  const peak = Math.max(0, ...profile.candelaValues.flat());
+  let cutoff = 0;
+  for (const row of profile.candelaValues)
+    row.forEach((candela, i) => {
+      if (candela > peak * 0.01) cutoff = Math.max(cutoff, profile.verticalAngles[i]!);
+    });
+  return cutoff;
+}
+
+const SEGMENTS = 200;
+/** Line-segment vertex pairs for the helper of a light at `height` above the ground. A cutoff below 80°
+ * draws the downward beam cone; anything wider draws three axis circles at half the mounting height. */
+export function helperLines(cutoff: number, height: number): number[] {
+  const out: number[] = [];
+  const circle = (point: (angle: number) => [number, number, number]) => {
+    for (let i = 0; i < SEGMENTS; i++)
+      out.push(...point((i / SEGMENTS) * Math.PI * 2), ...point(((i + 1) / SEGMENTS) * Math.PI * 2));
+  };
+  // ponytail: 80° stands in for "downward cone"; past it the ground circle runs far beyond the floor.
+  if (cutoff < 80) {
+    const y = height * 0.01;
+    const r = height * Math.tan((cutoff * Math.PI) / 180);
+    circle((a) => [r * Math.cos(a), y, r * Math.sin(a)]);
+    for (const [x, z] of [
+      [r, 0],
+      [-r, 0],
+      [0, r],
+      [0, -r],
+    ])
+      out.push(x!, y, z!, 0, height, 0);
+    return out;
+  }
+  const r = height / 2;
+  circle((a) => [r * Math.cos(a), height, r * Math.sin(a)]);
+  circle((a) => [r * Math.cos(a), height + r * Math.sin(a), 0]);
+  circle((a) => [0, height + r * Math.cos(a), r * Math.sin(a)]);
+  out.push(-r, height, 0, r, height, 0, 0, height - r, 0, 0, height + r, 0, 0, height, -r, 0, height, r);
+  return out;
 }
 const distanceScale = (settings: ViewerSettings) => Math.max(1, settings.floorDistance / 2, settings.wallDistance / 2);
 const sceneCenter = (settings: ViewerSettings) =>
@@ -92,6 +147,8 @@ export function disposeLightScene(objects: LightScene): void {
   objects.wall.geometry.dispose();
   objects.fixture.geometry.dispose();
   objects.fixture.material.dispose();
+  objects.helper.geometry.dispose();
+  objects.helper.material.dispose();
   objects.uniforms.distribution.value.dispose();
   objects.material.dispose();
 }

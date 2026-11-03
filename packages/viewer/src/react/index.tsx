@@ -68,6 +68,7 @@ export function LightViewer({
   wallDistance,
   floorDistance,
   toneMapping,
+  helper,
   settingsPanel = 'closed',
   className,
   style,
@@ -91,7 +92,9 @@ export function LightViewer({
   const setPanelMode = (mode: SettingsPanelMode) => setPanelState({ external: settingsPanel, mode });
   const [panelSettings, setPanelSettings] = useState<ViewerSettings>(() => {
     try {
-      return resolveViewerSettings(providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping }));
+      return resolveViewerSettings(
+        providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping, helper }),
+      );
     } catch {
       return { ...DEFAULT_VIEWER_SETTINGS };
     }
@@ -156,7 +159,7 @@ export function LightViewer({
   useEffect(() => {
     let active = true;
     try {
-      const patch = providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping });
+      const patch = providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping, helper });
       controller.current?.setSettings(patch);
     } catch (reason) {
       const failure = reason instanceof Error ? reason : new Error(String(reason));
@@ -170,7 +173,7 @@ export function LightViewer({
     return () => {
       active = false;
     };
-  }, [exposure, showWall, wallDistance, floorDistance, toneMapping]);
+  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper]);
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     const next = resolveViewerSettings(patch, controller.current?.getSettings() ?? panelSettings);
     controller.current?.setSettings(next);

@@ -15,7 +15,7 @@ code --install-extension packages/vscode-extension/ies-vscode-extension-0.1.0.vs
 
 Open an `.ies` or `.ldt` file to use the IES and LDT Light Viewer custom editor, or run **IES: Open Light Preview**. **Reopen Editor With → Text Editor** lets you edit the source; the preview refreshes with unsaved text changes.
 
-The preview reuses the shared Three.js `<light-viewer>` element, with a floor, wall and black background. Its script is bundled into the extension, with no CDN or authentication dependency. File text is sent through the webview message protocol rather than interpolated into HTML. The webview uses a content security policy and restricts local resources to its media directory.
+The preview reuses the shared Three.js `<light-viewer>` element, with a floor, wall and black background, plus tabs for polar, Cartesian, topology and isolux charts. Its script is bundled into the extension, with no CDN or authentication dependency. File text is sent through the webview message protocol rather than interpolated into HTML. The webview uses a content security policy and restricts local resources to its media directory.
 
 If a file cannot be parsed, the preview displays an error. Rendering requires hardware WebGL2 and Type C photometry. An invalid file remains editable in VS Code's text editor.
 

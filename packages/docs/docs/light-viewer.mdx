@@ -75,7 +75,7 @@ The imperative controller keeps its original `load(text)` return value, a compat
 
 ## Viewer options
 
-The gear button opens a built-in overlay, shared by browser embeds and VS Code. It controls the back wall, wall distance, floor distance (light mounting height), tone mapping, and exposure. Distances are in meters. Changing a source preserves these settings.
+The gear button opens a built-in overlay, shared by browser embeds and VS Code. It controls the back wall, the helper, wall distance, floor distance (light mounting height), tone mapping, and exposure. Distances are in meters. Changing a source preserves these settings.
 
 ```html
 <light-viewer
@@ -86,8 +86,11 @@ The gear button opens a built-in overlay, shared by browser embeds and VS Code. 
   floor-distance="2"
   tone-mapping="aces"
   exposure="1"
+  helper="true"
 ></light-viewer>
 ```
+
+`helper` draws blue beam-extent lines and is on by default; `helper="false"` hides it. A downward beam (intensity cut off below 80° from nadir) shows its ground circle, just above the floor, with four lines to the light; wider distributions show three axis circles at half the mounting height with axis lines through the light.
 
 `settings-panel` is `closed` by default (gear visible), `open`, or `hidden` (no controls, useful for image export). Escape, the close button, and clicking outside dismiss the overlay. A missing `show-wall` attribute enables the wall; use `show-wall="false"` to hide it. Distances accept 0.1–100 meters. Exposure accepts any finite nonnegative value, including zero. Tone mapping accepts `aces` (default), `agx`, `neutral`, `reinhard`, `cineon`, `linear`, and `none`.
 
@@ -97,6 +100,14 @@ viewer.addEventListener('settingschange', (event) => console.log(event.detail.se
 ```
 
 The `settings` property returns a copy. Assigning a partial settings object validates it atomically, reflects the attributes and updates the controls. The bubbling, composed `settingschange` event supplies `{ settings, previousSettings }` once per effective change. Removing and reinserting the element preserves settings. The imperative controller offers `getSettings()`, `setSettings(patch)` and `settingschange` listeners. Its existing `height` option remains an alias for `floorDistance`, and `setExposure()` remains supported. Floor distance changes move the fixture above the fixed ground; wall distance moves the receiver behind it. The camera preserves its orbit direction while fitting distance changes.
+
+## Chart tabs
+
+Add `charts="true"` to show a tab bar: the 3D view first, then polar, Cartesian, topology and isolux charts of the loaded light. The isolux chart uses the floor distance as mounting height. The options overlay applies to the 3D tab only.
+
+```html
+<light-viewer src="/lights/luminaire.ies" charts="true"></light-viewer>
+```
 
 ## Shared React and Tailwind styling
 

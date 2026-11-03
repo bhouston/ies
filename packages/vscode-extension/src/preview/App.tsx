@@ -90,6 +90,7 @@ export function App({ initialUpdate }: { initialUpdate?: UpdateMessage }) {
         )}
         {createElement('light-viewer', {
           ref: viewer,
+          charts: 'true',
           className: 'min-h-[260px] w-full flex-1',
           'aria-label': 'Light on a floor and wall',
         })}
