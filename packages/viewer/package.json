@@ -32,7 +32,11 @@
       "types": "./dist/element.d.ts",
       "default": "./dist/element.js"
     },
-    "./light-viewer.js": "./dist/light-viewer.js"
+    "./light-viewer.js": "./dist/light-viewer.js",
+    "./graphs": {
+      "types": "./dist/graphs.d.ts",
+      "default": "./dist/graphs.js"
+    }
   },
   "scripts": {
     "build": "tsc -p . && node scripts/build-element.mjs"
