@@ -24,7 +24,7 @@ const surfaces = [
     label: 'Web component',
     title: 'On any page',
     body: 'One self-contained <light-viewer> element for plain HTML, Vue, Svelte or a CMS. No framework required.',
-    code: '<script type="module" src="/light-viewer.js"></script>\n<light-viewer src="/lights/luminaire.ies"></light-viewer>',
+    code: '<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>\n<light-viewer src="/lights/luminaire.ies"></light-viewer>',
     href: '/docs/light-viewer',
   },
   {
@@ -115,10 +115,10 @@ export default function Home() {
           </div>
           <figure className={styles.shot}>
             <img
-              src={useBaseUrl('/img/preview.png')}
-              alt="The IES light viewer in VS Code: a downlight lighting the floor, with validation and photometric statistics in a side panel"
-              width="1171"
-              height="768"
+              src={useBaseUrl('/img/vscode-extension.gif')}
+              alt="The IES light viewer in VS Code cycling through the 3D view and the polar, Cartesian, topology and isolux chart tabs, with validation and photometric statistics in a side panel"
+              width="1280"
+              height="800"
               loading="lazy"
             />
           </figure>

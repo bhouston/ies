@@ -31,6 +31,15 @@ ies chart luminaire.ies -o floor.png --type isolux --mounting-height 2 --extent 
 
 `render` captures the shared `<light-viewer>` with its black background, ground and wall. It uses an installed Chrome, Edge or cached Playwright Chromium; installation does not download a browser. Set `IES_BROWSER` or `--browser` to an explicit executable. The renderer is queried from the actual WebGL2 canvas and must identify a hardware GPU: SwiftShader, llvmpipe, lavapipe, other software rasterizers and masked/unknown adapters are rejected. Rendering waits for GPU completion before capturing PNG. `--json` includes the confirmed GPU vendor, renderer and WebGL version. This is a still-image export, not a rendering benchmark.
 
+Charts of an asymmetric BEGA luminaire, exported with `ies chart --type <type> --width 780 --height 840`:
+
+<p>
+<img src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/charts/polar.png" alt="Polar luminous intensity chart of the C0–C180 and C90–C270 planes" width="390" />
+<img src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/charts/cartesian.png" alt="Cartesian luminous intensity chart of the C0–C180 and C90–C270 planes" width="390" />
+<img src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/charts/topology.png" alt="3D luminous intensity topology surface" width="390" />
+<img src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/charts/isolux.png" alt="Isolux ground illuminance plot with contours" width="390" />
+</p>
+
 `chart` reuses the shared React photometric diagrams and exports SVG or PNG. Types are `polar`, `cartesian`, `topology`, and `isolux`. Default vertical polar/Cartesian plots include the principal planes. Use `--axis vertical|horizontal --angle <degrees>` for an explicit slice, or `--up-axis x|y|z` for topology. Isolux accepts mounting height and square ground extent in meters, plus grid resolution. Chart PNGs use Sharp to rasterize SVG; this 2D operation does not require a GPU.
 
 Image dimensions are positive integers up to 8192 pixels per side. Render defaults to 1024×768; charts default to 900×700. `--timeout` controls browser startup/loading in seconds (default 60, maximum 600). `--format ies|ldt` overrides input format detection. `--lamp-set` selects an LDT lamp configuration using a one-based index. Outputs are created exclusively; existing files are never overwritten, and a failed export removes its own incomplete output.

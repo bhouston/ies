@@ -94,6 +94,8 @@ describe('image command arguments', () => {
         '2',
       ]),
     ).resolves.toMatchObject({ width: 640, height: 480, exposure: 0.5, browser: '/chrome', lampSetIndex: 1 }));
+  it('leaves the chart angle unset so vertical charts show the principal planes', async () =>
+    expect((await parseImageArguments('chart', [fixture, '-o', 'out.svg'])).angle).toBeUndefined());
   it('accepts graph types, axes, negative slice angle and ground settings', () =>
     expect(
       parseImageArguments('chart', [
