@@ -1,5 +1,6 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
+sidebar_label: <light-viewer>
 ---
 
 # The light-viewer element
@@ -10,14 +11,36 @@ import LiveLightViewer from '@site/src/components/LiveLightViewer';
 
 This is a live `<light-viewer>` showing a track light's IES file. Drag to orbit, scroll to zoom, use the gear for viewer settings, and switch tabs for charts.
 
-Use the custom element in any browser application, independently of React. The quickest way is to load the self-contained bundle from jsDelivr:
+`<light-viewer>` is a web component: it works in plain HTML and in any framework, with no build step.
+
+## Add it to a page
+
+Load the self-contained bundle from jsDelivr, then add the element:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ies" exposure="1" style="height: 600px"></light-viewer>
 ```
 
-This URL always serves the latest release; add a version such as `@ies-tools/viewer@1.1.0` to pin one. To self-host instead, copy `@ies-tools/viewer/dist/light-viewer.js` to your application's public assets and point the script at it, or `import '@ies-tools/viewer/element'` in a bundler. To script the element:
+This URL always serves the latest release. Add a version, such as `@ies-tools/viewer@1.1.0`, to pin one.
+
+To self-host, copy `@ies-tools/viewer/dist/light-viewer.js` into your site's public files and point the script at it. With a bundler, install the package and import the element instead:
+
+```sh
+npm install @ies-tools/viewer three react react-dom
+```
+
+```js
+import '@ies-tools/viewer/element';
+```
+
+The CDN bundle includes everything it needs. The bundler import uses your copies of `three`, `react` and `react-dom`, and needs no CSS loader.
+
+The element is 480 pixels tall by default; set its height with CSS. Files fetched from another origin must allow it with CORS. Rendering needs hardware WebGL2 and Type C photometry.
+
+## Load a file from JavaScript
+
+To show a file the user picked, set its text instead of a URL:
 
 ```js
 import 'https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js';
@@ -25,61 +48,53 @@ import 'https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js';
 const viewer = document.querySelector('light-viewer');
 viewer.addEventListener('load', (event) => console.log(event.detail.profile));
 viewer.addEventListener('error', (event) => console.error(event.detail.message));
-viewer.iesText = await file.text();
+viewer.photometryText = await file.text();
 ```
 
-`photometryText` accepts raw IES or LDT source text. `data` and `iesText` are compatibility aliases for that property, avoiding the need to host an uploaded file. Attach listeners before setting a source. Fetched URLs must be accessible to your page under normal browser CORS rules.
+Attach listeners before setting a source.
 
-`src` changes cancel previous requests; removing the element cancels loading and releases GPU resources. Reinserting the element recreates its viewer. `exposure` controls display brightness and must be a finite nonnegative number. The element defaults to a 480-pixel height and black background.
+| Property         | What it takes                                                       |
+| ---------------- | ------------------------------------------------------------------- |
+| `src`            | URL of an `.ies` or `.ldt` file (also an attribute)                 |
+| `photometryText` | Raw IES or LDT text; `iesText` and `data` are aliases               |
+| `photometry`     | A `PhotometricDocument` from `parsePhotometry` in `@ies-tools/core` |
+| `settings`       | Viewer settings; see [Viewer settings](#viewer-settings)            |
 
-The `load` event carries `{ profile, document, sourceFormat }`; the existing profile field remains available. The `error` event carries `{ message, error }`, and the component also displays the message. Both events bubble across the shadow boundary. A hardware WebGL2 context and Type C profile are required for rendering.
+| Event            | `event.detail`                                                |
+| ---------------- | ------------------------------------------------------------- |
+| `load`           | `{ profile, document, sourceFormat }`                         |
+| `error`          | `{ message, error }`; the message is also shown in the viewer |
+| `settingschange` | `{ settings, previousSettings }`                              |
 
-## Imperative Three.js API
+Changing the source cancels any earlier request. Removing the element stops loading and frees its GPU resources; adding it back recreates the viewer with the same source and settings.
 
-```js
-import { createLightViewer } from '@ies-tools/viewer';
-
-const viewer = createLightViewer(document.querySelector('#viewport'), { height: 2, exposure: 1 });
-viewer.load(iesOrLdtText);
-viewer.setExposure(2);
-// When the host view is destroyed:
-viewer.dispose();
-```
-
-`height` is the luminaire's distance above the floor in meters; size the host element with CSS. `setProfile(profile)` accepts a previously parsed compatible profile. `setDocument(document)` accepts a shared native-source document directly. The returned `renderer` exposes the Three.js WebGLRenderer for integrations and hardware diagnostics.
-
-Three.js's `IESLoader` is also exported by `@ies-tools/viewer` for applications that use its native photometric textures. Its texture representation differs from the viewer's calibrated candela table; consult the Three.js loader contract when integrating it with Three.js lighting.
-
-The currently pinned Three.js loader has known texture layout limitations for some bilateral and full-azimuth files. The shared viewer uses its own validated candela sampler, and tests verify finite receiver textures for every bundled fixture. The native loader export is provided for interoperability, not as a substitute for core validation.
-
-## EULUMDAT and source hints
+## EULUMDAT files and lamp configurations
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ldt" format="ldt" lamp-set-index="1"></light-viewer>
 ```
 
-`format` optionally forces `ies` or `ldt`; without it, file content is detected. `lamp-set-index` is a **zero-based** LDT configuration index and must be supplied for files containing multiple alternative lamp sets. It is not a lamp count or a brightness multiplier. Single-set files need no index. Invalid formats and indices produce the normal error event and visible status message.
+- `format` forces `ies` or `ldt`. Without it, the format is detected from the content.
+- `lamp-set-index` picks one of an LDT file's alternative lamp configurations. It counts from **0**. Files with several configurations need it; single-configuration files don't. It isn't a lamp count or a brightness multiplier.
+
+To choose a configuration in JavaScript, parse the file yourself:
 
 ```js
 import { parsePhotometry } from '@ies-tools/core';
-viewer.photometryText = ldtText; // automatically detected
+
 viewer.photometry = parsePhotometry(ldtText, 'ldt', { lampSetIndex: 1 });
 viewer.addEventListener('load', (event) => {
   console.log(event.detail.sourceFormat, event.detail.document.source);
 });
 ```
 
-The `photometry` property accepts a shared in-memory document and preserves its source geometry and metadata without converting to an IES string. Assigning raw text replaces that document input; changing `src` replaces both explicit text and document inputs. Source changes cancel older fetches, and stale responses cannot replace a newer selection. Removing the element cancels loading and disposes the controller; reconnecting recreates it with the selected input.
+An invalid format or index fires the `error` event and shows the message.
 
-The imperative controller keeps its original `load(text)` return value, a compatible `IESProfile`, while accepting either source format. Use `loadDocument(text, format?, { lampSetIndex? })` to receive the complete native-source document, or read the controller's `document` after loading. `load(text, format?, { lampSetIndex? })` accepts the same optional input hint and zero-based selection.
+## Viewer settings
 
-## Viewer options
-
-The gear button opens a built-in overlay, shared by browser embeds and VS Code. It controls the back wall, the helper, wall distance, floor distance (light mounting height), tone mapping, and exposure. Distances are in meters. Changing a source preserves these settings.
+The gear button opens a settings panel. Set the same options with attributes:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer
   src="/lights/luminaire.ies"
   settings-panel="open"
@@ -92,28 +107,56 @@ The gear button opens a built-in overlay, shared by browser embeds and VS Code. 
 ></light-viewer>
 ```
 
-`helper` draws blue beam-extent lines and is on by default; `helper="false"` hides it. A downward beam (intensity cut off below 80° from nadir) shows its ground circle, just above the floor, with four lines to the light; wider distributions show three axis circles at half the mounting height with axis lines through the light.
+| Attribute        | Values                                                                           | Default  |
+| ---------------- | -------------------------------------------------------------------------------- | -------- |
+| `show-wall`      | `true` or `false`: show the back wall                                            | `true`   |
+| `wall-distance`  | Distance from the light to the wall, 0.1–100 metres                              | `2`      |
+| `floor-distance` | Height of the light above the floor, 0.1–100 metres                              | `2`      |
+| `tone-mapping`   | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`               | `aces`   |
+| `exposure`       | Display brightness, any number 0 or above                                        | `1`      |
+| `helper`         | `true` or `false`: blue lines showing the beam's extent                          | `true`   |
+| `settings-panel` | `closed` (gear shown), `open`, or `hidden` (no controls, useful for screenshots) | `closed` |
 
-`settings-panel` is `closed` by default (gear visible), `open`, or `hidden` (no controls, useful for image export). Escape, the close button, and clicking outside dismiss the overlay. A missing `show-wall` attribute enables the wall; use `show-wall="false"` to hide it. Distances accept 0.1–100 meters. Exposure accepts any finite nonnegative value, including zero. Tone mapping accepts `aces` (default), `agx`, `neutral`, `reinhard`, `cineon`, `linear`, and `none`.
+The helper draws a downward beam's ground circle with four lines to the light. Wider distributions get three axis circles at half the mounting height.
+
+Change settings from JavaScript with the `settings` property. It accepts a partial object and returns a copy:
 
 ```js
 viewer.settings = { showWall: false, floorDistance: 3, toneMapping: 'agx', exposure: 2 };
 viewer.addEventListener('settingschange', (event) => console.log(event.detail.settings));
 ```
 
-The `settings` property returns a copy. Assigning a partial settings object validates it atomically, reflects the attributes and updates the controls. The bubbling, composed `settingschange` event supplies `{ settings, previousSettings }` once per effective change. Removing and reinserting the element preserves settings. The imperative controller offers `getSettings()`, `setSettings(patch)` and `settingschange` listeners. Its existing `height` option remains an alias for `floorDistance`, and `setExposure()` remains supported. Floor distance changes move the fixture above the fixed ground; wall distance moves the receiver behind it. The camera preserves its orbit direction while fitting distance changes.
+Settings are kept when you load another file.
 
 ## Chart tabs
 
-Add `charts="true"` to show a tab bar: the 3D view first, then polar, Cartesian, topology, isolux, cone, luminance and intensity-table charts of the loaded light. The isolux chart uses the floor distance as mounting height. The cone tab shows centre illuminance and beam/field diameters at 1–5 m, the luminance tab shows glare-angle average luminance over the declared luminous opening, and the intensity-table tab shows the measured candela grid; wide tables scroll. See [Photometric graphs](./graphs.md). The options overlay applies to the 3D tab only.
+Add `charts="true"` to show a tab bar: the 3D view, then **Polar**, **Cartesian**, **Topology**, **Isolux**, **Cone**, **Luminance** and **Intensity table**. The Polar and Cartesian tabs have a **Log scale** checkbox, and the Isolux tab uses the floor distance as the mounting height. The settings panel applies to the 3D view only. See [Charts](./graphs.md) for how to read each chart.
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ies" charts="true"></light-viewer>
 ```
 
-## Shared React and Tailwind styling
+## Match your site's colours
 
-The options overlay uses the shared React `ViewerSettingsPanel`, styled by the same Tailwind utilities and tokens as the extension and React viewer. The standalone `light-viewer.js` bundle contains React and its compiled stylesheet; it fetches no UI scripts, styles or fonts. Bundler users importing `@ies-tools/viewer/element` must supply the React and React DOM peer dependencies, but do not need a CSS loader: the built element imports an SSR-safe stylesheet string module.
+The settings panel takes its colours from CSS custom properties such as `--popover`, `--foreground`, `--border` and `--ring`, set on the element or an ancestor. Without them it uses a dark theme. The 3D scene's background is always black. See [Styling and themes](./styling.md).
 
-UI colors inherit host custom properties such as `--popover`, `--popover-foreground`, `--foreground`, `--input`, `--border` and `--ring`. Unspecified values use dark standalone fallbacks. These properties pass through the shadow boundary, so VS Code themes update the controls without rebuilding them. The rendering background stays black. See [Styling and themes](./styling.md).
+## Use the viewer without the element
+
+`createLightViewer` puts the same 3D viewer in any container, without the web component:
+
+```js
+import { createLightViewer } from '@ies-tools/viewer';
+
+const viewer = createLightViewer(document.querySelector('#viewport'), { height: 2, exposure: 1 });
+viewer.load(iesOrLdtText);
+viewer.setExposure(2);
+// When you remove the view:
+viewer.dispose();
+```
+
+`height` is the light's height above the floor in metres; size the container with CSS.
+
+- `load(text, format?, { lampSetIndex? })` loads IES or LDT text and returns the profile. `loadDocument` takes the same arguments and returns the full `PhotometricDocument`.
+- `setProfile(profile)` and `setDocument(document)` show data you've already parsed.
+- `getSettings()`, `setSettings(patch)` and `settingschange` listeners work like the element's `settings`.
+- `renderer` is the underlying Three.js `WebGLRenderer`.

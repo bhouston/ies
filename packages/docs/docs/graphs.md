@@ -1,14 +1,22 @@
 ---
-sidebar_position: 8
+sidebar_position: 4
+sidebar_label: Charts
+title: Charts
 ---
 
-# Photometric graphs
+# Charts
 
-The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs live in `@ies-tools/core`, which has no React, Three.js or DOM dependency and works in Node. `@ies-tools/viewer/graphs` re-exports them for compatibility, alongside the viewer's presentation helpers (`graphFrame`, `heatColor`).
+ies-tools draws the standard photometric charts for any Type C IES or LDT file. This page explains what each chart shows and how to read it, then how to get it.
 
-Every image on this page is exported with `ies chart` at 780×840 (cone 780×900, intensity table 780×640). Most use an asymmetric BEGA luminaire; the log-scale examples use a narrow-beam track light. Contributors regenerate them all with `pnpm build && pnpm docs:charts`; the fixtures and options live in [`scripts/chart-screenshots.mjs`](https://github.com/bhouston/ies-tools/blob/main/scripts/chart-screenshots.mjs).
+You can see every chart in three places:
 
-## Complete intensity cuts
+- **The viewer's tabs**, in [VS Code](./vscode.md#charts), [`ies view`](./cli.md#preview-in-a-browser) and [`<light-viewer charts="true">`](./light-viewer.mdx#chart-tabs).
+- **`ies chart`**, which saves a chart as SVG or PNG. See [Export charts](./cli.md#export-charts).
+- **React components** from `@ies-tools/viewer/react`, which draw SVG and need no GPU. See [React components](./react.md).
+
+Most examples below use an asymmetric BEGA luminaire; the log-scale examples use a narrow-beam track light.
+
+## Intensity curves (polar and Cartesian)
 
 <p>
 <img src="/img/charts/polar.png" alt="Polar luminous intensity chart of the C0–C180 and C90–C270 planes with beam and field markers" width="49%" />
@@ -17,33 +25,45 @@ Every image on this page is exported with `ies chart` at 780×840 (cone 780×900
 
 _Principal planes of the BEGA luminaire, with dashed beam (50 %) and dotted field (10 %) markers._
 
+These charts show how bright the light is, in candela, in each direction through a vertical slice. 0° points straight down and the curve's distance from the centre is the intensity.
+
+- **Planes.** Each curve is one complete slice through the light. The C0–C180 plane runs along the luminaire and C90–C270 across it. A symmetric light draws two matching halves; an asymmetric one, like the BEGA luminaire above, doesn't. Both halves are measured data, not a mirror image.
+- **Beam and field markers.** The dashed lines mark where the intensity drops to 50 % of the peak: the angle between them is the **beam angle**. The dotted lines mark 10 % of the peak: the **field angle**. Lights with several lobes or no clear edge get no markers.
+- **Polar vs Cartesian.** The polar chart is the familiar view. The Cartesian chart plots the same curves on angle and candela axes, which makes narrow beams easier to read.
+
+The caption gives the peak of the curves shown, which can be lower than the peak of the whole light if its brightest direction is in another plane.
+
+**Get it:**
+
+- Viewer: the **Polar** and **Cartesian** tabs.
+- CLI: `ies chart luminaire.ies -o polar.svg` or `--type cartesian`. Add `--angle 45` for one plane, or `--axis horizontal --angle 60` to sweep around the light at a fixed vertical angle.
+- React:
+
 ```tsx
 import { IntensityGraph } from '@ies-tools/viewer/react';
 
-// Full C0–C180 and C90–C270 principal-plane curves, on one shared scale.
+// Both principal planes, C0–C180 and C90–C270.
 <IntensityGraph profile={profile} principalPlanes />;
 
-// Three complete cuts overlaid on labeled Cartesian axes.
+// Three planes overlaid on Cartesian axes.
 <IntensityGraph profile={profile} projection="cartesian" planes={[0, 45, 90]} />;
 
-// Sweep horizontal C at three fixed vertical angles.
+// Sweep around the light at three fixed vertical angles.
 <IntensityGraph profile={profile} axis="horizontal" planes={[30, 60, 90]} />;
 ```
 
-`axis`, `angle` and `upAxis` retain their existing meanings. For a vertical sweep, a complete cut samples C=`angle` on the positive side of gamma and C=`angle + 180°` on the negative side. Both sides use actual measurements; the graph does not mirror one side to manufacture a symmetric distribution. The default shows one complete cut at C0–C180. `principalPlanes` selects C0–C180 and C90–C270 when `planes` is omitted. Explicit `planes` always takes precedence.
+| Prop              | Meaning                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `projection`      | `polar` (default), `cartesian` or `topology`                                                                   |
+| `axis`            | `vertical` (default) slices through a C-plane; `horizontal` sweeps C from 0° to 360° at a fixed vertical angle |
+| `angle`           | The C-plane (vertical axis) or vertical angle (horizontal axis) in degrees; default 0                          |
+| `planes`          | One to eight angles to overlay; takes precedence over `angle` and `principalPlanes`                            |
+| `principalPlanes` | Show C0–C180 and C90–C270                                                                                      |
+| `logScale`        | Log intensity scale (see below)                                                                                |
+| `samples`         | Points per curve; default 361, 3–1441, odd for vertical slices                                                 |
+| `lampTilt`        | IES `TILT` lamp-tilt correction angle in degrees; default 0                                                    |
 
-For horizontal sweeps, `angle` or each entry in `planes` is the fixed vertical angle, and C sweeps 0–360°. Plane lists contain one to eight angles. Angles are degrees; intensity is absolute candela, not peak-normalized attenuation.
-
-The requested uniform samples are supplemented by measured angle knots, including symmetry-expanded horizontal knots. This preserves narrow peaks on irregular input grids. `samples` defaults to 361, ranges from 3 to 1441, and must be odd for vertical cuts so the curve includes nadir. The caption reports the peak of the **shown curves**, which can differ from the maximum over every measured C-plane. Cartesian views include labeled angles, candela ticks and curve legends; polar views include radial candela scales and dotted spokes labelled every 30°.
-
-Vertical cuts also carry `curve.beam`, the [`getBeamAngles`](./core.md) estimate for that opposed-plane cut. Both charts draw its 50 % (**beam**, dashed) and 10 % (**field**, dotted) crossings on each side of the peak in a muted copy of the curve colour, as radial lines on the polar chart and vertical lines on the Cartesian chart. A cut whose status is not `ok` gets no markers.
-
-```tsx
-// Three decades on a log scale: radius = log10(I / Imin) / 3 × R, with Imin = Imax / 1000.
-<IntensityGraph profile={profile} principalPlanes logScale />
-```
-
-`logScale` applies to polar and Cartesian views. Intensities at or below Imin sit at the centre (or the Cartesian baseline), and the rings or ticks fall on 1-2-5 candela values in each decade. `logRadius` and `logTicks` from `@ies-tools/core` expose the same mapping. The light viewer's chart tabs have a **Log scale** checkbox, and `ies chart --log-scale` exports the same view.
+### Log scale
 
 <p>
 <img src="/img/charts/polar-log.png" alt="Log-scale polar intensity chart of a narrow-beam track light" width="49%" />
@@ -52,6 +72,10 @@ Vertical cuts also carry `curve.beam`, the [`getBeamAngles`](./core.md) estimate
 
 _`--log-scale` on a rotationally symmetric 15° track light, so both planes coincide; the shoulders below 1 % of the peak become visible._
 
+On a normal scale, a narrow beam is a thin spike and everything outside it looks like zero. The log scale spreads intensity over three decades, from the peak down to 1/1000 of it, so you can see dim spill and glare outside the beam. The rings are labelled 1, 2 and 5 times each power of ten.
+
+**Get it:** tick **Log scale** on the Polar or Cartesian tab, pass `--log-scale` to `ies chart`, or set `logScale` on `IntensityGraph`.
+
 ## Intensity topology
 
 <p>
@@ -59,6 +83,14 @@ _`--log-scale` on a rotationally symmetric 15° track light, so both planes coin
 </p>
 
 _Candela-scaled surface of the BEGA luminaire, orthographic, Y up._
+
+The topology is a 3D surface whose distance from the centre in each direction is the intensity in that direction. Colour also shows intensity. It gives you the shape of the whole distribution at once, rather than one slice at a time.
+
+**Get it:**
+
+- Viewer: the **Topology** tab.
+- CLI: `ies chart luminaire.ies -o topology.png --type topology --up-axis z`.
+- React:
 
 ```tsx
 <IntensityGraph
@@ -69,16 +101,18 @@ _Candela-scaled surface of the BEGA luminaire, orthographic, Y up._
   viewAzimuth={35}
   viewElevation={25}
   surface="both"
-  horizontalSegments={48}
-  verticalSegments={48}
 />
 ```
 
-The topology is a full candela-scaled surface, projected to SVG. `surface` is `filled`, `wireframe`, or `both` (default); colors encode intensity. Filled triangles are painted from far to near. `topologyProjection` is `orthographic` (default) or `perspective`; the default 45° azimuth and 30° elevation provide an isometric-style view. `upAxis` rotates the chosen source axis upward while preserving handedness. View azimuth ranges from −360° to 360° and elevation from −90° to 90°.
+| Prop                                     | Meaning                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| `upAxis`                                 | Which axis points up: `x`, `y` (default) or `z`                         |
+| `surface`                                | `filled`, `wireframe` or `both` (default)                               |
+| `topologyProjection`                     | `orthographic` (default) or `perspective`                               |
+| `viewAzimuth`, `viewElevation`           | Camera angles in degrees; default 45° and 30°                           |
+| `horizontalSegments`, `verticalSegments` | Surface resolution; default 36 each. Increase it for very narrow beams. |
 
-`horizontalSegments` defaults to 36 and ranges from 4 to 144; `verticalSegments` defaults to 36 and ranges from 2 to 144. Unlike the curve plots, topology uses a regular resampled angular grid: increase its resolution for very narrow features. Its caption reports the **sampled surface peak**, rather than claiming the global measured peak. This is a surface diagram with depth-sorted triangles, rather than a 3D renderer with a depth buffer.
-
-## Ground illuminance / isolux
+## Isolux ground plot
 
 <p>
 <img src="/img/charts/isolux.png" alt="Isolux ground illuminance plot with labelled contours at 2 m mounting height" width="49%" />
@@ -86,6 +120,20 @@ The topology is a full candela-scaled surface, projected to SVG. `surface` is `f
 </p>
 
 _Left: 2 m mounting height over 10 m. Right: `--mounting-height 6 --extent 30 --resolution 121`, with 1–50 lx contours._
+
+The isolux plot shows how much light lands on the ground, in lux, with the luminaire mounted above the centre. Colour shows illuminance, and a marker shows the point directly below the light.
+
+- **Contours.** Each labelled line joins points with the same illuminance, like the contour lines on a map. By default they follow a 1, 2, 5, 10, 20, 50 lux series, starting at 1 lx.
+- **Colour scale.** By default, colour follows a log scale so faint spill at 1–5 lx is still visible next to a bright centre. Choose a linear scale to compare bright areas.
+- **Statistics.** The caption lists the peak, minimum and mean illuminance over the plotted area, and the uniformity **U0 = Emin / Eavg**. A U0 close to 1 means even lighting.
+
+The plot counts direct light only. It doesn't include reflections from walls, obstructions or the size of the luminaire.
+
+**Get it:**
+
+- Viewer: the **Isolux** tab, using the floor distance from the gear menu as the mounting height.
+- CLI: `ies chart luminaire.ies -o floor.png --type isolux --mounting-height 6 --extent 30`, with `--contours 5,10,20` for your own levels or `--min-contour 0.5` to start the series lower.
+- React:
 
 ```tsx
 import { IsoluxGraph } from '@ies-tools/viewer/react';
@@ -101,101 +149,95 @@ import { IsoluxGraph } from '@ies-tools/viewer/react';
 />;
 ```
 
-The calculation places the fixture at `(0, mountingHeight, 0)` above a ground plane at Y=0. Aiming rotates the receiver direction into the luminaire's measured coordinate frame before sampling intensity. Ground illuminance is:
+| Prop                 | Meaning                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `mountingHeight`     | Height of the light above the ground in metres; default 2; 0.01–10,000                                                        |
+| `extent`             | Width and depth of the plotted area in metres, centred below the light: a number for a square or `[width, depth]`; default 10 |
+| `resolution`         | Grid points per side: a number or `[columns, rows]`; default 51; 2–201                                                        |
+| `aimAngle`           | Tilts the light away from straight down, 0–180°; default 0                                                                    |
+| `azimuth`            | Turns the light (and its C0 plane) around the vertical axis, −360–360°; default 0                                             |
+| `lampTilt`           | IES `TILT` lamp-tilt correction angle, −180–180°; default 0. Aiming doesn't change it.                                        |
+| `contourLevels`      | Your own increasing lux levels, up to 32; `[]` hides contours                                                                 |
+| `minContour`         | Lowest level of the automatic 1-2-5 series in lux; default 1                                                                  |
+| `colorScale`         | `log` (default) or `linear`                                                                                                   |
+| `heatmap`            | Show the coloured grid; default true                                                                                          |
+| `className`, `style` | SVG styling                                                                                                                   |
 
-```text
-lux = I(local direction in candela) × receiver cosine / distance²
-```
-
-`aimAngle` is the angle away from nadir toward `azimuth`. Zero points down. `azimuth` runs from +X toward +Z and also turns the C0 plane. Ground coordinates X/Z and mounting height use metres. The map includes a marker directly below the luminaire, physical axes, labelled lux contours and sampled-grid statistics: peak, minimum, mean and uniformity U0 = Emin / Eavg. The reported grid mean is an arithmetic mean of grid points, not an integrated area average. The heatmap is a smooth bilinear fill: one PNG pixel per grid point, upscaled by the SVG renderer, so it needs no canvas and exports to SVG and PNG alike. Contour labels are placed greedily along each line, as far as possible from labels already placed; a label that would overlap another is omitted, and the legend still lists every drawn level.
-
-| Prop                 | Meaning and bounds                                                                                                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `mountingHeight`     | Metres above ground; default 2; 0.01–10,000                                                                                                |
-| `extent`             | Full ground width/depth, centered below the fixture; number for a square or `[width, depth]`; default 10 m; each dimension 0.01–100,000 m  |
-| `resolution`         | Points per axis, rather than cells; number or `[columns, rows]`; default 51; integer 2–201                                                 |
-| `aimAngle`           | Fixture aiming away from nadir, 0–180°; default 0                                                                                          |
-| `azimuth`            | Fixture/C0 orientation, −360–360°; default 0                                                                                               |
-| `lampTilt`           | Separate lamp-dependent IES TILT correction angle, −180–180°; default 0                                                                    |
-| `contourLevels`      | Strictly increasing absolute lux levels; at most 32; omitted uses the 1-2-5 series; `[]` hides contours (`contours` is a deprecated alias) |
-| `minContour`         | Lowest automatic 1-2-5 level in lux; default 1. Levels run up to the largest value below the grid peak, at most 10, dropping the lowest    |
-| `colorScale`         | `log` (default) maps colour logarithmically from the lowest level to the peak, so 1–50 lx spill stays visible; `linear` maps lux to peak   |
-| `heatmap`            | Display the colored receiver grid; default true                                                                                            |
-| `className`, `style` | SVG styling                                                                                                                                |
-
-Fixture aiming is a geometric rotation. It does **not** automatically change the lamp-dependent IES TILT correction. If the fixture's lamp correction requires a particular angle, pass it independently as `lampTilt`; intensity graphs accept the same correction prop. The workbench's isolux controls affect the footprint calculation; the 3D scene retains its downward-facing fixture.
-
-This is direct illumination from measured angular intensity. It does not simulate indirect light, occlusion, luminaire aperture near-field effects, or room reflections. Type A/B data are rejected until a validated coordinate transform is available. Invalid dimensions, angles, sample counts and contour grids throw descriptive errors instead of producing invalid SVG.
-
-## Cone diagram, glare luminance and intensity tables
+## Cone diagram
 
 <p>
 <img src="/img/charts/cone.png" alt="Cone diagram with centre illuminance and beam and field diameters by distance" width="49%" />
+</p>
+
+The cone diagram answers "how big is the pool of light, and how bright is it, at a given distance?" For each distance from 1 m up to 5 m, it lists:
+
+- **E centre:** the illuminance at the centre of the beam, on a surface facing the light;
+- the **beam diameter** (50 % of peak) and **field diameter** (10 % of peak), in both the C0–C180 and C90–C270 planes.
+
+The drawing shows the beam and field cones from the side. A diameter shows as — when the beam has no clear edge or spreads past horizontal.
+
+**Get it:** the **Cone** tab, `ies chart luminaire.ies -o cone.svg --type cone --max-distance 8`, or `<ConeDiagramGraph profile={profile} maxDistance={8} />`. Pass `distances` instead for your own list.
+
+## Glare luminance table
+
+<p>
 <img src="/img/charts/luminance.png" alt="Glare-angle average luminance and intensity tables" width="49%" />
 </p>
+
+This table shows how bright the luminaire looks, in cd/m², when seen from the angles where glare matters: 45° to 85° from straight down, all the way around. It divides the intensity by the visible area of the luminous opening declared in the file. A second table shows the intensity at the same angles.
+
+If the file declares no luminous area, the table shows a message instead of luminance values.
+
+**Get it:** the **Luminance** tab, `ies chart luminaire.ies -o glare.png --type luminance`, or `<LuminanceTableGraph profile={profile} />`. Change the angles with the `gammas` and `cPlanes` props.
+
+## Intensity table
 
 <p>
 <img src="/img/charts/intensity-table.png" alt="Heat-tinted luminous intensity table" width="49%" />
 </p>
 
-_Cone diagram, glare-angle luminance, and the intensity table thinned with `--max-columns 10 --max-rows 19`._
+_The intensity table thinned with `--max-columns 10 --max-rows 19`._
+
+The intensity table lists the measured values: vertical angles (γ) down the side, C-planes across the top. Cells are tinted by brightness. Show values in candela (`cd`) or per 1000 lamp lumens (`cd/klm`); files with absolute photometry have no lamp rating, so they stay in candela.
+
+Large tables scroll in the viewer tab. For a fixed-size image, keep fewer evenly spaced angles; the first and last angles are always kept.
+
+**Get it:** the **Intensity table** tab, `ies chart luminaire.ies -o table.png --type intensity-table --unit cd/klm --max-columns 12 --max-rows 19`, or:
 
 ```tsx
-import { ConeDiagramGraph, IntensityTableGraph, LuminanceTableGraph } from '@ies-tools/viewer/react';
+import { IntensityTableGraph } from '@ies-tools/viewer/react';
 
-<ConeDiagramGraph profile={profile} maxDistance={6} />;
-<LuminanceTableGraph profile={profile} />;
 <IntensityTableGraph profile={profile} unit="cd/klm" maxColumns={12} />;
 ```
 
-These three charts are Type C only; other photometric types render an "available for Type C photometry only" message instead of values.
+The cone, luminance and intensity-table charts need Type C photometry; other types show a message instead of values.
 
-**Cone diagram.** For distances 1…`maxDistance` metres (default 5, integer 1–50; or explicit `distances`), the centre illuminance is `E = I(γ = 0) / d²` on a plane facing the luminaire. Beam (50 %) and field (10 %) diameters use the per-side crossings reported by `getBeamAngles` (`beamLeftDegrees`, `beamRightDegrees`, `fieldLeftDegrees`, `fieldRightDegrees`; signed vertical angles, negative in the opposite C-plane) in the C0–C180 and C90–C270 planes: `Ø = d · (tan right − tan left)`, which equals `d · (tan|left| + tan|right|)` for crossings on both sides of nadir. A diameter is shown as — when a crossing is missing or at/after 90°. The SVG shows the C0–C180 side view with the beam and field cones plus a table of distance, E centre and the four diameters.
+## Chart data in your own code
 
-**Glare-angle luminance.** Average luminance `L(C, γ) = I(C, γ) / A_proj` in cd/m² over the luminous opening declared in the file, for γ = 45°, 50°, …, 85° and C = 0°, 45°, …, 315° (override with `gammas` and `cPlanes`). `A_proj = A_bottom · cos γ + A_side(C) · sin γ`. Dimensions are converted from feet when needed. IES length runs along C0–C180 and width along C90–C270, so a rectangular opening's side silhouette from plane C is `height × (width·|cos C| + length·|sin C|)`. A negative width declares a circular opening of diameter |width|, with bottom area `π·d²/4` and side area `height × d`. A second table shows the sampled intensity at the same angles. A zero luminous area shows a message instead of luminance values. Intensity is sampled with the same interpolation as the other charts.
+The numbers behind every chart come from `@ies-tools/core`, which runs in Node and the browser without React or a GPU. Use it to draw charts with another library or to export the values. See [Chart data](./core.md#chart-data).
 
-**Intensity table.** The measured candela grid with γ rows and C columns, in `cd` or `cd/klm` (normalized by the declared lamp flux; absolute photometry stays in cd). Each cell has a subtle heat-map tint with alpha ∝ √(value / peak). Cells keep a readable minimum width, so large grids widen the SVG; the viewer tab scrolls it. For fixed-size images, `maxColumns` and `maxRows` keep evenly spaced angles, always including the first and last.
+## How it's calculated
 
-## Calculation and geometry APIs
+All charts use absolute candela, after the file's multipliers, and the same interpolation between measured angles. Angles are in degrees and lengths in metres.
 
-The chart data builders are part of `@ies-tools/core`. Use them to draw the same charts with another renderer or to export the values:
+**Intensity curves.** A vertical slice at C = `angle` uses the measured C-plane on one side of nadir and C = `angle + 180°` on the other. Curves are sampled uniformly (361 points by default) plus every measured angle, so narrow peaks on irregular grids aren't missed.
 
-```ts
-import {
-  buildIntensityCurves,
-  buildIntensityTopology,
-  buildIsoluxGrid,
-  groundIlluminance,
-  extractContours,
-  isoluxContourLevels,
-  niceTicks,
-  buildConeDiagram,
-  buildLuminanceTable,
-  buildIntensityTable,
-} from '@ies-tools/core';
+**Beam and field angles.** In each slice, the peak is the brightest measured direction. The beam edges are where intensity crosses 50 % of that peak on each side, and the field edges where it crosses 10 %, interpolated between measured angles. These follow the [IES beam-angle](https://ies.org/definitions/beam-angle/) and [field-angle](https://ies.org/definitions/field-angle/) definitions. They're estimates from the two principal planes, not certified manufacturer values.
 
-const cuts = buildIntensityCurves(profile, { principalPlanes: true });
-// cuts.curves[].points: { angle: signed degrees, intensity: candela }
-// cuts.angleTicks and cuts.intensityTicks are ready for a custom chart.
+**Log scale.** radius = log10(I / Imin) / 3 × R, with Imin = Imax / 1000. Intensities at or below Imin sit at the centre.
 
-const mesh = buildIntensityTopology(profile, { upAxis: 'z', projection: 'orthographic' });
-// vertices[].position: actual candela-scaled XYZ; projected: normalized XY, positive Y up.
-// faces: triangle index triples, sorted far to near. Caller can use a different renderer.
+**Topology.** The surface is sampled on a regular angular grid (36 × 36 by default), so its caption reports the sampled peak.
 
-const lux = groundIlluminance(profile, 1, 2, { mountingHeight: 3, aimAngle: 30 });
-const grid = buildIsoluxGrid(profile, { mountingHeight: 3, extent: [12, 8], resolution: [61, 41] });
-// grid.xs, grid.zs, grid.values[zIndex][xIndex], maximum, minimum, average and uniformity (U0).
-const levels = isoluxContourLevels(grid.maximum, { minContour: 1 }); // [1, 2, 5, 10, 20, 50, …]
-const contours = extractContours(grid, levels);
-// contours[].segments: [[x1, z1], [x2, z2]] in physical ground coordinates.
-const ticks = niceTicks(grid.maximum);
+**Isolux.** The light is at height h above the ground. For each grid point, the direction to it is turned into the luminaire's own angles, allowing for aiming, and:
 
-const cone = buildConeDiagram(profile, { maxDistance: 5 });
-// cone.rows[]: { distance, illuminance, beamDiameters: [c0, c90], fieldDiameters: [c0, c90] }
-const glare = buildLuminanceTable(profile);
-// glare.luminance[gammaIndex][cIndex] in cd/m² (null for zero area); glare.intensity in cd.
-const table = buildIntensityTable(profile, { unit: 'cd/klm' });
-// table.values[gammaIndex][cIndex], with table.gammas, table.cPlanes and table.unit.
+```text
+E (lux) = I (candela) × cos(angle of incidence) / distance²
 ```
 
-`extractContours` uses marching squares with linearly interpolated edge crossings and a center-value saddle decision. Flat fields and exact-corner degeneracies produce no zero-length segments. Segments are unstitched so consumers can render or join them as appropriate. The grid and contour approximation improves with resolution; it is not an analytic boundary solver.
+Aiming tilts the light by `aimAngle` from straight down towards `azimuth`, measured from +X towards +Z. The mean and U0 use the grid points, not an integrated area average. Contours are traced through the grid with marching squares, so finer `resolution` gives smoother lines. The automatic series runs from `minContour` up to just below the peak, at most 10 levels, dropping the lowest first.
+
+**Cone diagram.** E centre = I(γ = 0) / d². Each diameter is d × (tan γright − tan γleft), where γleft and γright are the signed 50 % or 10 % crossing angles on each side of the peak.
+
+**Glare luminance.** L(C, γ) = I(C, γ) / A, where A is the projected area of the luminous opening seen from that direction: A = A_bottom × cos γ + A_side(C) × sin γ. For a rectangular opening, the side silhouette from plane C is height × (width × |cos C| + length × |sin C|), with length along C0–C180. A circular opening of diameter d has bottom area π d² / 4 and side area height × d. Dimensions in feet are converted to metres.
+
+**Intensity table.** `cd/klm` divides by the declared lamp flux in thousands of lumens. Each cell's tint is proportional to √(value / peak).

@@ -1,63 +1,108 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
+title: Conversion
 ---
 
-# EULUMDAT and IES conversion
+# Converting between IES, LDT and JSON
 
-`@ies-tools/core` reads EULUMDAT/LDT and IES into a common document while retaining the original fields. These APIs are available in Node and browsers:
+ies-tools converts IES (LM-63) files to EULUMDAT (`.ldt`) and back, and turns either one into JSON. IES output uses LM-63-2002. JSON output is the parsed file, with every native field.
+
+## How to convert
+
+### In VS Code
+
+Right-click one or more `.ies` or `.ldt` files in the Explorer and choose **Convert Photometric File**, then a target format. Right-click a folder and choose **Convert Folder…** to convert everything in it. See [Convert files](./vscode.md#convert-files).
+
+### On the command line
+
+```sh
+ies convert luminaire.ldt --to ies -o luminaire.ies
+ies convert luminaire.ies --to ldt -o luminaire.ldt
+ies convert luminaire.ies -o luminaire.json
+```
+
+Warnings go to standard error. Existing files are never overwritten. See [Convert a file](./cli.md#convert-a-file).
+
+### In code
 
 ```ts
 import { parsePhotometry, sampleIntensity, serializeIES, serializeLDT, parseLDT, writeLDT } from '@ies-tools/core';
 
-const document = parsePhotometry(text); // optional second argument: 'ies' or 'ldt'
-console.log(sampleIntensity(document.profile, 30, 90)); // absolute candela
-const ies = serializeIES(document); // { value, warnings }, LM-63-2002
+const document = parsePhotometry(text); // IES or LDT, detected from the content
+console.log(sampleIntensity(document.profile, 30, 90)); // candela at γ = 30°, C = 90°
+
+const ies = serializeIES(document); // { value, warnings }
 const ldt = serializeLDT(document);
 for (const warning of ldt.warnings) {
   console.warn(warning.category, warning.code, warning.message);
 }
 
-// Native field editing preserves all LDT fields without a cross-format projection.
+// Edit an LDT file's own fields and write it back without converting.
 const native = parseLDT(ldtText);
 native.luminaireName = 'Updated description';
 const updated = writeLDT(native);
 ```
 
-`PhotometricDocument.profile` is compatible with `IESProfile`, the viewer and `sampleIntensity`. `geometry` uses meters and separates the luminaire body from its luminous opening. `source` preserves native fields; the compatible profile is a projection for processing and viewing. LDT's native model uses millimeters and cd/klm; normalization applies its conversion factor once. `detectPhotometricFormat`, `toPhotometricDocument`, and `toIESProfile` support callers that already have parsed data. `toIESProfile` also returns conversion warnings.
+`parsePhotometry` returns a `PhotometricDocument`:
 
-## Lamp configurations and unknown values
+- `profile` is the light distribution in absolute candela. Pass it to `sampleIntensity`, the charts and the viewer.
+- `geometry` gives the luminaire body and its luminous opening separately, in metres.
+- `source` keeps every field of the original file.
 
-LDT can hold multiple lamp configurations. Normalization requires an explicit selection, without summing them:
+Pass `'ies'` or `'ldt'` as the second argument to skip format detection.
+
+## What's preserved and what isn't
+
+Conversion is not always lossless, because IES and LDT don't hold exactly the same information. Each converter returns a warning for every change, so nothing is dropped silently.
+
+| What                                         | IES → LDT                                                                 | LDT → IES                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Intensity distribution (Type C)              | Kept, in absolute candela                                                 | Kept, in absolute candela                            |
+| Symmetry and irregular angle grids           | Kept                                                                      | Kept                                                 |
+| Lamp `TILT` curve                            | Replaced by a fixed tilt angle (0° unless you choose one), with a warning | Not applicable                                       |
+| Several lamp configurations                  | Not applicable                                                            | One configuration is chosen; the others are reported |
+| Dimensions and luminous opening              | Kept where LDT can express them; otherwise a warning                      | Kept where IES can express them; otherwise a warning |
+| Metadata, colour data and format-only fields | Fields LDT can't hold are reported                                        | Fields IES can't hold are reported                   |
+
+`parseLDT` and `writeLDT` keep every LDT field and lamp configuration. IES output applies the candela multiplier and ballast factors to the values (writing the factors as 1), and keeps embedded `TILT` data and keywords. Because IES output is LM-63-2002, an LM-63-2019 file-generation code is reported as dropped.
+
+Type A and B files can be inspected, but converting them to the other format is refused.
+
+## Lamp configurations
+
+An EULUMDAT file can hold several **alternative** lamp configurations, for example the same luminaire with different lamps. They are not added together. Converting to IES, rendering and statistics need one configuration:
+
+| Where    | How to choose                                    | Numbering  |
+| -------- | ------------------------------------------------ | ---------- |
+| VS Code  | Pick from the list when converting or previewing |            |
+| CLI      | `--lamp-set 2`                                   | from **1** |
+| Core API | `{ lampSetIndex: 1 }`                            | from **0** |
 
 ```ts
 const selected = parsePhotometry(text, 'ldt', { lampSetIndex: 0 });
 const result = serializeIES(parseLDT(text), { lampSetIndex: 0 });
 ```
 
-All native configurations remain in `source`. Export to IES reports the omitted alternatives. `parseLDT`, `writeLDT` and unchanged same-format `serializeLDT` preserve every native set without needing a selection. Absolute LDT uses one negative-count set; relative sets have positive counts. Unknown integrated flux for unsupported absolute Type A/B data is `null`, not zero. Such files can be inspected but cross-format conversion rejects the unsupported coordinate transformation.
+Every configuration stays in `document.source`, and converting LDT to LDT or JSON keeps them all without a choice.
 
-## Conversion guarantees and limits
+## Things to know when converting in code
 
-| Behavior                            | Result                                                                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Native LDT round trip               | Preserves native fields, lamp sets, direct ratios, measurement tilt and cd/klm values.                                                                                         |
-| Type C intensity distribution       | Maintains absolute candela using explicit units, symmetry and exactly-once multiplier handling.                                                                                |
-| All five LDT symmetries             | Supports axial, C0–C180, C90–C270, quadrant and asymmetric data. The C90–C270 measured rows wrap C270→C0→C90.                                                                  |
-| Irregular angular grids             | Preserves measured knots and inserts reflected knots when reconstructing symmetry.                                                                                             |
-| IES multiplier/ballast factors      | Folded into exported IES values; the new factors are one.                                                                                                                      |
-| IES TILT→IES                        | Retains the embedded correction curve.                                                                                                                                         |
-| IES TILT→LDT                        | Bakes a fixed `tiltDegrees` (default zero), with a photometry warning that the curve is omitted.                                                                               |
-| Missing IES downward hemisphere→LDT | Stays dark; inserts a zero knot 0.000001° below the first measured angle and reports the resulting narrow boundary approximation.                                              |
-| Geometry                            | Preserves separate native fields in the source; reports projection of per-plane heights and unsupported signed shape encodings. Simple circles retain their diameter encoding. |
-| LDT→IES metadata                    | Reports omitted native derived fields, alternative lamp configurations, color metadata and geometry distinctions.                                                              |
-| LM-63-2019→2002                     | Reports both the version change and loss of numeric file-generation provenance.                                                                                                |
+**Read the warnings.** Each warning has a `code`, a `category` (`metadata`, `geometry` or `photometry`) and a `message`. Show or log them so users know what changed.
 
-Warnings have `{ code, category, message }`; categories are `metadata`, `geometry` and `photometry`. Conversion is not described as universally lossless. Native source data remains available even when the target format cannot express it. Changing a compatible profile and rebuilding LDT reports native fields that are defaulted; edit `LDTProfile` directly for native metadata edits.
+**Supplying flux for LDT output.** LDT stores intensities per 1000 lamp lumens. IES → LDT uses the declared lamp flux, or the integrated luminaire flux for absolute photometry. A file with light but zero declared flux throws unless you pass a positive `luminousFlux` option to `serializeLDT`. A file with no light at all writes zeros.
 
-`serializeLDT` accepts `luminousFlux` to supply normalization flux when required. A zero-light file writes finite zero values. Nonzero candela with zero declared normalization flux throws unless a positive flux is supplied. No automatic 90° azimuth rotation is applied: angles retain the source convention.
+**Lamp tilt.** IES → LDT applies one fixed lamp tilt. Pass `tiltDegrees` to choose it; the default is 0°.
+
+**Missing downward hemisphere.** If an IES file starts measuring above 0°, the area below stays dark. LDT output adds a zero value just below the first measured angle and reports it.
+
+**No automatic rotation.** Angles keep the source file's convention; nothing is rotated by 90°.
+
+**Editing metadata.** To change LDT fields, edit the result of `parseLDT` and call `writeLDT`. Editing `document.profile` and converting it back to LDT resets LDT-only fields, and reports which ones.
+
+**Unknown flux.** For absolute Type A or B data, integrated flux can't be calculated and is `null`, not zero.
 
 ## Validation
 
-`parseLDT` and `validateLDT` check finite numbers, counts, table bounds, angle ordering, spacing, symmetry layouts, lamp-set conventions and native fields. Failures use `LDTParseError` with `code: 'LDT_PARSE_ERROR'`. The native parser preserves real-world partial upper-hemisphere data even when gamma does not start at zero; structural acceptance is broader than strict format conformance. C grids start at zero and exclude a duplicate 360° plane. Incomplete files and unsupported symmetry encodings are rejected explicitly.
+`parseLDT` checks numbers, counts, table sizes, angle order, symmetry layouts and lamp configurations. Problems throw an `LDTParseError` with `code: 'LDT_PARSE_ERROR'` and a source location. Real-world files whose measurements start above 0° are accepted. C-planes must start at 0° and must not repeat 360°.
 
-The implementation is independent and follows [DIAL's published format description](https://evo.support-en.dial.de/support/solutions/articles/9000074164-description-of-the-eulumdat-format) and the [DIAL/Lighting Analysts absolute-photometry interpretation](https://www.agi32.com/Downloads/PressReleases/EULUMDAT_Absolute_Photometry.pdf). Original synthetic tests cover these semantics; no AGPL implementation code was copied.
+LDT support follows [DIAL's EULUMDAT format description](https://evo.support-en.dial.de/support/solutions/articles/9000074164-description-of-the-eulumdat-format) and the [DIAL/Lighting Analysts absolute-photometry interpretation](https://www.agi32.com/Downloads/PressReleases/EULUMDAT_Absolute_Photometry.pdf).

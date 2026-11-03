@@ -1,35 +1,78 @@
 ---
 slug: /
 sidebar_position: 1
+sidebar_label: Introduction
 ---
 
 # ies-tools
 
-JavaScript and TypeScript tools for IES LM-63 and EULUMDAT photometric lighting files. Parse and inspect real luminaire data, preview light on a floor and wall, and embed the same viewer in a browser, React app, or VS Code.
+ies-tools opens the IES (LM-63) and EULUMDAT (`.ldt`) photometric files that lighting manufacturers publish. It shows how a luminaire lights a floor and wall, draws its photometric charts, reports its statistics and checks the file for errors. It also converts between IES, LDT and JSON.
 
-The pnpm workspace follows [mtlx](https://github.com/bhouston/mtlx): `packages/core`, `packages/cli`, `packages/viewer`, and `packages/vscode-extension`, plus a React demo in `packages/website` and these Docusaurus docs.
+Everything runs locally: there is no account, upload or cloud service.
 
-- **@ies-tools/core**: IES/LDT parsing, validation, conversion, interpolation and photometric summaries, usable in Node and browsers.
-- **@ies-tools/cli**: terminal inspection, validation, IES/LDT/JSON conversion, local previews, hardware-rendered PNGs and SVG/PNG chart exports.
-- **@ies-tools/viewer**: Three.js viewer, `<light-viewer>` custom element and React components.
-- **VS Code**: a local `.ies` or `.ldt` preview that updates when the file changes.
+## Choose your tool
 
-No account, authentication service, MCP server or cloud download service is required. File URLs fetched by browser components must allow access from your page's origin (CORS).
+### VS Code extension
 
-## Development
+Preview, validate and convert `.ies` and `.ldt` files without leaving your editor. Install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension) or [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension), or run:
 
 ```sh
-pnpm install
-pnpm build
-pnpm tsc
-pnpm lint
-pnpm test
-pnpm dev
-pnpm docs:build
+code --install-extension benhouston3d.ies-vscode-extension
 ```
 
-See [Core](./core.md), [Conversion](./conversion.md), [Graphs](./graphs.md) and [CLI](./cli-reference/ies.md) for the current APIs and commands, and the [CLI reference](./cli-reference/ies.md), [@ies-tools/core API](./api/core/index.md) and [@ies-tools/viewer/react API](./api/react/index.md) for every command, function and prop.
+[Read the VS Code guide →](./vscode.md)
 
-The demo accepts local IES and LDT files. Representative files from the three.js examples are in `fixtures/` with attribution.
+### The `ies` command line
 
-Documentation builds produce a `github-pages` artifact in CI; the Documentation workflow deploys it on `main`. See the repository's CONTRIBUTING.md and RELEASING.md for contribution and release procedures.
+Inspect, validate and convert files, open a local preview, and export charts and renders from a terminal or a script.
+
+```sh
+npm install -g @ies-tools/cli
+```
+
+[Read the command line guide →](./cli.md)
+
+### The `<light-viewer>` web component
+
+Embed the interactive viewer and its chart tabs in any web page, with no framework.
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
+```
+
+[Read the `<light-viewer>` guide →](./light-viewer.mdx)
+
+### React components
+
+Add the 3D viewer, the charts and the file information panel to a React app.
+
+```sh
+npm install @ies-tools/viewer @ies-tools/core three react react-dom
+```
+
+[Read the React guide →](./react.md)
+
+### The `@ies-tools/core` library
+
+Parse, validate, measure and convert photometric files in Node or the browser. It has no dependencies.
+
+```sh
+npm install @ies-tools/core
+```
+
+[Read the core library guide →](./core.md)
+
+## What it can show
+
+- **A lit scene:** the light falling on a floor and back wall, rendered from the measured intensity table.
+- **[Charts](./graphs.md):** polar and Cartesian intensity curves, a 3D intensity surface, isolux ground plots, a cone diagram, glare luminance and the intensity table.
+- **[File information](./vscode.md#file-information-and-validation):** format, manufacturer and lamp details, flux, efficacy, beam and field angles, light output ratios, zonal lumens and every metadata keyword.
+- **[Validation](./cli.md#validate-a-file):** errors and warnings with stable codes, pointing at the line that caused them.
+- **[Conversion](./conversion.md):** IES to LDT, LDT to IES, and either one to JSON, with a warning for anything the target format can't hold.
+
+## Supported files
+
+- IES LM-63: the 1986, 1991, 1995, 2002 and 2019 editions, including embedded `TILT` data.
+- EULUMDAT `.ldt`, including files with several alternative lamp configurations.
+
+The 3D view and most charts need **Type C** photometry, which covers almost all published luminaire files. Type A and B files can still be inspected and validated. The 3D view also needs hardware WebGL2.

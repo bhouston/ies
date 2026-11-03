@@ -1,60 +1,118 @@
 ---
-sidebar_position: 6
+sidebar_position: 2
+sidebar_label: VS Code extension
 ---
 
 # VS Code extension
 
+The **IES and LDT Light Viewer** extension previews IES and EULUMDAT files in VS Code. It shows the light on a floor and wall, draws photometric charts, lists the file's properties and validation results, and converts between formats.
+
 ![The light preview in VS Code cycling through the 3D view and chart tabs](/img/vscode-extension.gif)
 
-Build and package from the workspace:
+## Install
+
+Install **IES and LDT Light Viewer** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension), or search for it in the Extensions view. From a terminal:
 
 ```sh
-pnpm install
-pnpm build
-pnpm --filter ies-vscode-extension package
-code --install-extension packages/vscode-extension/ies-vscode-extension-0.1.0.vsix
+code --install-extension benhouston3d.ies-vscode-extension
 ```
 
-Open an `.ies` or `.ldt` file to use the IES and LDT Light Viewer custom editor, or run **IES: Open Light Preview**. **Reopen Editor With → Text Editor** lets you edit the source; the preview refreshes with unsaved text changes.
+VSCodium, Cursor and other editors that use Open VSX can install it from [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension). The extension needs VS Code 1.85 or later.
 
-The text editor highlights both formats. IES files use the **IES Photometric (LM-63)** language mode, which colors the format line, `[KEYWORD]` tags and values, user `[_KEYWORDS]`, `[MORE]` continuations, `TILT=` lines and numbers:
+## Preview a light
 
-<img src="/img/vscode/ies-syntax.png" alt="Syntax highlighting of an IES LM-63 file header in the Dark Modern theme: the format line, bracketed keywords and values, a user keyword, a MORE continuation, the TILT=NONE line and numeric header and angle lines in distinct colors" width="686" />
+1. Open an `.ies` or `.ldt` file. The light preview is the default editor for these files.
+2. Drag the scene to orbit and scroll to zoom.
+3. Open the **gear menu** to show or hide the back wall and the blue beam guide lines, change the wall and floor distances, and choose tone mapping and exposure.
 
-LDT files use the **EULUMDAT (LDT)** mode, which distinguishes numeric lines from text lines:
+If a file opens as text instead, select **Open Light Preview** in the editor title bar, run **IES: Open Light Preview** from the Command Palette, or right-click the file in the Explorer and choose **Open Light Preview**.
 
-<img src="/img/vscode/ldt-syntax.png" alt="Syntax highlighting of the top of an EULUMDAT file in the Dark Modern theme: text lines such as the manufacturer and luminaire name colored differently from the numeric lines between them" width="334" />
+From the preview, **Open as Text** in the title bar switches to the source. To edit while you watch, split the editor and keep the preview open in one group: it updates as you type, without saving.
 
-Use **Open as Text** in the preview's title bar and **Open Light Preview** in the text editor's title bar to switch views.
+## Charts
 
-The preview reuses the shared Three.js `<light-viewer>` element, with a floor, wall and black background, plus tabs for polar, Cartesian, topology, isolux, cone, luminance and intensity-table charts. Its script is bundled into the extension, with no CDN or authentication dependency. File text is sent through the webview message protocol rather than interpolated into HTML. The webview uses a content security policy and restricts local resources to its media directory.
+The tabs above the preview switch between the 3D view and these charts:
 
-If a file cannot be parsed, the preview displays an error. Rendering requires hardware WebGL2 and Type C photometry. An invalid file remains editable in VS Code's text editor.
+- **Polar** and **Cartesian:** intensity curves for the two main planes, with beam and field markers. Tick **Log scale** to see dim shoulders of the beam.
+- **Topology:** a 3D surface of the intensity in every direction.
+- **Isolux:** illuminance on the floor, using the floor distance from the gear menu as the mounting height.
+- **Cone:** illuminance and beam and field diameters at 1 to 5 m.
+- **Luminance:** average luminance at glare angles.
+- **Intensity table:** the measured candela values.
 
-Marketplace and Open VSX publication run through the manual Release workflow after the publisher credentials are configured; see RELEASING.md in the repository.
-
-EULUMDAT files with multiple alternative lamp configurations show a configuration selector above the preview. Choose a configuration explicitly; configurations are never summed and the first is not selected automatically. Single-configuration files display directly. Changing the file's source text refreshes its configuration labels; an out-of-range prior selection is cleared.
-
-File text, format hints and configuration labels travel as validated structured messages. Labels are assigned through `textContent`, so manufacturer or lamp descriptions cannot become HTML or scripts. Source loading uses the shared parser and in-memory profile, with no intermediate IES serialization.
-
-## Text editor language features
-
-In the text editor, the extension reports diagnostics through one `ies-tools` diagnostic collection, so each error or warning is underlined at its source token and listed in the Problems panel with its code. Diagnostics refresh 250 ms after an edit and clear when the file closes. Hovering a token shows its field name and description from the core field map, the Outline view lists one symbol per header field with repeated arrays collapsed (for example **Vertical angles (37)**), and a CodeLens on line 0 summarizes integrated flux, peak intensity, C0/C90 beam angles and efficacy next to an **Open Light Preview** link. Files with errors show the error count instead, linking to the Problems panel.
-
-The features apply to `.ies`, `.IES`, `.ldt` and `.LDT` files, matched by language ID or file pattern. Parse results are cached per document version. They are read-only and supported in untrusted workspaces. Turn them off with `iesTools.validation.enabled`, `iesTools.hover.enabled` and `iesTools.codeLens.enabled`; `iesTools.validation.strict` reports warnings as errors. Ranges and descriptions come from `describePhotometrySource` in `@ies-tools/core`.
-
-## Converting files
-
-The Explorer context menu for `.ies` and `.ldt` files has a **Convert Photometric File** submenu with **Convert to IES (LM-63)**, **Convert to EULUMDAT (.ldt)** and **Convert to JSON**; the entry for the file's own format is hidden. Multi-selections convert every selected file. The commands also run from the Command Palette on the active text or light-preview editor, using its unsaved text. **Convert Folder…** on a folder asks for a target format and whether to include subfolders, skipping dot-folders and `node_modules`; files already in the target format are skipped.
-
-Conversion uses the same `@ies-tools/core` serializers as `ies convert`, so JSON output is the native parsed document and warnings are identical. Output is written next to the source through `vscode.workspace.fs`, so remote and virtual workspaces work. If the target exists, a modal offers **Overwrite**, **Keep Both** (appends ` (1)`, ` (2)`, …) or **Skip**. The `iesTools.convert.overwrite` setting is `ask` (default), `always` or `never` (skip existing targets).
-
-IES output from an LDT file with multiple alternative lamp configurations asks for one configuration in a Quick Pick, using the preview's labels; cancelling skips that file. Every `ConversionWarning` is written to the **IES Tools** output channel. A summary notification reports _Converted N file(s), M warning(s)_ with **Open** (single file) and **Show Log** actions. Errors are shown per file and do not abort the rest of the batch.
+See [Charts](./graphs.md) for how to read each one.
 
 ## File information and validation
 
-The right-hand panel shares the core inspection/validation model with `ies inspect` and `ies validate`. It includes format/version, coordinate type, source and lamp descriptions, power, peak candela, declared and integrated flux, efficacy, downward/upward flux, light output ratios, downward flux fraction, CIE flux code, peak and nadir intensity, collapsible zonal lumens, principal-plane beam/field estimates, angular counts, dimensions, tilt, generation provenance and every metadata keyword. Native LDT alternative configurations remain separate and require a selection for calculated output.
+The **File information** panel sits to the right of the preview, or below it in a narrow window. Its sections expand and collapse. It shows:
 
-Validation lists codes, severity, fields and messages. **Strict validation** makes warnings fail validation without changing their original severity. Invalid unsaved edits replace old statistics with the current errors; unsupported 3D coordinates can still be inspected. The layout places the panel to the right on wider webviews and below the preview on narrow ones.
+- format and version, photometric type, manufacturer, luminaire and lamp descriptions;
+- power, declared lamp flux, and the luminaire flux calculated from the intensity table;
+- efficacy, peak and nadir intensity, beam and field angles;
+- downward and upward flux, light output ratios, downward flux fraction and the CIE flux code;
+- zonal lumens, angle counts, dimensions, tilt and every metadata keyword.
 
-The webview uses React, Tailwind v4 and `@ies-tools/viewer`'s shared theme stylesheet, with theme tokens mapped to VS Code's editor colors. Its scripts and compiled styles ship inside the VSIX and do not need a CDN.
+Values declared in the file and values calculated from the intensity table are labelled separately.
+
+The **Validation** section lists each error and warning with its code and field. Turn on **Strict validation** to treat warnings as failures too. If an edit breaks the file, the panel shows the new errors instead of the old statistics.
+
+## Syntax highlighting
+
+Open a file as text to see it highlighted. IES files use the **IES Photometric (LM-63)** language mode. It colors the format line, `[KEYWORD]` tags and values, user `[_KEYWORDS]`, `[MORE]` continuations, `TILT=` lines and numbers:
+
+<img src="/img/vscode/ies-syntax.png" alt="Syntax highlighting of an IES LM-63 file header in the Dark Modern theme: the format line, bracketed keywords and values, a user keyword, a MORE continuation, the TILT=NONE line and numeric header and angle lines in distinct colors" width="686" />
+
+LDT files use the **EULUMDAT (LDT)** language mode, which colors numeric lines differently from text lines:
+
+<img src="/img/vscode/ldt-syntax.png" alt="Syntax highlighting of the top of an EULUMDAT file in the Dark Modern theme: text lines such as the manufacturer and luminaire name colored differently from the numeric lines between them" width="334" />
+
+## Problems, hover, outline and CodeLens
+
+In the text editor, the extension helps you read and fix the file:
+
+- **Problems:** errors and warnings are underlined at the token that caused them and listed in the Problems panel with their codes. They update as you type.
+- **Hover:** point at a number or header line to see which field it is and what it means, for example `Candela at horizontal 45°, vertical 30° (before multiplier)`.
+- **Outline:** the Outline view and breadcrumbs list one entry per header field. Angle and intensity arrays appear as single entries, such as **Vertical angles (37)**.
+- **CodeLens:** the first line shows a summary of flux, peak intensity, beam angles and efficacy, with an **Open Light Preview** link. If the file has errors, it shows the error count and opens the Problems panel instead.
+
+These features work in untrusted workspaces. Turn each one off in [Settings](#settings).
+
+## Convert files
+
+Right-click one or more `.ies` or `.ldt` files in the Explorer and open **Convert Photometric File**. Choose **Convert to IES (LM-63)**, **Convert to EULUMDAT (.ldt)** or **Convert to JSON**. The option for the file's own format is hidden.
+
+The same commands are in the Command Palette for the open file. They convert what's in the editor, including unsaved changes.
+
+To convert a whole folder, right-click it and choose **Convert Folder…**. Pick a target format and whether to include subfolders. Files already in the target format are skipped, as are dot-folders and `node_modules`.
+
+Each converted file is saved next to its source. If that file already exists, you choose:
+
+- **Overwrite** the existing file;
+- **Keep Both**, which saves `name (1).ies`, `name (2).ies` and so on;
+- **Skip** this file.
+
+To stop being asked, change `iesTools.convert.overwrite`.
+
+When you convert an LDT file with several lamp configurations to IES, pick the configuration to use. Cancelling skips that file.
+
+A notification reports how many files were converted and how many warnings there were. Warnings, such as fields the target format can't hold, are listed in the **IES Tools** output channel. A file that fails is reported without stopping the rest. See [Conversion](./conversion.md) for what each format keeps.
+
+## Settings
+
+| Setting                       | Default | What it does                                                                                                                    |
+| ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `iesTools.convert.overwrite`  | `ask`   | When a converted file already exists: `ask` (overwrite, keep both or skip), `always` overwrite, or `never` overwrite (skip it). |
+| `iesTools.validation.enabled` | `true`  | Show validation errors and warnings in the editor and the Problems panel.                                                       |
+| `iesTools.validation.strict`  | `false` | Report validation warnings as errors.                                                                                           |
+| `iesTools.hover.enabled`      | `true`  | Explain the field under the cursor on hover.                                                                                    |
+| `iesTools.codeLens.enabled`   | `true`  | Show the photometric summary and **Open Light Preview** link on the first line.                                                 |
+
+## Requirements and troubleshooting
+
+**The 3D view is blank or shows an error.** The preview needs hardware WebGL2. Make sure VS Code isn't started with GPU acceleration turned off (for example with `--disable-gpu`).
+
+**The file opens but doesn't render.** Rendering needs **Type C** photometry. Type A and B files can still be inspected and validated in the information panel.
+
+**An LDT file asks me to choose a configuration.** Some EULUMDAT files hold several alternative lamp configurations, such as different lamp options for the same luminaire. They are alternatives, so they are never added together. Choose one from the selector above the preview to render it and see its statistics.
+
+**The preview shows a parse error.** Use **Open as Text** to fix the file. The Problems panel points at the line that caused the error.
