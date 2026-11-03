@@ -23,3 +23,17 @@ light-viewer {
   padding: 12px 16px;
   background: var(--vscode-editor-background, #151515);
 }
+
+#lamp-selection {
+  padding: 10px 16px;
+  background: var(--vscode-editor-background, #151515);
+}
+#lamp-selection[hidden] {
+  display: none;
+}
+select {
+  margin-left: 10px;
+  max-width: 70%;
+  color: inherit;
+  background: #222;
+}

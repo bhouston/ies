@@ -132,6 +132,9 @@ importers:
 
   packages/vscode-extension:
     dependencies:
+      ies-core:
+        specifier: workspace:*
+        version: link:../core
       ies-viewer:
         specifier: workspace:*
         version: link:../viewer
