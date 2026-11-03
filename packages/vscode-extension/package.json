@@ -164,6 +164,10 @@
       ],
       "commandPalette": [
         {
+          "command": "ies.openAsText",
+          "when": "activeCustomEditorId == 'ies.lightPreview'"
+        },
+        {
           "command": "iesTools.convertToIES",
           "when": "resourceExtname =~ /^\\.ldt$/i"
         },
@@ -234,6 +238,26 @@
           ],
           "description": "What to do when a converted file's target already exists.",
           "scope": "resource"
+        },
+        "iesTools.validation.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report IES and LDT validation diagnostics in the editor and the Problems panel."
+        },
+        "iesTools.validation.strict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report validation warnings as errors."
+        },
+        "iesTools.hover.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Explain the IES or LDT field under the cursor on hover."
+        },
+        "iesTools.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a photometric summary and an Open Light Preview link on the first line."
         }
       }
     }
@@ -241,5 +265,10 @@
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
   }
 }

@@ -39,11 +39,25 @@ for (const diagnostic of result.diagnostics) {
 const existingProfileDiagnostics = diagnoseIES(profile);
 ```
 
-Diagnostics carry stable `code`, `severity` (`error`, `warning`, `info`), human-readable `message` and optional `field`. Invalid numeric tokens, counts, ranges, angle ordering, scaled overflow and malformed tables are hard parse errors. Metadata omissions remain warnings so existing files stay readable: `[TEST]`, `[TESTLAB]`, `[ISSUEDATE]` and `[MANUFAC]` are checked for 2002/2019 files. Earlier versions do not inherit these requirements. [Lighting Analysts' manufacturer guidelines](https://www.agi32.com/Downloads/Photometry/Manufacturers%20Guidelines%2010-29-14.pdf) distinguish required 2002 keywords from earlier recommendations.
+Diagnostics carry stable `code`, `severity` (`error`, `warning`, `info`), human-readable `message`, optional `field` and, when parsed from text, an optional source `range`. Invalid numeric tokens, counts, ranges, angle ordering, scaled overflow and malformed tables are hard parse errors. Metadata omissions remain warnings so existing files stay readable: `[TEST]`, `[TESTLAB]`, `[ISSUEDATE]` and `[MANUFAC]` are checked for 2002/2019 files. Earlier versions do not inherit these requirements. [Lighting Analysts' manufacturer guidelines](https://www.agi32.com/Downloads/Photometry/Manufacturers%20Guidelines%2010-29-14.pdf) distinguish required 2002 keywords from earlier recommendations.
 
 `strict: true` makes warnings fail validation while retaining their original severity. Informational unsupported-coordinate notices do not invalidate otherwise readable Type A/B files. Additional warnings identify partial vertical coverage, mismatched 360° endpoint rows, non-unity reserved fields and malformed generation-code encodings. This is a supported subset of LM-63 checks, not a complete standards certification or assessment of laboratory accreditation.
 
-`parseIES` keeps its throwing behavior. `IESParseError` now includes the same `code` and optional `field` used by validation results.
+`parseIES` keeps its throwing behavior. `IESParseError` now includes the same `code`, optional `field` and optional source `range` used by validation results.
+
+## Source locations and field descriptions
+
+Diagnostics and parse errors parsed from text carry an optional `range: { line, start, end }`: a 0-based line with UTF-16 column offsets and an exclusive end, the convention editors such as VS Code use. Lines split on CRLF, CR or LF, and a leading byte-order mark is not counted. Ranges point at the offending token, the whole header line for count and table-size errors, the first out-of-order angle, the format line for version and required-metadata issues, and the end of the file for truncated data. `IESParseError` and `LDTParseError` expose the same `range`. Diagnostics for profiles built in memory have no range. Tracking positions adds no measurable parsing cost.
+
+`describePhotometrySource(text, format, strict?)` is the opt-in field map for editors and other tooling. It returns `{ valid, profile, diagnostics, fields }` and never throws for malformed photometry. `fields` lists `{ line, start, end, name, description }` in document order: the IES format line, each `[KEYWORD]` line (LM-63 keywords are described, `_`-prefixed keywords are user-defined), TILT and its embedded block, every numeric header field (including the edition-dependent second ballast field), each angle (`Vertical angle #3 (degrees)`) and each candela value (`Candela at horizontal 45°, vertical 30° (before multiplier)`). For EULUMDAT, it describes every line in the DIAL layout (company, Ityp, Isym with its 0–4 meanings, Mc, Dc, Ng, Dg, dimensions, lamp sets, direct ratios), C and γ angles and the intensities in cd/klm. Elements of a repeated array share one `name`. For an invalid file, `fields` covers the text read before the error, alongside the located diagnostic.
+
+```ts
+import { describePhotometrySource } from '@ies-tools/core';
+const { diagnostics, fields } = describePhotometrySource(text, 'ies');
+const hovered = fields.find((field) => field.line === 9 && field.start <= 4 && 4 < field.end);
+```
+
+The name and description tables (`IES_KEYWORDS`, `IES_HEADER`, `LDT_LINES` and related exports) are exported for reuse.
 
 ## Flux, efficacy and angular widths
 

@@ -11,6 +11,7 @@ See how a luminaire distributes light without leaving VS Code. Open an IES or EU
 - **Adjustable viewing conditions:** show or hide the back wall, change wall and floor distances, and choose tone mapping and exposure from the viewer's gear menu.
 - **Photometric information:** see the format and version, manufacturer, luminaire and lamp descriptions, power, peak intensity, flux, efficacy, beam and field angles, dimensions, and source metadata.
 - **Validation alongside the preview:** review errors, warnings and their diagnostic codes. Enable **Strict validation** to flag files with warnings as well as errors.
+- **Editor language features:** in the text editor, errors and warnings appear as squiggles and in the Problems panel, hovering a number explains which field it is, the Outline view lists the header fields, and a summary above the first line shows flux, peak intensity, beam angles and efficacy.
 - **Live updates:** keep the preview open while editing the source, including unsaved changes.
 - **Syntax highlighting:** open the source as text to see IES keywords, `TILT` lines and numbers, or EULUMDAT numeric and text lines, highlighted in the **IES Photometric (LM-63)** and **EULUMDAT (LDT)** language modes.
 - **IES and LDT support:** preview either format and choose between alternative lamp configurations when an LDT file provides them.
@@ -33,6 +34,24 @@ For an LDT file with multiple lamp configurations, choose one from the selector 
 Split the editor into two groups. In one copy, select **Open as Text** in the title bar (or choose **Reopen Editor With → Text Editor**) and leave the other copy in the light preview. Source changes refresh the preview and file information without requiring a save.
 
 If an edit makes the file incomplete or invalid, the information panel shows the current diagnostics instead of retaining outdated statistics. Inspection and validation remain available when a file cannot be rendered in 3D.
+
+## Text editor features
+
+When you open an `.ies` or `.ldt` file as text (**IES: Open as Text**, or **Reopen Editor With → Text Editor**):
+
+- **Problems:** validation errors and warnings are underlined at the offending token and listed in the Problems panel with their diagnostic codes. They update as you type.
+- **Hover:** point at any number or header line to see the field name and what it means, for example `Candela at horizontal 45°, vertical 30° (before multiplier)` or the meaning of each EULUMDAT symmetry code.
+- **Outline:** the Outline view and breadcrumbs list one entry per header field. Angle and intensity arrays are collapsed into single entries such as **Candela values (1332)**.
+- **Summary:** a CodeLens on the first line shows `Φ … lm · Imax … cd · beam …°/…° · … lm/W` and links to **Open Light Preview**. When the file has errors, it shows the error count and opens the Problems panel instead.
+
+These features are read-only and work in untrusted workspaces. Settings:
+
+| Setting                       | Default | Effect                                               |
+| ----------------------------- | ------- | ---------------------------------------------------- |
+| `iesTools.validation.enabled` | `true`  | Report diagnostics in the editor and Problems panel. |
+| `iesTools.validation.strict`  | `false` | Report warnings as errors.                           |
+| `iesTools.hover.enabled`      | `true`  | Show field explanations on hover.                    |
+| `iesTools.codeLens.enabled`   | `true`  | Show the first-line summary and preview link.        |
 
 ## Convert between formats
 
