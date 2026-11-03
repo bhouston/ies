@@ -2,6 +2,7 @@ import React from 'react';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
+import LiveLightViewer from '../components/LiveLightViewer';
 import styles from './index.module.css';
 
 const surfaces = [
@@ -60,9 +61,9 @@ export default function Home() {
               <em>really lights a room.</em>
             </h1>
             <p className={styles.lead}>
-              <code>ies</code> reads the photometric files lighting manufacturers publish. It validates them, reports
-              what they measure, converts between formats, and renders the light falling on a floor and wall from the
-              measured intensity table.
+              <code>ies-tools</code> reads the photometric files lighting manufacturers publish. It validates them,
+              reports what they measure, converts between formats, and renders the light falling on a floor and wall
+              from the measured intensity table.
             </p>
             <div className={styles.actions}>
               <Link className={styles.primary} to="/docs">
@@ -74,13 +75,9 @@ export default function Home() {
             </div>
             <p className={styles.platform}>MIT · Node and browsers · Files never leave your machine</p>
           </div>
-          <figure className={styles.shot}>
-            <img
-              src={useBaseUrl('/img/preview.png')}
-              alt="The IES light viewer in VS Code: a downlight lighting the floor, with validation and photometric statistics in a side panel"
-              width="1171"
-              height="768"
-            />
+          <figure className={styles.live}>
+            <LiveLightViewer />
+            <figcaption>Live: a track light from its IES file. Drag to orbit, gear for settings.</figcaption>
           </figure>
         </div>
       </header>
@@ -103,6 +100,26 @@ export default function Home() {
               </article>
             ))}
           </div>
+        </section>
+        <section className={styles.editor} aria-labelledby="editor-title">
+          <div className={styles.sectionHeading}>
+            <p className={styles.kicker}>VS CODE EXTENSION</p>
+            <h2 id="editor-title">Open a file, see it lit.</h2>
+            <p>
+              Open an <code>.ies</code> or <code>.ldt</code> file to get the same live preview beside validation results
+              and photometric statistics. The preview refreshes as you edit the source.
+            </p>
+            <Link to="/docs/vscode">Set up the extension →</Link>
+          </div>
+          <figure className={styles.shot}>
+            <img
+              src={useBaseUrl('/img/preview.png')}
+              alt="The IES light viewer in VS Code: a downlight lighting the floor, with validation and photometric statistics in a side panel"
+              width="1171"
+              height="768"
+              loading="lazy"
+            />
+          </figure>
         </section>
         <section className={styles.callout}>
           <div>
@@ -149,11 +166,6 @@ sampleIntensity(document.profile, 30, 90);
 
 const { value, warnings } = serializeLDT(document);`}</code>
           </pre>
-        </section>
-        <section className={styles.note}>
-          <strong>Local by design.</strong>
-          <span>No account, upload, telemetry or cloud service. The preview server binds to 127.0.0.1.</span>
-          <Link to="/docs">Read the docs →</Link>
         </section>
       </main>
     </Layout>
