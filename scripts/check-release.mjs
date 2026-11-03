@@ -50,6 +50,16 @@ assert.ok(graphs.buildIntensityCurves(profile, { principalPlanes: true }).curves
 const ground = graphs.buildIsoluxGrid(profile, { resolution: 5 });
 assert.ok(Number.isFinite(ground.maximum));
 assert.ok(Array.isArray(graphs.extractContours(ground, [1])));
+const nativeLDT = serializeLDT(profile).value;
+const ldt = parsePhotometry(nativeLDT);
+assert.equal(ldt.sourceFormat, 'ldt');
+assert.equal(ldt.source.format, 'ldt');
+const loaded = await viewer.createPhotometrySourceLoader().load({ text: nativeLDT });
+assert.equal(loaded.sourceFormat, 'ldt');
+const roundtrip = parseIES(serializeIES(ldt).value);
+assert.ok(Math.abs(sampleIntensity(roundtrip, 30, 0) - sampleIntensity(profile, 30, 0)) < 1e-6);
+writeFileSync('fixture.ldt', nativeLDT);
+await import('ies-viewer/element'); // SSR-safe registration import, no renderer construction.
 `,
   );
   execFileSync(process.execPath, ['check.mjs', join(root, 'fixtures/007cfb11e343e2f42e3b476be4ab684e.ies')], {
