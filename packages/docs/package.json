@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "docusaurus build",
-    "start": "docusaurus start"
+    "generate": "node ../cli/bin/cli.js docgen -o ies.opencli.json && typedoc --options typedoc.json --tsconfig ../core/tsconfig.json --entryPoints ../core/src/index.ts --name ies-core --out docs/api/core && typedoc --options typedoc.json --tsconfig ../viewer/tsconfig.json --entryPoints ../viewer/src/react/index.tsx --name ies-viewer/react --out docs/api/react",
+    "build": "pnpm generate && docusaurus build",
+    "start": "pnpm generate && docusaurus start"
   },
   "dependencies": {
+    "@clidoc/docusaurus": "^1.1.2",
     "@docusaurus/core": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@mdx-js/react": "^3.1.1",
@@ -14,5 +16,10 @@
     "prism-react-renderer": "^2.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.14.1",
+    "typescript": "^6.0.3"
   }
 }
