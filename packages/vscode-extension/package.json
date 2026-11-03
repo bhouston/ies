@@ -51,13 +51,23 @@
     "ovsx": "^1.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   },
   "contributes": {
     "commands": [
       {
         "command": "ies.openPreview",
-        "title": "IES: Open Light Preview"
+        "title": "Open Light Preview",
+        "category": "IES",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "ies.openAsText",
+        "title": "Open as Text",
+        "category": "IES",
+        "icon": "$(go-to-file)"
       },
       {
         "command": "iesTools.convertToIES",
@@ -78,6 +88,44 @@
         "command": "iesTools.convertFolder",
         "title": "Convert Folder…",
         "category": "IES"
+      }
+    ],
+    "languages": [
+      {
+        "id": "ies",
+        "aliases": [
+          "IES Photometric (LM-63)",
+          "ies"
+        ],
+        "extensions": [
+          ".ies",
+          ".IES"
+        ],
+        "configuration": "./ies.language-configuration.json"
+      },
+      {
+        "id": "eulumdat",
+        "aliases": [
+          "EULUMDAT (LDT)",
+          "eulumdat"
+        ],
+        "extensions": [
+          ".ldt",
+          ".LDT"
+        ],
+        "configuration": "./eulumdat.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ies",
+        "scopeName": "source.ies",
+        "path": "./syntaxes/ies.tmLanguage.json"
+      },
+      {
+        "language": "eulumdat",
+        "scopeName": "source.eulumdat",
+        "path": "./syntaxes/eulumdat.tmLanguage.json"
       }
     ],
     "customEditors": [
@@ -102,6 +150,32 @@
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "ies.openPreview",
+          "when": "resourceLangId =~ /^(ies|eulumdat)$/ && activeCustomEditorId != 'ies.lightPreview'",
+          "group": "navigation"
+        },
+        {
+          "command": "ies.openAsText",
+          "when": "activeCustomEditorId == 'ies.lightPreview'",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "iesTools.convertToIES",
+          "when": "resourceExtname =~ /^\\.ldt$/i"
+        },
+        {
+          "command": "iesTools.convertToLDT",
+          "when": "resourceExtname =~ /^\\.ies$/i"
+        },
+        {
+          "command": "iesTools.convertToJSON",
+          "when": "resourceExtname =~ /^\\.(ies|ldt)$/i"
+        }
+      ],
       "explorer/context": [
         {
           "command": "ies.openPreview",
@@ -133,20 +207,6 @@
         {
           "command": "iesTools.convertToJSON",
           "group": "navigation@3"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "iesTools.convertToIES",
-          "when": "resourceExtname =~ /^\\.ldt$/i"
-        },
-        {
-          "command": "iesTools.convertToLDT",
-          "when": "resourceExtname =~ /^\\.ies$/i"
-        },
-        {
-          "command": "iesTools.convertToJSON",
-          "when": "resourceExtname =~ /^\\.(ies|ldt)$/i"
         }
       ]
     },

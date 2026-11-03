@@ -52,5 +52,10 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       await vscode.commands.executeCommand('vscode.openWith', target, 'ies.lightPreview');
     }),
+    vscode.commands.registerCommand('ies.openAsText', async (uri?: vscode.Uri) => {
+      const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+      const target = uri ?? (input instanceof vscode.TabInputCustom ? input.uri : undefined);
+      if (target) await vscode.commands.executeCommand('vscode.openWith', target, 'default');
+    }),
   );
 }
