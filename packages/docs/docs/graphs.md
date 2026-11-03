@@ -4,12 +4,12 @@ sidebar_position: 8
 
 # Photometric graphs
 
-The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs are also available through `ies-viewer/graphs`, which imports neither React nor Three.js and works in Node.
+The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs are also available through `@ies-tools/viewer/graphs`, which imports neither React nor Three.js and works in Node.
 
 ## Complete intensity cuts
 
 ```tsx
-import { IntensityGraph } from 'ies-viewer/react';
+import { IntensityGraph } from '@ies-tools/viewer/react';
 
 // Full C0–C180 and C90–C270 principal-plane curves, on one shared scale.
 <IntensityGraph profile={profile} principalPlanes />;
@@ -50,7 +50,7 @@ The topology is a full candela-scaled surface, projected to SVG. `surface` is `f
 ## Ground illuminance / isolux
 
 ```tsx
-import { IsoluxGraph } from 'ies-viewer/react';
+import { IsoluxGraph } from '@ies-tools/viewer/react';
 
 <IsoluxGraph
   profile={profile}
@@ -97,7 +97,7 @@ import {
   groundIlluminance,
   extractContours,
   niceTicks,
-} from 'ies-viewer/graphs';
+} from '@ies-tools/viewer/graphs';
 
 const cuts = buildIntensityCurves(profile, { principalPlanes: true });
 // cuts.curves[].points: { angle: signed degrees, intensity: candela }

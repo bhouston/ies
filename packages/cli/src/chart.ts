@@ -1,4 +1,4 @@
-import { parsePhotometry } from 'ies-core';
+import { parsePhotometry } from '@ies-tools/core';
 import { imageDimensions } from './render.js';
 
 export type ChartType = 'polar' | 'cartesian' | 'topology' | 'isolux';
@@ -41,7 +41,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
   const [{ createElement }, { renderToStaticMarkup }, { IntensityGraph, IsoluxGraph }] = await Promise.all([
     import('react'),
     import('react-dom/server'),
-    import('ies-viewer/react'),
+    import('@ies-tools/viewer/react'),
   ]);
   const style = { width, height, maxWidth: 'none' };
   const element =

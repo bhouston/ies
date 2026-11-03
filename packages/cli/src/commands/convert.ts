@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises';
-import { parseIES, parseLDT, serializeIES, serializeLDT } from 'ies-core';
+import { parseIES, parseLDT, serializeIES, serializeLDT } from '@ies-tools/core';
 import { defineCommand } from 'yargs-file-commands';
 import { inputOptions, readInput } from '../options.js';
 

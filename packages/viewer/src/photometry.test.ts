@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseIES } from 'ies-core';
+import { parseIES } from '@ies-tools/core';
 import { directionAngles, illuminance, intensitySamples } from './photometry.js';
 
 const isotropic = () =>

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { parsePhotometry } from 'ies-core';
+import { parsePhotometry } from '@ies-tools/core';
 import type { InputFormat } from './photometry.js';
 
 export interface PreviewServer {

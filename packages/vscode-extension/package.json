@@ -38,8 +38,8 @@
     "package": "pnpm build && vsce package --no-dependencies"
   },
   "dependencies": {
-    "ies-core": "workspace:*",
-    "ies-viewer": "workspace:*"
+    "@ies-tools/core": "workspace:*",
+    "@ies-tools/viewer": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.18",

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { PhotometryDiagnostic, PhotometryInspection } from 'ies-core';
+import type { PhotometryDiagnostic, PhotometryInspection } from '@ies-tools/core';
 
 /** Validation result shown by {@link PhotometryInfoPanel} and {@link ValidationChecks}. */
 export interface PhotometryValidation {
@@ -8,9 +8,9 @@ export interface PhotometryValidation {
 }
 /** Props for {@link PhotometryInfoPanel}. */
 export interface PhotometryInfoPanelProps {
-  /** Result of `inspectPhotometry` from `ies-core`, or null before a file loads. */
+  /** Result of `inspectPhotometry` from `@ies-tools/core`, or null before a file loads. */
   inspection: PhotometryInspection | null;
-  /** Result of `validatePhotometry` from `ies-core`. */
+  /** Result of `validatePhotometry` from `@ies-tools/core`. */
   validation: PhotometryValidation | null;
   fileName?: string;
   /** Source size in bytes. */

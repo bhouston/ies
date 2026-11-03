@@ -1,4 +1,4 @@
-import { writeLDT, type LDTProfile } from 'ies-core';
+import { writeLDT, type LDTProfile } from '@ies-tools/core';
 
 /** Authored mathematical fixture: 100 cd/klm × 2000 lm × 0.5 = 100 cd, isotropic. */
 export function ldtSource(

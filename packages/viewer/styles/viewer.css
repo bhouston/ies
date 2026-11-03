@@ -1,5 +1,5 @@
-/* Tailwind v4 theme for the ies-viewer React UI. Import from a Tailwind entry stylesheet:
-   @import 'tailwindcss'; @import 'ies-viewer/styles/viewer.css';
+/* Tailwind v4 theme for the @ies-tools/viewer React UI. Import from a Tailwind entry stylesheet:
+   @import 'tailwindcss'; @import '@ies-tools/viewer/styles/viewer.css';
    Override the :root tokens after the import to re-theme (the VS Code extension maps them to editor colors). */
 @source '../dist/react';
 

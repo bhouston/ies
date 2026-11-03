@@ -1,5 +1,5 @@
 import { type CSSProperties } from 'react';
-import { type IESProfile } from 'ies-core';
+import { type IESProfile } from '@ies-tools/core';
 import { buildIsoluxGrid, extractContours, formatGraphValue, niceTicks, type IsoluxOptions } from '../graphs.js';
 
 /** Props for {@link IsoluxGraph}. */

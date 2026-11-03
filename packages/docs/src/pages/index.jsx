@@ -9,14 +9,14 @@ const surfaces = [
     label: 'CLI',
     title: 'In your terminal',
     body: 'Validate, inspect and convert files, serve a local preview, and export PNG renders and SVG charts.',
-    code: 'npm install -g ies\nies inspect luminaire.ies\nies view luminaire.ldt --open',
+    code: 'npm install -g @ies-tools/cli\nies inspect luminaire.ies\nies view luminaire.ldt --open',
     href: '/docs/cli/reference',
   },
   {
     label: 'React',
     title: 'In your React app',
     body: 'Drop in the 3D light viewer, polar and Cartesian intensity curves, isolux plots and an inspection panel.',
-    code: 'import { LightViewer } from \'ies-viewer/react\';\n\n<LightViewer src="/lights/luminaire.ies" />',
+    code: 'import { LightViewer } from \'@ies-tools/viewer/react\';\n\n<LightViewer src="/lights/luminaire.ies" />',
     href: '/docs/react',
   },
   {
@@ -133,13 +133,13 @@ export default function Home() {
             <p className={styles.kicker}>A TYPED LIBRARY UNDERNEATH</p>
             <h2>Build your own lighting tools.</h2>
             <p>
-              <code>ies-core</code> has no dependencies and runs in Node and the browser. Parse a file, sample intensity
-              in any direction, and serialize to either format.
+              <code>@ies-tools/core</code> has no dependencies and runs in Node and the browser. Parse a file, sample
+              intensity in any direction, and serialize to either format.
             </p>
             <Link to="/docs/api/core">Browse the API reference →</Link>
           </div>
           <pre className={styles.example}>
-            <code>{`import { parsePhotometry, sampleIntensity, serializeLDT } from 'ies-core';
+            <code>{`import { parsePhotometry, sampleIntensity, serializeLDT } from '@ies-tools/core';
 
 // IES or LDT, detected from the content
 const document = parsePhotometry(text);

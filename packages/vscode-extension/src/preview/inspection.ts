@@ -3,8 +3,8 @@ import {
   inspectParsedPhotometry,
   validatePhotometry,
   type PhotometryInspection,
-} from 'ies-core';
-import type { PhotometryValidation } from 'ies-viewer/react';
+} from '@ies-tools/core';
+import type { PhotometryValidation } from '@ies-tools/viewer/react';
 
 export interface InspectionState {
   inspection: PhotometryInspection | null;

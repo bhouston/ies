@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { parseLDT } from 'ies-core';
+import { parseLDT } from '@ies-tools/core';
 import { defineCommand } from 'yargs-file-commands';
 import { servePreview } from '../preview.js';
 import { inputOptions, readInput } from '../options.js';

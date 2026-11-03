@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from 'ies-core';
+import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
 import { chartPhotometry } from './chart.js';
 import { imageDimensions, requireHardwareGPU } from './render.js';
 import yargs from 'yargs';

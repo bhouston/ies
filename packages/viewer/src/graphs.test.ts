@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseIES, type IESProfile } from 'ies-core';
+import { parseIES, type IESProfile } from '@ies-tools/core';
 import {
   buildIntensityCurves,
   buildIntensityTopology,

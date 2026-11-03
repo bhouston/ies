@@ -4,10 +4,10 @@ sidebar_position: 7
 
 # EULUMDAT and IES conversion
 
-`ies-core` reads EULUMDAT/LDT and IES into a common document while retaining the original fields. These APIs are available in Node and browsers:
+`@ies-tools/core` reads EULUMDAT/LDT and IES into a common document while retaining the original fields. These APIs are available in Node and browsers:
 
 ```ts
-import { parsePhotometry, sampleIntensity, serializeIES, serializeLDT, parseLDT, writeLDT } from 'ies-core';
+import { parsePhotometry, sampleIntensity, serializeIES, serializeLDT, parseLDT, writeLDT } from '@ies-tools/core';
 
 const document = parsePhotometry(text); // optional second argument: 'ies' or 'ldt'
 console.log(sampleIntensity(document.profile, 30, 90)); // absolute candela

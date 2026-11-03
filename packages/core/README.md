@@ -1,9 +1,9 @@
-# ies-core
+# @ies-tools/core
 
 Dependency-free TypeScript IES LM-63 parser and Type C photometry sampler for browsers and Node.
 
 ```ts
-import { parseIES, sampleIntensity, summarizeIES } from 'ies-core';
+import { parseIES, sampleIntensity, summarizeIES } from '@ies-tools/core';
 const profile = parseIES(await (await fetch('/luminaire.ies')).text());
 console.log(summarizeIES(profile));
 console.log(sampleIntensity(profile, 30, 90)); // candela at vertical 30°, horizontal 90°
@@ -28,7 +28,7 @@ Modern files use the exact `IES:LM-63-2019` header. Its `fileGenerationType` is 
 ## EULUMDAT and conversion
 
 ```ts
-import { parsePhotometry, serializeIES, serializeLDT, parseLDT, writeLDT } from 'ies-core';
+import { parsePhotometry, serializeIES, serializeLDT, parseLDT, writeLDT } from '@ies-tools/core';
 
 const document = parsePhotometry(text); // detects IES or LDT
 const candela = sampleIntensity(document.profile, 30, 90); // existing viewer-compatible API

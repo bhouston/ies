@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseIES, parsePhotometry } from 'ies-core';
+import { parseIES, parsePhotometry } from '@ies-tools/core';
 import { iesSource } from '../../core/test/iesSource.js';
 import { ldtSource } from '../test/photometryFixtures.js';
 import { createPhotometrySourceLoader, parseLampSetIndex } from './source.js';

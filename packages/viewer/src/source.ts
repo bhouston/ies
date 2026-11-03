@@ -1,4 +1,4 @@
-import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from 'ies-core';
+import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from '@ies-tools/core';
 
 export type PhotometryFormat = 'ies' | 'ldt';
 export interface PhotometrySource {

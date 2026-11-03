@@ -1,13 +1,13 @@
-# ies-viewer
+# @ies-tools/viewer
 
 Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres; exposure maps 100 lux to linear display value 1 before ACES tone mapping. This is a direct diffuse light preview without indirect light or occlusion simulation.
 
 ```sh
-npm install ies-viewer ies-core three
+npm install @ies-tools/viewer @ies-tools/core three
 ```
 
 ```ts
-import { createLightViewer } from 'ies-viewer';
+import { createLightViewer } from '@ies-tools/viewer';
 const viewer = createLightViewer(document.querySelector('#preview'));
 viewer.load(iesText);
 // viewer.setProfile(parsedProfile); viewer.setExposure(2);
@@ -15,7 +15,7 @@ viewer.load(iesText);
 ```
 
 ```tsx
-import { LightViewer, IntensityGraph, IsoluxGraph } from 'ies-viewer/react';
+import { LightViewer, IntensityGraph, IsoluxGraph } from '@ies-tools/viewer/react';
 <LightViewer src="/fixture.ies" exposure={1} onLoad={setProfile} />;
 <IntensityGraph profile={profile} axis="vertical" angle={90} projection="polar" />;
 <IntensityGraph profile={profile} projection="topology" upAxis="z" surface="both" />;
@@ -30,7 +30,7 @@ React accepts `document`, `profile`, `text`, `iesText`, or `src` in that precede
 <light-viewer src="/fixture.ies" exposure="1" style="height: 600px"></light-viewer>
 ```
 
-For bundlers, `import 'ies-viewer/element'`. Set the element's `iesText` (or `data`) property to raw file text instead of fetching `src`. `load` events contain `event.detail.profile`; `error` events contain `event.detail.message` and `.error`. Cross-origin source URLs require CORS. Removed elements abort fetches and release their GPU resources; reconnecting restores the current document. WebGL2 on a real GPU is required for rendering. Types A and B are explicitly rejected by the 3D viewer.
+For bundlers, `import '@ies-tools/viewer/element'`. Set the element's `iesText` (or `data`) property to raw file text instead of fetching `src`. `load` events contain `event.detail.profile`; `error` events contain `event.detail.message` and `.error`. Cross-origin source URLs require CORS. Removed elements abort fetches and release their GPU resources; reconnecting restores the current document. WebGL2 on a real GPU is required for rendering. Types A and B are explicitly rejected by the 3D viewer.
 
 The `dist/light-viewer.js` bundle includes Three.js and the parser for standalone scripts, CLI previews, and VS Code webviews. React and React DOM are optional peers for headless APIs; install them when using the React entry point or importing the custom element with a bundler. The standalone bundle includes them. SVG graphs also work without WebGL.
 
@@ -42,8 +42,8 @@ Raw IES and LDT sources are detected automatically; optional `format: 'ies' | 'l
 
 Set the custom element's `photometryText` (`data`/`iesText` aliases) for raw text, or `photometry` for a native-source `PhotometricDocument`. Its `load` event preserves `profile` and additionally carries `document` and `sourceFormat`. The imperative viewer adds `loadDocument`, `setDocument`, and a readonly `document` while keeping `load`'s compatible-profile return value. Both source formats share the same absolute-candela renderer without serializing/reparsing an IES intermediary. Source changes cancel stale requests and disposal releases the GPU boundary.
 
-`planes` overlays selected cuts; `principalPlanes` shows C0–C180 and C90–C270. Topology supports filled/wireframe rendering and orthographic/perspective projection with configurable view angles. `IsoluxGraph` computes actual ground lux using the measured distribution, inverse-square falloff and receiver cosine, with height, fixture aim/azimuth and contours. Fixture aiming and the optional `lampTilt` correction are separate. Pure calculation/geometry helpers are exported from `ies-viewer/graphs` without React or Three.js dependencies. See [the graph documentation](https://ies.ben3d.ca/docs/graphs) for defaults, bounds and coordinates.
+`planes` overlays selected cuts; `principalPlanes` shows C0–C180 and C90–C270. Topology supports filled/wireframe rendering and orthographic/perspective projection with configurable view angles. `IsoluxGraph` computes actual ground lux using the measured distribution, inverse-square falloff and receiver cosine, with height, fixture aim/azimuth and contours. Fixture aiming and the optional `lampTilt` correction are separate. Pure calculation/geometry helpers are exported from `@ies-tools/viewer/graphs` without React or Three.js dependencies. See [the graph documentation](https://ies.ben3d.ca/docs/graphs) for defaults, bounds and coordinates.
 
 The custom element includes a gear-button options panel for back-wall visibility, wall/floor distance in meters, tone mapping and exposure. Use `settings-panel="open|closed|hidden"` (default `closed`). The attributes `show-wall="false"`, `wall-distance`, `floor-distance`, `tone-mapping` and `exposure` reflect the typed `settings` property. `settingschange` events contain `{ settings, previousSettings }`. Imperative controllers expose `getSettings()` / `setSettings(patch)` and the same event; React exposes corresponding scene props and `onSettingsChange`. Source changes and custom-element reconnections preserve scene settings. See the custom-element documentation for ranges and tone-mapping choices.
 
-The custom element and React viewer share `ViewerSettingsPanel`, built with React and Tailwind v4. React hosts import `ies-viewer/styles.css` (compiled CSS), or import `ies-viewer/styles/viewer.css` from a Tailwind entry. The custom-element bundle inlines the same stylesheet and its bundler entry uses an SSR-safe stylesheet string, with no runtime CSS loader. Theme custom properties inherit across the shadow boundary; the extension maps them to VS Code colors. Standalone controls use dark fallback colors while the Three.js background stays black. `settingsPanel` controls the React overlay (`closed`, `open`, or `hidden`).
+The custom element and React viewer share `ViewerSettingsPanel`, built with React and Tailwind v4. React hosts import `@ies-tools/viewer/styles.css` (compiled CSS), or import `@ies-tools/viewer/styles/viewer.css` from a Tailwind entry. The custom-element bundle inlines the same stylesheet and its bundler entry uses an SSR-safe stylesheet string, with no runtime CSS loader. Theme custom properties inherit across the shadow boundary; the extension maps them to VS Code colors. Standalone controls use dark fallback colors while the Three.js background stays black. `settingsPanel` controls the React overlay (`closed`, `open`, or `hidden`).

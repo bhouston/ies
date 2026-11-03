@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import 'ies-viewer/styles/viewer.css';
+@import '@ies-tools/viewer/styles/viewer.css';
 @source './**/*.{ts,tsx}';
 
 /* The shared React theme follows VS Code, as in the mtlx preview. */

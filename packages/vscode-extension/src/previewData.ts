@@ -1,4 +1,4 @@
-import { parseLDT, LDTParseError } from 'ies-core';
+import { parseLDT, LDTParseError } from '@ies-tools/core';
 import type { UpdateMessage } from './protocol.js';
 
 /** Source text and labels are transported as data, never interpolated into webview HTML. */

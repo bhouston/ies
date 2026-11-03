@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { FloatType } from 'three';
 import { IESLoader } from 'three/addons/loaders/IESLoader.js';
-import { parseIES, sampleIntensity } from 'ies-core';
+import { parseIES, sampleIntensity } from '@ies-tools/core';
 import { describe, expect, it } from 'vitest';
 import { createCandelaTexture } from './texture.js';
 

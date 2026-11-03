@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { type IESProfile } from 'ies-core';
-import { IntensityGraph, IsoluxGraph } from 'ies-viewer/react';
+import { type IESProfile } from '@ies-tools/core';
+import { IntensityGraph, IsoluxGraph } from '@ies-tools/viewer/react';
 
 export function GraphPanel({ profile }: { profile?: IESProfile }) {
   const [projection, setProjection] = useState<'polar' | 'cartesian' | 'topology' | 'isolux'>('polar');

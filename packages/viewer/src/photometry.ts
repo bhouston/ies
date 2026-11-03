@@ -1,4 +1,4 @@
-import { sampleIntensity, type IESProfile } from 'ies-core';
+import { sampleIntensity, type IESProfile } from '@ies-tools/core';
 
 /** Type C uses nadir (down) as zero vertical angle; azimuth zero is +X. */
 export function directionAngles(x: number, y: number, z: number): [number, number] {

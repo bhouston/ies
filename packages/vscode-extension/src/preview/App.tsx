@@ -1,6 +1,6 @@
 import { createElement, useEffect, useMemo, useLayoutEffect, useRef, useState } from 'react';
-import type { LightViewerElement } from 'ies-viewer/element';
-import { PhotometryInfoPanel } from 'ies-viewer/react';
+import type { LightViewerElement } from '@ies-tools/viewer/element';
+import { PhotometryInfoPanel } from '@ies-tools/viewer/react';
 import { isUpdateMessage, type UpdateMessage } from '../protocol.js';
 import { inspectPreview } from './inspection.js';
 

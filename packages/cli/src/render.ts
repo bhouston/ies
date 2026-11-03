@@ -1,5 +1,5 @@
 import type { Browser } from 'playwright-core';
-import { parsePhotometry, serializeIES } from 'ies-core';
+import { parsePhotometry, serializeIES } from '@ies-tools/core';
 import { servePreview } from './index.js';
 
 export interface HardwareGPUInfo {

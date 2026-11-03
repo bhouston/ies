@@ -13,8 +13,8 @@ module.exports = {
       type: 'category',
       label: 'API reference',
       items: [
-        { type: 'doc', id: 'api/core/index', label: 'ies-core' },
-        { type: 'doc', id: 'api/react/index', label: 'ies-viewer/react' },
+        { type: 'doc', id: 'api/core/index', label: '@ies-tools/core' },
+        { type: 'doc', id: 'api/react/index', label: '@ies-tools/viewer/react' },
       ],
     },
     'compatibility-plan',

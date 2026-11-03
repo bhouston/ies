@@ -4,12 +4,12 @@ sidebar_position: 3
 
 # React components
 
-Install `ies-viewer`, `three`, `react` and `react-dom` after publication. The React exports live at `ies-viewer/react`; the core package is usable separately in Node and browsers.
+Install `@ies-tools/viewer`, `three`, `react` and `react-dom` after publication. The React exports live at `@ies-tools/viewer/react`; the core package is usable separately in Node and browsers.
 
 ```tsx
 import { useState } from 'react';
-import { parsePhotometry, type PhotometricDocument } from 'ies-core';
-import { LightViewer, IntensityGraph } from 'ies-viewer/react';
+import { parsePhotometry, type PhotometricDocument } from '@ies-tools/core';
+import { LightViewer, IntensityGraph } from '@ies-tools/viewer/react';
 
 export function Photometry() {
   const [document, setDocument] = useState<PhotometricDocument>();
@@ -62,7 +62,7 @@ The Three.js scene has a black background, floor, wall and a downward-facing lum
 <IsoluxGraph profile={profile} mountingHeight={3} extent={[12, 8]} aimAngle={30} />;
 ```
 
-Import both components from `ies-viewer/react`. See [Photometric graphs](./graphs.md) for the complete prop reference, coordinate conventions and pure Node-compatible `ies-viewer/graphs` APIs. The SVG graphs require no GPU; the 3D light scene requires a real hardware GPU.
+Import both components from `@ies-tools/viewer/react`. See [Photometric graphs](./graphs.md) for the complete prop reference, coordinate conventions and pure Node-compatible `@ies-tools/viewer/graphs` APIs. The SVG graphs require no GPU; the 3D light scene requires a real hardware GPU.
 
 ## IES and EULUMDAT sources
 
@@ -90,16 +90,16 @@ Changing a source cancels its previous fetch and suppresses stale completions an
 ## Shared viewer styling
 
 ```tsx
-import 'ies-viewer/styles.css';
-import { LightViewer, ViewerSettingsPanel } from 'ies-viewer/react';
+import '@ies-tools/viewer/styles.css';
+import { LightViewer, ViewerSettingsPanel } from '@ies-tools/viewer/react';
 
 <LightViewer src="/luminaire.ies" settingsPanel="closed" />;
 ```
 
-The compiled stylesheet supplies Tailwind utilities and the shared theme tokens. A `.dark` ancestor uses the dark palette. Applications already compiling Tailwind v4 can instead import `ies-viewer/styles/viewer.css` into their Tailwind entry. `ViewerSettingsPanel` is independently reusable with `settings`, `mode`, `onChange`, `onModeChange` and optional `onError` props. Its component is shared with the element, so controls do not drift between embedding surfaces. See [Styling and themes](./styling.md).
+The compiled stylesheet supplies Tailwind utilities and the shared theme tokens. A `.dark` ancestor uses the dark palette. Applications already compiling Tailwind v4 can instead import `@ies-tools/viewer/styles/viewer.css` into their Tailwind entry. `ViewerSettingsPanel` is independently reusable with `settings`, `mode`, `onChange`, `onModeChange` and optional `onError` props. Its component is shared with the element, so controls do not drift between embedding surfaces. See [Styling and themes](./styling.md).
 
 ## Shared inspection UI
 
-`PhotometryInfoPanel` and `ValidationChecks` are exported from `ies-viewer/react`. They render the shared core inspection and validation models used by the CLI. Import the compiled `ies-viewer/styles.css`, or include `ies-viewer/styles/viewer.css` in a Tailwind v4 entry stylesheet, then override the documented theme tokens for your host. The VS Code preview maps those tokens to editor colors.
+`PhotometryInfoPanel` and `ValidationChecks` are exported from `@ies-tools/viewer/react`. They render the shared core inspection and validation models used by the CLI. Import the compiled `@ies-tools/viewer/styles.css`, or include `@ies-tools/viewer/styles/viewer.css` in a Tailwind v4 entry stylesheet, then override the documented theme tokens for your host. The VS Code preview maps those tokens to editor colors.
 
-See the [ies-viewer/react API reference](./api/react/index.md) for every component and prop, generated from the source's TSDoc comments.
+See the [@ies-tools/viewer/react API reference](./api/react/index.md) for every component and prop, generated from the source's TSDoc comments.

@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { parseIES } from 'ies-core';
+import { parseIES } from '@ies-tools/core';
 import { IntensityGraph, IsoluxGraph, LightViewer } from './index.js';
 const profile = parseIES(`IESNA:LM-63-2002
 TILT=NONE

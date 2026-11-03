@@ -35,8 +35,8 @@ module.exports = {
           label: 'API',
           position: 'left',
           items: [
-            { to: '/docs/api/core', label: 'ies-core' },
-            { to: '/docs/api/react', label: 'ies-viewer/react' },
+            { to: '/docs/api/core', label: '@ies-tools/core' },
+            { to: '/docs/api/react', label: '@ies-tools/viewer/react' },
           ],
         },
         { href: 'https://github.com/bhouston/ies', label: 'GitHub', position: 'right' },

@@ -1,5 +1,5 @@
 import { DataTexture, FloatType, LinearFilter, RedFormat } from 'three';
-import { sampleIntensity, type IESProfile } from 'ies-core';
+import { sampleIntensity, type IESProfile } from '@ies-tools/core';
 
 /** Absolute candela texture for this viewer's receiver shader, not an IESSpotLight map.
  * 361 azimuth samples across U (0–360°), 181 vertical samples across V (0–180°).

@@ -74,10 +74,10 @@ importers:
       '@clidoc/yargs':
         specifier: ^1.1.2
         version: 1.1.2
-      ies-core:
+      '@ies-tools/core':
         specifier: workspace:*
         version: link:../core
-      ies-viewer:
+      '@ies-tools/viewer':
         specifier: workspace:*
         version: link:../viewer
       playwright-core:
@@ -153,7 +153,7 @@ importers:
 
   packages/viewer:
     dependencies:
-      ies-core:
+      '@ies-tools/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -187,10 +187,10 @@ importers:
 
   packages/vscode-extension:
     dependencies:
-      ies-core:
+      '@ies-tools/core':
         specifier: workspace:*
         version: link:../core
-      ies-viewer:
+      '@ies-tools/viewer':
         specifier: workspace:*
         version: link:../viewer
     devDependencies:
@@ -227,10 +227,10 @@ importers:
 
   packages/website:
     dependencies:
-      ies-core:
+      '@ies-tools/core':
         specifier: workspace:*
         version: link:../core
-      ies-viewer:
+      '@ies-tools/viewer':
         specifier: workspace:*
         version: link:../viewer
       react:
