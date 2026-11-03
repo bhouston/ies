@@ -65,6 +65,41 @@ describe('React presentation without a GPU', () => {
     expect(markup).not.toContain('NaN');
     expect(markup).not.toContain('<canvas');
   });
+  it('labels default 1-2-5 contours without overlap over a smooth image fill', () => {
+    const markup = renderToStaticMarkup(createElement(IsoluxGraph, { profile, mountingHeight: 2, extent: 8 }));
+    const labels = [...markup.matchAll(/<text data-label="([\d.]+)" x="([\d.]+)" y="([\d.]+)"/g)].map((m) => ({
+      text: m[1]!,
+      x: Number(m[2]),
+      y: Number(m[3]),
+    }));
+    expect(labels.map((label) => label.text).toSorted((a, b) => Number(a) - Number(b))).toEqual([
+      '1',
+      '2',
+      '5',
+      '10',
+      '20',
+    ]);
+    for (const [i, a] of labels.entries())
+      for (const b of labels.slice(i + 1))
+        expect(Math.abs(a.x - b.x) >= (a.text.length + b.text.length) * 3 + 6 || Math.abs(a.y - b.y) >= 14).toBe(true);
+    expect(new Set(labels.map((label) => label.y)).size).toBeGreaterThan(1);
+    expect(markup).toContain('href="data:image/png;base64,');
+    expect(markup.match(/<rect/g)?.length).toBeLessThanOrEqual(3);
+    expect(markup).toContain('U0 ');
+    expect(markup).toContain('log colour');
+  });
+  it('accepts explicit contour levels, a contour floor and linear colour', () => {
+    const explicit = renderToStaticMarkup(
+      createElement(IsoluxGraph, { profile, mountingHeight: 2, extent: 8, contourLevels: [3, 7] }),
+    );
+    expect(explicit.match(/data-level=/g)).toHaveLength(2);
+    const floor = renderToStaticMarkup(
+      createElement(IsoluxGraph, { profile, mountingHeight: 2, extent: 8, minContour: 5, colorScale: 'linear' }),
+    );
+    expect(floor).not.toContain('data-level="2"');
+    expect(floor).toContain('data-level="5"');
+    expect(floor).toContain('linear colour');
+  });
   it('throws clear invalid option errors before emitting broken SVG', () => {
     expect(() => renderToStaticMarkup(createElement(IsoluxGraph, { profile, mountingHeight: 0 }))).toThrow(
       'Mounting height',

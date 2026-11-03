@@ -181,7 +181,7 @@ export function GraphPanel({ profile }: { profile?: IESProfile }) {
           extent={extent}
           aimAngle={aimAngle}
           azimuth={azimuth}
-          contours={contours ? undefined : []}
+          contourLevels={contours ? undefined : []}
         />
       ) : (
         <IntensityGraph
