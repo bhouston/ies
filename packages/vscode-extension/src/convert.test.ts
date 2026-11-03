@@ -3,84 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ldtSource } from '../../viewer/test/photometryFixtures.js';
 import { convertNative, parseSource } from './conversion.js';
 
-// In-memory stand-in for the parts of the VS Code API that convert.ts uses.
-const h = vi.hoisted(() => {
-  class Uri {
-    constructor(public path: string) {}
-    get fsPath() {
-      return this.path;
-    }
-    toString() {
-      return `file://${this.path}`;
-    }
-    with({ path }: { path: string }) {
-      return new Uri(path);
-    }
-  }
-  class TabInputCustom {
-    constructor(public uri: Uri) {}
-  }
-  class TabInputText {
-    constructor(public uri: Uri) {}
-  }
-  const FileType = { File: 1, Directory: 2, SymbolicLink: 64 };
-  const files = new Map<string, string>();
-  const dirs = new Map<string, [string, number][]>();
-  const commands = new Map<string, (...args: unknown[]) => unknown>();
-  const settings: { overwrite?: string } = {};
-  const channel = { appendLine: vi.fn(), show: vi.fn() };
-  const missing = (path: string) => Object.assign(new Error(`ENOENT ${path}`), { code: 'FileNotFound' });
-  const vscode = {
-    Uri,
-    TabInputCustom,
-    TabInputText,
-    FileType,
-    workspace: {
-      textDocuments: [] as { uri: Uri; getText(): string }[],
-      getConfiguration: vi.fn(() => ({
-        get: (key: string, fallback: string) => (key === 'overwrite' ? (settings.overwrite ?? fallback) : fallback),
-      })),
-      fs: {
-        stat: vi.fn(async (uri: Uri) => {
-          if (!files.has(uri.path)) throw missing(uri.path);
-          return { type: FileType.File };
-        }),
-        readFile: vi.fn(async (uri: Uri) => {
-          const text = files.get(uri.path);
-          if (text === undefined) throw missing(uri.path);
-          return new TextEncoder().encode(text);
-        }),
-        writeFile: vi.fn(async (uri: Uri, data: Uint8Array) => {
-          files.set(uri.path, new TextDecoder().decode(data));
-        }),
-        readDirectory: vi.fn(async (uri: Uri) => dirs.get(uri.path) ?? []),
-      },
-    },
-    window: {
-      showQuickPick: vi.fn(),
-      showWarningMessage: vi.fn(),
-      showInformationMessage: vi.fn(),
-      showErrorMessage: vi.fn(),
-      showOpenDialog: vi.fn(),
-      createOutputChannel: vi.fn(() => channel),
-      tabGroups: { activeTabGroup: { activeTab: undefined as { input: unknown } | undefined } },
-      activeTextEditor: undefined as { document: { uri: Uri } } | undefined,
-    },
-    commands: {
-      registerCommand: vi.fn((id: string, run: (...args: unknown[]) => unknown) => {
-        commands.set(id, run);
-        return { dispose: () => commands.delete(id) };
-      }),
-      executeCommand: vi.fn(),
-    },
-  };
-  return { vscode, files, dirs, commands, settings, channel, Uri };
-});
-vi.mock('vscode', () => h.vscode);
-
+vi.mock('vscode', () => import('../test/vscodeMock.js'));
+const vscode = await import('../test/vscodeMock.js');
 const { registerConvertCommands } = await import('./convert.js');
-const { vscode, files, dirs, commands, settings, channel, Uri } = h;
-const { window } = vscode;
+const { fake, window, uri } = vscode;
+const { files, dirs, settings, channel } = fake;
 
 const fixtures = new URL('../../../fixtures/', import.meta.url);
 const IES = readFileSync(
@@ -92,20 +19,17 @@ const IES = readFileSync(
 );
 const LDT = ldtSource();
 const MULTI = ldtSource({ alternatives: true });
-const uri = (path: string) => new Uri(path);
-const run = (id: string, ...args: unknown[]) => commands.get(id)!(...args) as Promise<void>;
+const run = (id: string, ...args: unknown[]) => fake.run(id, ...args) as Promise<void>;
 const logged = () => channel.appendLine.mock.calls.map(([line]) => String(line));
 const summary = () => window.showInformationMessage.mock.calls.at(-1);
 
+const choose = (target: string, depth: string) =>
+  window.showQuickPick
+    .mockImplementationOnce(async (items: { target: string }[]) => items.find((item) => item.target === target))
+    .mockResolvedValueOnce(depth);
+
 beforeEach(() => {
-  vi.clearAllMocks();
-  files.clear();
-  dirs.clear();
-  commands.clear();
-  delete settings.overwrite;
-  vscode.workspace.textDocuments = [];
-  window.tabGroups.activeTabGroup.activeTab = undefined;
-  window.activeTextEditor = undefined;
+  fake.reset();
   registerConvertCommands({ subscriptions: [] } as never);
 });
 
@@ -113,7 +37,7 @@ describe('convert commands', () => {
   it('registers every target and the folder command as disposable subscriptions', () => {
     const context = { subscriptions: [] as { dispose(): void }[] };
     registerConvertCommands(context as never);
-    expect([...commands.keys()].toSorted()).toEqual([
+    expect([...fake.commands.keys()].toSorted()).toEqual([
       'iesTools.convertFolder',
       'iesTools.convertToIES',
       'iesTools.convertToJSON',
@@ -315,10 +239,6 @@ describe('convert commands', () => {
       for (const path of ['/w/a.ies', '/w/b.LDT', '/w/sub/c.ldt', '/w/.git/hidden.ldt', '/w/node_modules/dep.ldt'])
         files.set(path, path.endsWith('.ies') ? IES : LDT);
     });
-    const choose = (target: string, depth: string) =>
-      window.showQuickPick
-        .mockImplementationOnce(async (items: { target: string }[]) => items.find((item) => item.target === target))
-        .mockResolvedValueOnce(depth);
 
     it('recurses into subfolders, skipping dot-folders, node_modules, symlinks and same-format files', async () => {
       choose('ies', 'Include subfolders');

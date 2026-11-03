@@ -24,29 +24,35 @@ type Outcome = { status: 'converted'; uri: vscode.Uri; warnings: number } | { st
 
 const baseName = (uri: vscode.Uri): string => uri.path.split('/').at(-1) ?? uri.path;
 
+const exists = (uri: vscode.Uri): Promise<boolean> =>
+  Promise.resolve(vscode.workspace.fs.stat(uri)).then(
+    () => true,
+    () => false,
+  );
+
+async function ask(uri: vscode.Uri): Promise<ExistingChoice | undefined> {
+  const choice = await vscode.window.showWarningMessage(
+    `${baseName(uri)} already exists. Overwrite it?`,
+    { modal: true },
+    'Overwrite',
+    'Keep Both',
+    'Skip',
+  );
+  return choice === 'Overwrite' ? 'overwrite' : choice === 'Keep Both' ? 'keepBoth' : 'skip';
+}
+
+function activeUri(): vscode.Uri | undefined {
+  const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+  if (input instanceof vscode.TabInputCustom || input instanceof vscode.TabInputText) return input.uri;
+  return vscode.window.activeTextEditor?.document.uri;
+}
+
 export function registerConvertCommands(context: vscode.ExtensionContext): void {
   let channel: vscode.OutputChannel | undefined;
   const log = (line: string): void => {
     channel ??= vscode.window.createOutputChannel('IES Tools');
     channel.appendLine(line);
   };
-
-  const exists = (uri: vscode.Uri): Promise<boolean> =>
-    Promise.resolve(vscode.workspace.fs.stat(uri)).then(
-      () => true,
-      () => false,
-    );
-
-  async function ask(uri: vscode.Uri): Promise<ExistingChoice | undefined> {
-    const choice = await vscode.window.showWarningMessage(
-      `${baseName(uri)} already exists. Overwrite it?`,
-      { modal: true },
-      'Overwrite',
-      'Keep Both',
-      'Skip',
-    );
-    return choice === 'Overwrite' ? 'overwrite' : choice === 'Keep Both' ? 'keepBoth' : 'skip';
-  }
 
   async function convertFile(uri: vscode.Uri, target: TargetFormat): Promise<Outcome> {
     // Prefer unsaved editor text so the output matches what the user sees.
@@ -110,12 +116,6 @@ export function registerConvertCommands(context: vscode.ExtensionContext): void 
     );
     if (action === 'Open') await vscode.commands.executeCommand('vscode.open', converted[0]!.uri);
     if (action === 'Show Log') channel?.show();
-  }
-
-  function activeUri(): vscode.Uri | undefined {
-    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-    if (input instanceof vscode.TabInputCustom || input instanceof vscode.TabInputText) return input.uri;
-    return vscode.window.activeTextEditor?.document.uri;
   }
 
   for (const { target } of TARGETS) {
