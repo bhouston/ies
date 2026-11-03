@@ -20,6 +20,76 @@ TILT=NONE
 100 20 0
 `);
 
+const viewBox = (svg: string) =>
+  svg
+    .match(/viewBox="([^"]+)"/)![1]!
+    .split(' ')
+    .map(Number) as [number, number, number, number];
+const background = (svg: string) => {
+  const [x, y, width, height] = viewBox(svg);
+  return `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#111">`;
+};
+const invalid =
+  (props: Record<string, unknown>, graph: typeof IntensityGraph | typeof IsoluxGraph = IntensityGraph) =>
+  () =>
+    renderToStaticMarkup(createElement(graph as typeof IntensityGraph, { profile, ...props }));
+const center = ([x, y, width, height]: number[]) => [x! + width! / 2, y! + height! / 2];
+
+describe('Graph aspect ratio', () => {
+  it('keeps the native viewBox and size without an aspect ratio', () => {
+    for (const projection of ['polar', 'cartesian', 'topology'] as const) {
+      const svg = renderToStaticMarkup(createElement(IntensityGraph, { profile, projection }));
+      expect(viewBox(svg)).toEqual([0, 0, 520, 560]);
+      expect(svg).toContain('width="520" height="560"');
+      expect(svg).toContain(background(svg));
+    }
+    const isolux = renderToStaticMarkup(createElement(IsoluxGraph, { profile, resolution: 11 }));
+    expect(viewBox(isolux).slice(0, 3)).toEqual([0, 0, 520]);
+    expect(isolux).toContain(background(isolux));
+  });
+  it.each([
+    ['polar', 9],
+    ['polar', 1 / 9],
+    ['topology', 9],
+    ['topology', 1 / 9],
+  ] as const)('centers the %s layout in a full-background %d frame', (projection, aspectRatio) => {
+    const svg = renderToStaticMarkup(createElement(IntensityGraph, { profile, projection, aspectRatio }));
+    const box = viewBox(svg);
+    expect(box[2] / box[3]).toBeCloseTo(aspectRatio, 9);
+    expect(center(box)).toEqual([260, 280]);
+    expect(svg).toContain(background(svg));
+    expect(svg).toContain(`width="${box[2]}" height="${box[3]}"`);
+  });
+  it('widens the cartesian plot into extra width and centers it vertically when tall', () => {
+    const wide = renderToStaticMarkup(
+      createElement(IntensityGraph, { profile, projection: 'cartesian', aspectRatio: 2 }),
+    );
+    expect(viewBox(wide)).toEqual([0, 0, 1120, 560]);
+    expect(wide).toContain('h1000"'); // plot width = layout width 1120 − 120 margins
+    expect(wide).toContain(background(wide));
+    const tall = renderToStaticMarkup(
+      createElement(IntensityGraph, { profile, projection: 'cartesian', aspectRatio: 0.5 }),
+    );
+    expect(viewBox(tall)).toEqual([0, -240, 520, 1040]);
+    expect(tall).toContain('h400"');
+    expect(tall).toContain(background(tall));
+  });
+  it.each([3, 1 / 3])('centers the isolux layout in a full-background %d frame', (aspectRatio) => {
+    const native = viewBox(renderToStaticMarkup(createElement(IsoluxGraph, { profile, resolution: 11 })));
+    const svg = renderToStaticMarkup(createElement(IsoluxGraph, { profile, resolution: 11, aspectRatio }));
+    const box = viewBox(svg);
+    expect(box[2] / box[3]).toBeCloseTo(aspectRatio, 9);
+    expect(center(box)).toEqual(center(native));
+    expect(svg).toContain(background(svg));
+  });
+  it('rejects invalid aspect ratios', () => {
+    for (const aspectRatio of [0, -2, NaN, Infinity]) {
+      expect(() => renderToStaticMarkup(createElement(IntensityGraph, { profile, aspectRatio }))).toThrow(RangeError);
+      expect(() => renderToStaticMarkup(createElement(IsoluxGraph, { profile, aspectRatio }))).toThrow(RangeError);
+    }
+  });
+});
+
 describe('React presentation without a GPU', () => {
   it('renders accessible polar and cartesian slices for the requested plane', () => {
     const polar = renderToStaticMarkup(createElement(IntensityGraph, { profile, axis: 'horizontal', angle: 45 }));
@@ -148,6 +218,10 @@ ${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
     expect(() =>
       renderToStaticMarkup(createElement(IntensityGraph, { profile: { ...profile, photometricType: 3 } })),
     ).toThrow('Type C');
+    expect(invalid({ projection: 'radar' })).toThrow('projection');
+    expect(invalid({ projection: 'topology', surface: 'dots' })).toThrow('surface');
+    expect(invalid({ colorScale: 'cubic' }, IsoluxGraph)).toThrow('Colour scale');
+    expect(invalid({ contours: [-1] }, IsoluxGraph)).toThrow('nonnegative');
   });
   it.each([
     ['cone', 'Cone diagram, centre intensity 100 candela'],
