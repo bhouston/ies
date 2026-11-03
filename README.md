@@ -5,7 +5,7 @@ IES photometric lighting tools for JavaScript and TypeScript, modeled on [mtlx](
 | Package                | Purpose                                                           |
 | ---------------------- | ----------------------------------------------------------------- |
 | `ies-core`             | Parse LM-63 files, interpolate intensities and inspect photometry |
-| `ies-cli`              | Inspect, validate, convert to JSON and preview local files        |
+| `ies-cli`              | Validate, report stats, convert to JSON and preview local files   |
 | `ies-viewer`           | Three.js scene, `<light-viewer>` and React viewer/graphs          |
 | `ies-vscode-extension` | Live `.ies` preview for VS Code                                   |
 | `ies-website`          | React demo with local file input                                  |

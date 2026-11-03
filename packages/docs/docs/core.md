@@ -8,7 +8,7 @@ sidebar_position: 5
 import { parseIES, sampleIntensity, summarizeIES } from 'ies-core';
 const profile = parseIES(iesText);
 const candela = sampleIntensity(profile, 30, 90);
-const summary = summarizeIES(profile);
+const summary = summarizeIES(profile); // format/version, coordinate type, source descriptions and stats
 ```
 
 `parseIES` supports LM-63-1986, IESNA91, LM-63-1995 and LM-63-2002. It validates numeric data, dimensions, angle counts, ranges and table size. Metadata is preserved, including continuation lines. External TILT files are rejected with a clear error; embedded TILT data is preserved.
