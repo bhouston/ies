@@ -4,6 +4,8 @@ import {
   buildIntensityCurves,
   buildIntensityTopology,
   formatGraphValue,
+  logRadius,
+  logTicks,
   graphFrame,
   type IntensityCurveOptions,
   type UpAxis,
@@ -30,6 +32,8 @@ export interface IntensityGraphProps extends IntensityCurveOptions {
   horizontalSegments?: number;
   /** Topology mesh segments along the vertical gamma angle. */
   verticalSegments?: number;
+  /** Polar radius and Cartesian intensity axis span three decades on a log scale. Defaults to false. */
+  logScale?: boolean;
   /** Viewbox width / height; the background fills it and the graph is centered (Cartesian plots widen). Defaults to the native layout. */
   aspectRatio?: number;
   className?: string;
@@ -58,6 +62,7 @@ export function IntensityGraph({
   surface = 'both',
   horizontalSegments,
   verticalSegments,
+  logScale = false,
   aspectRatio,
   className,
   style,
@@ -83,15 +88,49 @@ export function IntensityGraph({
   const maximum = topology?.maximum ?? diagram!.maximum;
   const axis = curvesOptions.axis ?? 'vertical';
   const fixedAngle = curvesOptions.angle ?? 0;
-  const title = `${projection} luminous intensity graph, ${axis} axis, ${fixedAngle} degrees, ${topology ? 'sampled surface' : 'shown curves'} maximum ${formatGraphValue(maximum)} candela`;
+  const log = logScale && !topology;
+  const title = `${projection} luminous intensity graph, ${axis} axis, ${fixedAngle} degrees, ${topology ? 'sampled surface' : 'shown curves'} maximum ${formatGraphValue(maximum)} candela${log ? ', log scale' : ''}`;
   const tickMaximum = diagram?.intensityTicks.at(-1) ?? 1;
+  const ticks = log ? logTicks(maximum) : (diagram?.intensityTicks ?? []);
+  /** 0–1 radius (polar) or height (Cartesian) of an intensity. */
+  const scale = (cd: number) => (log ? logRadius(cd, maximum) : cd / tickMaximum);
   const layoutWidth = projection === 'cartesian' && aspectRatio ? Math.max(520, 560 * aspectRatio) : 520;
   const frame = graphFrame(layoutWidth, 560, aspectRatio);
   const plot = { left: 72, top: 64, width: layoutWidth - 120, height: 330 };
   const center = { x: 260, y: 240, radius: 170 };
+  // Arrays stringify as "x,y" inside SVG attribute templates.
+  const polarPoint = (angle: number, r: number) => [
+    center.x + Math.sin((angle * Math.PI) / 180) * r,
+    center.y + Math.cos((angle * Math.PI) / 180) * r,
+  ];
   const mapX = (angle: number) =>
     plot.left + ((angle - diagram!.angleRange[0]) / (diagram!.angleRange[1] - diagram!.angleRange[0])) * plot.width;
-  const mapY = (cd: number) => plot.top + plot.height - (cd / tickMaximum) * plot.height;
+  const mapY = (cd: number) => plot.top + plot.height - scale(cd) * plot.height;
+  const dashes = { beam: '6 4', field: '2 3' } as const;
+  // Beam (50%) and field (10%) crossings on both sides of each vertical cut's peak, when bracketed by one lobe.
+  const markers =
+    diagram?.curves.flatMap((curve, i) => {
+      const beam = curve.beam;
+      if (!beam) return [];
+      return (['beam', 'field'] as const).flatMap((kind) =>
+        beam[`${kind}AngleStatus`] === 'ok'
+          ? [beam[`${kind}LeftDegrees`], beam[`${kind}RightDegrees`]].flatMap((angle) =>
+              angle === undefined ? [] : [{ i, kind, angle }],
+            )
+          : [],
+      );
+    }) ?? [];
+  const marker = (m: (typeof markers)[number], d: string) => (
+    <path
+      key={`${m.i}-${m.kind}-${m.angle}`}
+      data-marker={m.kind}
+      data-angle={m.angle}
+      d={d}
+      stroke={colors[m.i]}
+      strokeOpacity="0.55"
+      strokeDasharray={dashes[m.kind]}
+    />
+  );
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -121,54 +160,49 @@ export function IntensityGraph({
       <text x="24" y="48" fill="#a5adb7" fontSize="11">
         {topology ? 'Sampled surface peak' : 'Shown curves peak'} {formatGraphValue(maximum)} cd
         {topology ? ` · ${upAxis.toUpperCase()} up · ${topologyProjection}` : ''}
+        {log ? ' · cd (log)' : ''}
       </text>
       {projection === 'polar' && (
         <>
-          {diagram!.intensityTicks.slice(1).map((tick) => (
-            <g key={tick}>
-              <circle
-                cx={center.x}
-                cy={center.y}
-                r={(tick / tickMaximum) * center.radius}
-                fill="none"
-                stroke="#374151"
-              />
-              <text
-                x={center.x + 5}
-                y={center.y - (tick / tickMaximum) * center.radius - 3}
-                fontSize="10"
-                fill="#b7c1ce"
-              >
-                {formatGraphValue(tick)} cd
-              </text>
-            </g>
-          ))}
-          <path
-            d={`M${center.x - center.radius} ${center.y}H${center.x + center.radius}M${center.x} ${center.y - center.radius}V${center.y + center.radius}`}
-            stroke="#4b5563"
-          />
-          <text x={center.x + center.radius + 6} y={center.y + 4} fontSize="11" fill="currentColor">
-            90°
-          </text>
-          <text x={center.x - center.radius - 35} y={center.y + 4} fontSize="11" fill="currentColor">
-            {axis === 'vertical' ? '−90°' : '270°'}
-          </text>
-          <text x={center.x - 10} y={center.y + center.radius + 18} fontSize="11" fill="currentColor">
-            0°
-          </text>
-          <text x={center.x - 16} y={center.y - center.radius - 14} fontSize="11" fill="currentColor">
-            180°
-          </text>
+          {ticks
+            .filter((tick) => tick > 0)
+            .map((tick) => (
+              <g key={tick}>
+                <circle cx={center.x} cy={center.y} r={scale(tick) * center.radius} fill="none" stroke="#374151" />
+                <text x={center.x + 5} y={center.y - scale(tick) * center.radius - 3} fontSize="10" fill="#b7c1ce">
+                  {formatGraphValue(tick)} cd
+                </text>
+              </g>
+            ))}
+          {Array.from({ length: 12 }, (_, i) => (axis === 'vertical' ? i * 30 - 150 : i * 30)).map((angle) => {
+            const sin = Math.sin((angle * Math.PI) / 180);
+            const [x, y] = polarPoint(angle, center.radius + 14);
+            return (
+              <g key={angle}>
+                <path
+                  d={`M${center.x} ${center.y}L${polarPoint(angle, center.radius)}`}
+                  stroke="#4b5563"
+                  strokeDasharray="1 3"
+                />
+                <text
+                  x={x}
+                  y={y! + 4}
+                  textAnchor={sin > 0.01 ? 'start' : sin < -0.01 ? 'end' : 'middle'}
+                  fontSize="11"
+                  fill="currentColor"
+                >
+                  {Math.abs(angle)}°
+                </text>
+              </g>
+            );
+          })}
+          {markers.map((m) => marker(m, `M${center.x} ${center.y}L${polarPoint(m.angle, center.radius)}`))}
           {diagram!.curves.map((curve, i) => (
             <polyline
               key={`${curve.plane}-${i}`}
               data-plane={curve.plane}
               points={curve.points
-                .map((point) => {
-                  const theta = (point.angle * Math.PI) / 180,
-                    r = (point.intensity / tickMaximum) * center.radius;
-                  return `${center.x + Math.sin(theta) * r},${center.y + Math.cos(theta) * r}`;
-                })
+                .map((point) => polarPoint(point.angle, scale(point.intensity) * center.radius))
                 .join(' ')}
               fill="none"
               stroke={colors[i]}
@@ -179,7 +213,7 @@ export function IntensityGraph({
       )}
       {projection === 'cartesian' && (
         <>
-          {diagram!.intensityTicks.map((tick) => (
+          {ticks.map((tick) => (
             <g key={tick}>
               <path d={`M${plot.left} ${mapY(tick)}h${plot.width}`} stroke="#374151" />
               <text x={plot.left - 9} y={mapY(tick) + 4} textAnchor="end" fill="currentColor" fontSize="11">
@@ -211,8 +245,9 @@ export function IntensityGraph({
             {axis === 'vertical' ? 'Signed vertical angle γ (°)' : 'Horizontal angle C (°)'}
           </text>
           <text x="18" y="235" transform="rotate(-90 18 235)" textAnchor="middle" fill="currentColor" fontSize="12">
-            Intensity (cd)
+            Intensity (cd{log ? ', log' : ''})
           </text>
+          {markers.map((m) => marker(m, `M${mapX(m.angle)} ${plot.top}v${plot.height}`))}
           {diagram!.curves.map((curve, i) => (
             <polyline
               key={`${curve.plane}-${i}`}
@@ -262,6 +297,17 @@ export function IntensityGraph({
           </text>
         </g>
       ))}
+      {markers.length > 0 && (
+        <g
+          transform={`translate(${24 + (diagram!.curves.length % 2) * 248} ${470 + Math.floor(diagram!.curves.length / 2) * 20})`}
+        >
+          <path d="M0 -3h22" stroke="#9ca3af" strokeDasharray={dashes.beam} />
+          <path d="M0 3h22" stroke="#9ca3af" strokeDasharray={dashes.field} />
+          <text x="28" y="4" fill="currentColor" fontSize="12">
+            beam 50 % / field 10 %
+          </text>
+        </g>
+      )}
       {diagram && (
         <text x="24" y="550" fill="#9ca3af" fontSize="10">
           {axis === 'vertical'
