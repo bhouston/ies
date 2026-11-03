@@ -6,19 +6,16 @@ sidebar_position: 8
 
 The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs live in `@ies-tools/core`, which has no React, Three.js or DOM dependency and works in Node. `@ies-tools/viewer/graphs` re-exports them for compatibility, alongside the viewer's presentation helpers (`graphFrame`, `heatColor`).
 
-The same graphs, exported from an asymmetric BEGA luminaire with `ies chart`:
-
-<p>
-<img src="/img/charts/polar.png" alt="Polar luminous intensity chart of the C0–C180 and C90–C270 planes" width="49%" />
-<img src="/img/charts/cartesian.png" alt="Cartesian luminous intensity chart of the C0–C180 and C90–C270 planes" width="49%" />
-<img src="/img/charts/topology.png" alt="3D luminous intensity topology surface" width="49%" />
-<img src="/img/charts/isolux.png" alt="Isolux ground illuminance plot with contours" width="49%" />
-<img src="/img/charts/cone.png" alt="Cone diagram with centre illuminance and beam and field diameters by distance" width="49%" />
-<img src="/img/charts/luminance.png" alt="Glare-angle average luminance and intensity tables" width="49%" />
-<img src="/img/charts/intensity-table.png" alt="Heat-tinted luminous intensity table" width="49%" />
-</p>
+Every image on this page is exported with `ies chart` at 780×840 (cone 780×900, intensity table 780×640). Most use an asymmetric BEGA luminaire; the log-scale examples use a narrow-beam track light. Contributors regenerate them all with `pnpm build && pnpm docs:charts`; the fixtures and options live in [`scripts/chart-screenshots.mjs`](https://github.com/bhouston/ies-tools/blob/main/scripts/chart-screenshots.mjs).
 
 ## Complete intensity cuts
+
+<p>
+<img src="/img/charts/polar.png" alt="Polar luminous intensity chart of the C0–C180 and C90–C270 planes with beam and field markers" width="49%" />
+<img src="/img/charts/cartesian.png" alt="Cartesian luminous intensity chart of the C0–C180 and C90–C270 planes with beam and field markers" width="49%" />
+</p>
+
+_Principal planes of the BEGA luminaire, with dashed beam (50 %) and dotted field (10 %) markers._
 
 ```tsx
 import { IntensityGraph } from '@ies-tools/viewer/react';
@@ -48,7 +45,20 @@ Vertical cuts also carry `curve.beam`, the [`getBeamAngles`](./core.md) estimate
 
 `logScale` applies to polar and Cartesian views. Intensities at or below Imin sit at the centre (or the Cartesian baseline), and the rings or ticks fall on 1-2-5 candela values in each decade. `logRadius` and `logTicks` from `@ies-tools/core` expose the same mapping. The light viewer's chart tabs have a **Log scale** checkbox, and `ies chart --log-scale` exports the same view.
 
+<p>
+<img src="/img/charts/polar-log.png" alt="Log-scale polar intensity chart of a narrow-beam track light" width="49%" />
+<img src="/img/charts/cartesian-log.png" alt="Log-scale Cartesian intensity chart of a narrow-beam track light" width="49%" />
+</p>
+
+_`--log-scale` on a rotationally symmetric 15° track light, so both planes coincide; the shoulders below 1 % of the peak become visible._
+
 ## Intensity topology
+
+<p>
+<img src="/img/charts/topology.png" alt="3D luminous intensity topology surface" width="49%" />
+</p>
+
+_Candela-scaled surface of the BEGA luminaire, orthographic, Y up._
 
 ```tsx
 <IntensityGraph
@@ -69,6 +79,13 @@ The topology is a full candela-scaled surface, projected to SVG. `surface` is `f
 `horizontalSegments` defaults to 36 and ranges from 4 to 144; `verticalSegments` defaults to 36 and ranges from 2 to 144. Unlike the curve plots, topology uses a regular resampled angular grid: increase its resolution for very narrow features. Its caption reports the **sampled surface peak**, rather than claiming the global measured peak. This is a surface diagram with depth-sorted triangles, rather than a 3D renderer with a depth buffer.
 
 ## Ground illuminance / isolux
+
+<p>
+<img src="/img/charts/isolux.png" alt="Isolux ground illuminance plot with labelled contours at 2 m mounting height" width="49%" />
+<img src="/img/charts/isolux-area.png" alt="Isolux plot of a 30 m site at 6 m mounting height with 1-2-5 lux contours" width="49%" />
+</p>
+
+_Left: 2 m mounting height over 10 m. Right: `--mounting-height 6 --extent 30 --resolution 121`, with 1–50 lx contours._
 
 ```tsx
 import { IsoluxGraph } from '@ies-tools/viewer/react';
@@ -111,6 +128,17 @@ Fixture aiming is a geometric rotation. It does **not** automatically change the
 This is direct illumination from measured angular intensity. It does not simulate indirect light, occlusion, luminaire aperture near-field effects, or room reflections. Type A/B data are rejected until a validated coordinate transform is available. Invalid dimensions, angles, sample counts and contour grids throw descriptive errors instead of producing invalid SVG.
 
 ## Cone diagram, glare luminance and intensity tables
+
+<p>
+<img src="/img/charts/cone.png" alt="Cone diagram with centre illuminance and beam and field diameters by distance" width="49%" />
+<img src="/img/charts/luminance.png" alt="Glare-angle average luminance and intensity tables" width="49%" />
+</p>
+
+<p>
+<img src="/img/charts/intensity-table.png" alt="Heat-tinted luminous intensity table" width="49%" />
+</p>
+
+_Cone diagram, glare-angle luminance, and the intensity table thinned with `--max-columns 10 --max-rows 19`._
 
 ```tsx
 import { ConeDiagramGraph, IntensityTableGraph, LuminanceTableGraph } from '@ies-tools/viewer/react';
