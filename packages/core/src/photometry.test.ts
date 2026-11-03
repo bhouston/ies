@@ -319,6 +319,18 @@ describe('IES/EULUMDAT conversion', () => {
     expect(parseLDT(serializeLDT(native).value)).toEqual(native);
     expect(() => toPhotometricDocument(native, { lampSetIndex: 2 })).toThrow('outside');
   });
+  it('rejects invalid edited grids before conversion symmetry loops or numeric integration', () => {
+    const profile = ies();
+    profile.horizontalAngles = [0, 0];
+    profile.candelaValues = [
+      [100, 100, 100],
+      [100, 100, 100],
+    ];
+    expect(() => serializeLDT(profile)).toThrow('strictly increasing');
+    const document = toPhotometricDocument(ies());
+    document.profile.candelaValues[0]![0] = NaN;
+    expect(() => serializeLDT(document)).toThrow('candela values');
+  });
   it('does not silently discard edits to a document profile', () => {
     const document = toPhotometricDocument(ldt());
     document.profile.candelaValues = document.profile.candelaValues.map((row) => row.map((value) => value * 2));

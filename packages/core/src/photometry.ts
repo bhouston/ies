@@ -64,6 +64,44 @@ function isLDT(value: IESProfile | LDTProfile): value is LDTProfile {
 function scaledDimensions(value: LDTDimensions, scale: number): LDTDimensions {
   return { width: value.width * scale, length: value.length * scale, height: value.height * scale };
 }
+function checkProfileAngles(angles: number[], name: string, min: number, max: number): void {
+  if (
+    !angles.length ||
+    angles.some(
+      (angle, i) => !Number.isFinite(angle) || angle < min || angle > max || (i > 0 && angle <= angles[i - 1]!),
+    )
+  )
+    throw new Error(
+      `Invalid compatible profile: ${name} must be finite, strictly increasing and within ${min}..${max}`,
+    );
+}
+function validateCompatibleProfile(profile: IESProfile): void {
+  checkProfileAngles(
+    profile.verticalAngles,
+    'vertical angles',
+    profile.photometricType === 1 ? 0 : -90,
+    profile.photometricType === 1 ? 180 : 90,
+  );
+  checkProfileAngles(
+    profile.horizontalAngles,
+    'horizontal angles',
+    profile.photometricType === 1 ? 0 : -90,
+    profile.photometricType === 1 ? 360 : 90,
+  );
+  if (
+    profile.candelaValues.length !== profile.horizontalAngles.length ||
+    profile.candelaValues.some(
+      (row) =>
+        row.length !== profile.verticalAngles.length || row.some((value) => !Number.isFinite(value) || value < 0),
+    )
+  )
+    throw new Error('Invalid compatible profile: candela values must be finite, nonnegative and match the angle grid');
+  if (profile.photometricType === 1 && profile.horizontalAngles.length > 1) {
+    const span = profile.horizontalAngles.at(-1)! - profile.horizontalAngles[0]!;
+    if (span !== 90 && span !== 180 && span <= 180)
+      throw new Error('Invalid compatible profile: unsupported Type C horizontal coverage');
+  }
+}
 function sourceType(profile: IESProfile): void {
   if (profile.photometricType !== 1)
     throw new Error(
@@ -183,6 +221,7 @@ export function toPhotometricDocument(input: PhotometricInput, options: Photomet
       source: input,
     };
   }
+  validateCompatibleProfile(input);
   const scale = input.units === 'feet' ? 0.3048 : 1;
   return {
     sourceFormat: 'ies',
@@ -285,6 +324,7 @@ function ldtMetadataLosses(data: LDTProfile): ConversionWarning[] {
 export function toIESProfile(input: PhotometricInput, options: PhotometryOptions = {}): ConversionResult<IESProfile> {
   const document = toPhotometricDocument(input, options);
   sourceType(document.profile);
+  validateCompatibleProfile(document.profile);
   return {
     value: document.profile,
     warnings: document.sourceFormat === 'ldt' ? ldtMetadataLosses(document.source as LDTProfile) : [],
@@ -373,6 +413,7 @@ export function serializeLDT(input: PhotometricInput, options: SerializeLDTOptio
     return { value: writeLDT(input), warnings: [] };
   const document = toPhotometricDocument(input, options);
   sourceType(document.profile);
+  validateCompatibleProfile(document.profile);
   if (document.sourceFormat === 'ldt' && options.luminousFlux === undefined && options.tiltDegrees === undefined) {
     const original = toPhotometricDocument(document.source, {
       lampSetIndex: document.selectedLampSetIndex ?? undefined,
