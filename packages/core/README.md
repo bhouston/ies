@@ -24,3 +24,31 @@ Modern files use the exact `IES:LM-63-2019` header. Its `fileGenerationType` is 
 `validateIES(text, { strict: false })` returns `{ valid, profile, diagnostics }`. Numeric parse failures have stable error codes and a null profile. Required 2002/2019 metadata omissions produce warnings; strict mode makes warnings fail validation without changing their severity. `parseIES` retains its throwing API, with `code` and optional `field` on `IESParseError`.
 
 `calculateLuminousFlux(profile, tiltDegrees = 0)` integrates the Type C angular table in lumens. It accepts the structural `PhotometricGrid` subset, handles irregular intervals, mirrors reduced symmetry and closes the azimuth seam once. `computePhotometricMetrics` and `summarizeIES` distinguish declared lamp flux from integrated luminaire output and efficacy. Principal-plane beam/field estimates use 50%/10% thresholds with explicit null/status values for missing crossings or multiple lobes. See the core documentation for assumptions and limitations.
+
+## EULUMDAT and conversion
+
+```ts
+import { parsePhotometry, serializeIES, serializeLDT, parseLDT, writeLDT } from 'ies-core';
+
+const document = parsePhotometry(text); // detects IES or LDT
+const candela = sampleIntensity(document.profile, 30, 90); // existing viewer-compatible API
+const converted = serializeIES(document); // LM-63-2002
+for (const warning of converted.warnings) console.warn(warning.code, warning.message);
+
+const native = parseLDT(ldtText); // retains original cd/klm, conversion factor and native fields
+const sameFormat = writeLDT(native);
+const selected = parsePhotometry(multipleLampSetText, 'ldt', { lampSetIndex: 0 });
+const exported = serializeLDT(document); // { value: string, warnings: ConversionWarning[] }
+```
+
+`PhotometricDocument.profile` contains absolute candela and works with existing `IESProfile` consumers. Its `geometry` is in meters and keeps luminaire-body and luminous-opening geometry distinct. `source` retains native fields, and `lampSets` retains configurations. Absolute Type A/B files remain inspectable, with unknown integrated lamp flux represented by `null`; conversion requires Type C and never silently relabels axes. Multiple LDT lamp sets require an explicit zero-based `lampSetIndex` when normalizing: alternative configurations are never implicitly summed.
+
+Native LDT parsing/writing preserves all five symmetries, including the C270→C0→C90 measured-row order for C90–C270 symmetry, irregular grids, partial upper-hemisphere grids, separate luminous-area heights, lamp metadata, measurement tilt, direct ratios and conversion factors. Structural validation accepts real-world nonzero gamma starts; this is broader than DIAL's zero-start interchange description. C grids must start at zero and exclude a duplicate 360° plane; invalid counts, factors, table sizes and unsupported symmetry layouts produce `LDTParseError` with stable code `LDT_PARSE_ERROR`.
+
+Cross-format serializers return `{ value, warnings }`. Warning categories separate metadata, geometry and photometry changes. IES writing folds candela/ballast scaling into values exactly once and retains embedded TILT and generic keywords. Output is LM-63-2002, so an original 2019 numeric generation code is reported as omitted. Native LDT writing preserves its fields; rebuilding an edited compatible profile reports discarded native derived fields. For native metadata editing, edit `LDTProfile` and call `writeLDT`, then normalize again if needed.
+
+IES→LDT converts absolute candela to cd/klm using declared relative lamp flux or integrated absolute luminaire flux. Zero-light files remain finite; nonzero candela with zero normalization flux requires an explicit positive `luminousFlux` option. `tiltDegrees` bakes a fixed lamp-tilt correction and reports loss of the original curve. Unsupported signed IES shapes, absent luminaire-body geometry and fields without equivalents produce warnings. Simple circular luminous openings preserve their diameter encoding.
+
+A missing downward hemisphere remains dark. When IES starts above zero, LDT export inserts a zero knot 0.000001° before the first measured angle and reports that narrow boundary approximation; exact interchange at that discontinuity is impossible while requiring a zero-start gamma grid. No automatic 90° azimuth rotation is applied.
+
+This implementation follows [DIAL's EULUMDAT description](https://evo.support-en.dial.de/support/solutions/articles/9000074164-description-of-the-eulumdat-format) and the [DIAL/Lighting Analysts absolute-photometry interpretation](https://www.agi32.com/Downloads/PressReleases/EULUMDAT_Absolute_Photometry.pdf). No AGPL implementation code was copied or ported.
