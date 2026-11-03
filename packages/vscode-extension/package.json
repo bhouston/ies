@@ -91,6 +91,7 @@
       ]
     }
   },
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   }
