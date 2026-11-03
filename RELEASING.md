@@ -7,14 +7,14 @@ gh workflow run release.yml --ref main -f dry_run=true
 gh workflow run release.yml --ref main
 ```
 
-Semantic-release determines a shared version from Conventional Commits, publishes `ies-core`, `ies-viewer`, and `ies-cli` in dependency order, creates a GitHub Release with package tarballs, and publishes the extension to VS Code Marketplace and Open VSX.
+Semantic-release determines a shared version from Conventional Commits, publishes `ies-core`, `ies-viewer`, and `ies` (the CLI) in dependency order, creates a GitHub Release with package tarballs, and publishes the extension to VS Code Marketplace and Open VSX.
 
 ## One-time registry setup
 
-1. Claim the npm package names `ies-core`, `ies-viewer`, and `ies-cli` under the intended npm account. If a name is unavailable, rename it consistently before releasing. The repository being public does not reserve npm names.
+1. Claim the npm package names `ies-core`, `ies-viewer`, and `ies` under the intended npm account. npm only lets a trusted publisher be attached to an existing package, so publish the current `0.1.0` of each by hand once: `npm login`, `pnpm build`, then `pnpm --dir packages/<dir> publish --no-git-checks` for `core`, `viewer`, `cli` in that order. Later versions come from the release workflow. The root `ies-monorepo` package is `private` and never published.
 2. Configure npm trusted publishing for each package: GitHub owner `bhouston`, repository `ies`, workflow `release.yml`, environment `npm`. Create the repository's `npm` environment and configure any desired reviewers. First publication may require registry-side setup or an initial authenticated publication before trusted publishing can be registered.
 3. Ensure the VS Code Marketplace publisher `benhouston3d` and matching Open VSX namespace permit this extension. Add `VSCE_PAT` and `OVSX_PAT` repository secrets. Tokens are never stored in source.
-4. Enable GitHub Pages with source **GitHub Actions** for documentation. Builds are also uploaded as GitHub artifacts in CI.
+4. Enable GitHub Pages with source **GitHub Actions** for documentation, and set the custom domain to `ies.ben3d.ca` (Settings → Pages, then **Enforce HTTPS**). Add a DNS `CNAME` record `ies.ben3d.ca → bhouston.github.io`. With Actions-based Pages, the domain lives in repository settings, not a `CNAME` file. Builds are also uploaded as GitHub artifacts in CI.
 
 The release workflow validates its ref, reruns CI and refuses a stale `main` dispatch. It needs `contents: write` and `id-token: write` for GitHub releases and npm OIDC. Node 24 and the pinned pnpm version are installed by Actions.
 

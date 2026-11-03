@@ -23,8 +23,8 @@ try {
       stdio: 'inherit',
     },
   );
-  for (const name of ['core', 'viewer', 'cli']) {
-    const files = readdirSync(join(consumer, 'node_modules', `ies-${name}`, 'dist'), { recursive: true });
+  for (const name of ['ies-core', 'ies-viewer', 'ies']) {
+    const files = readdirSync(join(consumer, 'node_modules', name, 'dist'), { recursive: true });
     assert.ok(files.includes('index.js'), `${name} has an entry point`);
     assert.ok(
       files.every((file) => !String(file).includes('.test.') && !String(file).endsWith('.tsbuildinfo')),

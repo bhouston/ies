@@ -39,6 +39,6 @@ The 3D preview requires **hardware WebGL 2** and **Type C photometry**. Type A a
 
 ## Help and feedback
 
-See the [viewer documentation](https://bhouston.github.io/ies/vscode) for more details, or [report an issue](https://github.com/bhouston/ies/issues).
+See the [viewer documentation](https://ies.ben3d.ca/vscode) for more details, or [report an issue](https://github.com/bhouston/ies/issues).
 
 Contributor setup and build instructions are in [CONTRIBUTING.md](https://github.com/bhouston/ies/blob/main/CONTRIBUTING.md).

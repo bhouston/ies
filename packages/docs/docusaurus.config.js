@@ -1,9 +1,9 @@
-// Docusaurus builds this documentation into a GitHub Pages artifact.
+// Docusaurus builds this documentation into a GitHub Pages artifact served at https://ies.ben3d.ca.
 module.exports = {
   title: 'ies',
   tagline: 'Photometric lighting tools for JavaScript and TypeScript',
-  url: 'https://bhouston.github.io',
-  baseUrl: '/ies/',
+  url: 'https://ies.ben3d.ca',
+  baseUrl: '/',
   organizationName: 'bhouston',
   projectName: 'ies',
   onBrokenLinks: 'throw',
