@@ -4,6 +4,7 @@ import {
   buildIntensityCurves,
   buildIntensityTopology,
   formatGraphValue,
+  graphFrame,
   type IntensityCurveOptions,
   type UpAxis,
 } from '../graphs.js';
@@ -29,6 +30,8 @@ export interface IntensityGraphProps extends IntensityCurveOptions {
   horizontalSegments?: number;
   /** Topology mesh segments along the vertical gamma angle. */
   verticalSegments?: number;
+  /** Viewbox width / height; the background fills it and the graph is centered (Cartesian plots widen). Defaults to the native layout. */
+  aspectRatio?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -55,6 +58,7 @@ export function IntensityGraph({
   surface = 'both',
   horizontalSegments,
   verticalSegments,
+  aspectRatio,
   className,
   style,
   ...curvesOptions
@@ -81,7 +85,9 @@ export function IntensityGraph({
   const fixedAngle = curvesOptions.angle ?? 0;
   const title = `${projection} luminous intensity graph, ${axis} axis, ${fixedAngle} degrees, ${topology ? 'sampled surface' : 'shown curves'} maximum ${formatGraphValue(maximum)} candela`;
   const tickMaximum = diagram?.intensityTicks.at(-1) ?? 1;
-  const plot = { left: 72, top: 64, width: 400, height: 330 };
+  const layoutWidth = projection === 'cartesian' && aspectRatio ? Math.max(520, 560 * aspectRatio) : 520;
+  const frame = graphFrame(layoutWidth, 560, aspectRatio);
+  const plot = { left: 72, top: 64, width: layoutWidth - 120, height: 330 };
   const center = { x: 260, y: 240, radius: 170 };
   const mapX = (angle: number) =>
     plot.left + ((angle - diagram!.angleRange[0]) / (diagram!.angleRange[1] - diagram!.angleRange[0])) * plot.width;
@@ -89,8 +95,8 @@ export function IntensityGraph({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="520"
-      height="560"
+      width={frame.width}
+      height={frame.height}
       className={className}
       style={{
         width: '100%',
@@ -101,14 +107,14 @@ export function IntensityGraph({
         color: '#ddd',
         ...style,
       }}
-      viewBox="0 0 520 560"
+      viewBox={`${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
       // SVG contains accessible image geometry directly.
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="img"
       aria-label={title}
     >
       <title>{title}</title>
-      <rect width="520" height="560" fill="#111" />
+      <rect x={frame.x} y={frame.y} width={frame.width} height={frame.height} fill="#111" />
       <text x="24" y="28" fill="currentColor" fontSize="14">
         Luminous intensity · {projection}
       </text>
