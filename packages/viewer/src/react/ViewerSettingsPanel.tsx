@@ -1,16 +1,26 @@
 import { useEffect, useId, useRef } from 'react';
 import { TONE_MAPPING_OPTIONS, type ViewerSettings } from '../settings.js';
 
+/** `open` shows the panel, `closed` shows only its toggle button, and `hidden` shows neither. */
 export type SettingsPanelMode = 'open' | 'closed' | 'hidden';
+/** Props for {@link ViewerSettingsPanel}. */
 export interface ViewerSettingsPanelProps {
+  /** Current settings to display. */
   settings: ViewerSettings;
   mode?: SettingsPanelMode;
+  /** Called with each changed setting. */
   onChange: (patch: Partial<ViewerSettings>) => void;
+  /** Called when the user opens or closes the panel. */
   onModeChange: (mode: SettingsPanelMode) => void;
+  /** Called when an entered value is rejected. */
   onError?: (error: unknown) => void;
 }
 
-/** Shared React controls for the custom element, React viewer, and embedded applications. */
+/**
+ * Shared React controls for the custom element, React viewer, and embedded applications.
+ *
+ * @param props - See {@link ViewerSettingsPanelProps}.
+ */
 export function ViewerSettingsPanel({
   settings,
   mode = 'closed',

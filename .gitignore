@@ -9,3 +9,6 @@ coverage/
 .DS_Store
 .docusaurus/
 release-artifacts/
+packages/docs/ies.opencli.json
+packages/docs/docs/api/
+packages/docs/docs/cli-reference/

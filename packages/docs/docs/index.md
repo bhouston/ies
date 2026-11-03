@@ -28,7 +28,7 @@ pnpm dev
 pnpm docs:build
 ```
 
-See [Core](./core.md), [Conversion](./conversion.md), [Graphs](./graphs.md) and [CLI](./cli.md) for the current APIs and commands.
+See [Core](./core.md), [Conversion](./conversion.md), [Graphs](./graphs.md) and [CLI](./cli-reference/ies.md) for the current APIs and commands, and the [CLI reference](./cli-reference/ies.md), [ies-core API](./api/core/index.md) and [ies-viewer/react API](./api/react/index.md) for every command, function and prop.
 
 The demo accepts local IES and LDT files. Representative files from the three.js examples are in `fixtures/` with attribution.
 

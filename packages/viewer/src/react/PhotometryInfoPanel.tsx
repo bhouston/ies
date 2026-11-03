@@ -1,18 +1,27 @@
 import type { ReactNode } from 'react';
 import type { PhotometryDiagnostic, PhotometryInspection } from 'ies-core';
 
+/** Validation result shown by {@link PhotometryInfoPanel} and {@link ValidationChecks}. */
 export interface PhotometryValidation {
   valid: boolean;
   diagnostics: PhotometryDiagnostic[];
 }
+/** Props for {@link PhotometryInfoPanel}. */
 export interface PhotometryInfoPanelProps {
+  /** Result of `inspectPhotometry` from `ies-core`, or null before a file loads. */
   inspection: PhotometryInspection | null;
+  /** Result of `validatePhotometry` from `ies-core`. */
   validation: PhotometryValidation | null;
   fileName?: string;
+  /** Source size in bytes. */
   fileSize?: number;
+  /** Parse or inspection failure to display. */
   inspectionError?: string | null;
+  /** Viewer failure to display. */
   viewerError?: string | null;
+  /** Whether strict validation is enabled. */
   strict?: boolean;
+  /** Shows a strict-validation checkbox when provided. */
   onStrictChange?: (value: boolean) => void;
 }
 const value = (number: number | null | undefined, unit = ''): string =>
@@ -39,6 +48,11 @@ function Rows({ rows }: { rows: [string, ReactNode][] }) {
     </dl>
   );
 }
+/**
+ * Validation status and diagnostic list, as shown in {@link PhotometryInfoPanel}.
+ *
+ * @param props - The validation result and whether strict validation is enabled.
+ */
 export function ValidationChecks({ validation, strict }: { validation: PhotometryValidation; strict: boolean }) {
   const counts = { error: 0, warning: 0, info: 0 };
   for (const diagnostic of validation.diagnostics) counts[diagnostic.severity]++;
@@ -70,7 +84,11 @@ export function ValidationChecks({ validation, strict }: { validation: Photometr
   );
 }
 
-/** Shared React inspection surface: the data is the same model consumed by the CLI. */
+/**
+ * Shared React inspection surface: the data is the same model consumed by the CLI.
+ *
+ * @param props - See {@link PhotometryInfoPanelProps}.
+ */
 export function PhotometryInfoPanel({
   inspection: info,
   validation,

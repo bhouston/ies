@@ -6,7 +6,27 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from 'ies-core';
 import { chartPhotometry } from './chart.js';
 import { imageDimensions, requireHardwareGPU } from './render.js';
-import { parseImageArguments, writeImageExclusively } from './images.js';
+import yargs from 'yargs';
+import { command as chart } from './commands/chart.js';
+import { command as render } from './commands/render.js';
+import { imageOptions, writeImageExclusively, type ImageCommandOptions } from './images.js';
+
+/** Parse through the real yargs command definitions, stopping before any rendering. */
+async function parseImageArguments(name: 'render' | 'chart', argv: string[]) {
+  let options: ImageCommandOptions | undefined;
+  await yargs([name, ...argv])
+    .command({
+      ...(name === 'render' ? render : chart),
+      handler: (parsed) => void (options = imageOptions(name, parsed)),
+    })
+    .strict()
+    .exitProcess(false)
+    .fail((message, error) => {
+      throw error ?? new Error(message);
+    })
+    .parseAsync();
+  return options!;
+}
 
 const fixture = resolve('fixtures/007cfb11e343e2f42e3b476be4ab684e.ies');
 const bin = resolve('packages/cli/bin/cli.js');
@@ -73,7 +93,7 @@ describe('image command arguments', () => {
         '--lamp-set',
         '2',
       ]),
-    ).toMatchObject({ width: 640, height: 480, exposure: 0.5, browser: '/chrome', lampSetIndex: 1 }));
+    ).resolves.toMatchObject({ width: 640, height: 480, exposure: 0.5, browser: '/chrome', lampSetIndex: 1 }));
   it('accepts graph types, axes, negative slice angle and ground settings', () =>
     expect(
       parseImageArguments('chart', [
@@ -95,7 +115,7 @@ describe('image command arguments', () => {
         '--resolution',
         '31',
       ]),
-    ).toMatchObject({
+    ).resolves.toMatchObject({
       type: 'isolux',
       axis: 'horizontal',
       angle: -45,
@@ -126,7 +146,7 @@ describe('image command arguments', () => {
     ['chart', [fixture, '-o', 'x.svg', '--browser', 'chrome']],
     ['render', [fixture, fixture, '-o', 'x.png']],
   ] as const)('rejects invalid %s options %j before output creation', (command, argv) =>
-    expect(() => parseImageArguments(command, [...argv])).toThrow(),
+    expect(parseImageArguments(command, [...argv])).rejects.toThrow(),
   );
   it('bounds image memory using finite integer dimensions', () => {
     expect(imageDimensions()).toEqual({ width: 1024, height: 768 });
