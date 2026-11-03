@@ -194,6 +194,12 @@ describe('principal-plane beam and field estimates', () => {
       beamAngleStatus: 'multiple-lobes',
       fieldAngleDegrees: null,
       fieldAngleStatus: 'multiple-lobes',
+      // Crossings around the first dominant lobe (γ −30°, the C180 side) remain; only the width is withheld.
+      peakDirectionDegrees: -30,
+      beamLeftDegrees: -45,
+      beamRightDegrees: -22.5,
+      fieldLeftDegrees: -57,
+      fieldRightDegrees: -16.5,
     });
   });
   it('does not invent crossings outside measured coverage or for an unbounded isotropic source', () => {
@@ -201,6 +207,9 @@ describe('principal-plane beam and field estimates', () => {
     expect(getBeamAngles(isotropic)).toMatchObject({ beamAngleDegrees: null, beamAngleStatus: 'no-crossing' });
     const partial = parseIES(iesSource({ vertical: [10, 45, 90], values: [[100, 10, 0]] }));
     expect(getBeamAngles(partial).beamAngleDegrees).toBeNull();
+    for (const cut of [getBeamAngles(isotropic), getBeamAngles(partial)])
+      for (const key of ['beamLeftDegrees', 'beamRightDegrees', 'fieldLeftDegrees', 'fieldRightDegrees'])
+        expect(cut).not.toHaveProperty(key);
   });
   it('reports dark distributions without NaN or invented beam widths', () => {
     const profile = parseIES(iesSource({ values: [[0, 0, 0]] }));
@@ -209,6 +218,7 @@ describe('principal-plane beam and field estimates', () => {
       fieldAngleDegrees: null,
       beamAngleStatus: 'no-light',
     });
+    expect(getBeamAngles(profile)).not.toHaveProperty('beamLeftDegrees');
     expect(computePhotometricMetrics(profile)).toMatchObject({
       integratedFluxLumens: 0,
       luminousEfficacyLumensPerWatt: 0,
