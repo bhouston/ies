@@ -252,6 +252,8 @@ export interface IsoluxGrid extends ContourGrid {
   maximum: number;
   minimum: number;
   average: number;
+  /** Uniformity U0 = Emin / Eavg over the grid points; 0 when the grid is unlit. */
+  uniformity: number;
   mountingHeight: number;
   extent: Point2;
 }
@@ -321,9 +323,29 @@ export function buildIsoluxGrid(profile: IESProfile, options: IsoluxOptions = {}
     maximum,
     minimum,
     average,
+    uniformity: average > 0 ? minimum / average : 0,
     mountingHeight: parameters.mountingHeight,
     extent: [width, depth],
   };
+}
+export interface ContourLevelOptions {
+  /** Lowest 1-2-5 level in lux; default 1. */
+  minContour?: number;
+  /** Keep at most this many levels, dropping the lowest first; default 10. */
+  maxLevels?: number;
+}
+/** 1-2-5 series (…, 1, 2, 5, 10, 20, 50, …) from `minContour` up to the largest value below `maximum`. */
+export function isoluxContourLevels(maximum: number, options: ContourLevelOptions = {}): number[] {
+  finite(maximum, 'Maximum', 0);
+  const floor = finite(options.minContour ?? 1, 'Minimum contour', 1e-9, 1e12);
+  const cap = count(options.maxLevels ?? 10, 'Contour level cap', 1, 32);
+  const levels: number[] = [];
+  for (let power = Math.floor(Math.log10(floor)); ; power++)
+    for (const mantissa of [1, 2, 5]) {
+      const level = Number((mantissa * 10 ** power).toPrecision(12));
+      if (level >= maximum) return levels.slice(-cap);
+      if (level >= floor * (1 - 1e-9)) levels.push(level);
+    }
 }
 export interface Contour {
   level: number;

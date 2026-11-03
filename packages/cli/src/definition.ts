@@ -65,6 +65,11 @@ export function cliDocument(): OpenCliDocument {
         examples: [
           { title: 'Polar SVG', content: 'ies chart luminaire.ies -o polar.svg' },
           { title: 'Isolux PNG', content: 'ies chart luminaire.ies -o isolux.png --type isolux --mounting-height 3' },
+          {
+            title: 'Isolux with explicit contours',
+            content:
+              'ies chart luminaire.ies -o isolux.svg --type isolux --extent 30 --contours 1,2,5,10 --color-scale linear',
+          },
         ],
       },
       'ies docgen': { examples: [{ title: 'JSON', content: 'ies docgen -o ies.json' }] },

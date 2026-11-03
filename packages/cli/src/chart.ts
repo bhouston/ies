@@ -29,6 +29,11 @@ export interface ChartOptions {
   /** Intensity table: keep at most this many C columns / γ rows. */
   maxColumns?: number;
   maxRows?: number;
+  /** Explicit isolux contour levels in lux. */
+  contours?: number[];
+  /** Lowest automatic 1-2-5 isolux contour in lux. */
+  minContour?: number;
+  colorScale?: 'log' | 'linear';
   lampSetIndex?: number;
   inputFormat?: 'ies' | 'ldt';
 }
@@ -90,6 +95,9 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
                 mountingHeight: options.mountingHeight ?? 2,
                 extent: options.extent ?? 10,
                 resolution: options.resolution ?? 61,
+                contourLevels: options.contours,
+                minContour: options.minContour,
+                colorScale: options.colorScale,
                 aspectRatio,
                 style,
               })

@@ -71,7 +71,7 @@ import { IsoluxGraph } from '@ies-tools/viewer/react';
   resolution={61}
   aimAngle={30}
   azimuth={90}
-  contours={[5, 10, 20, 50]}
+  contourLevels={[5, 10, 20, 50]}
 />;
 ```
 
@@ -81,19 +81,21 @@ The calculation places the fixture at `(0, mountingHeight, 0)` above a ground pl
 lux = I(local direction in candela) × receiver cosine / distance²
 ```
 
-`aimAngle` is the angle away from nadir toward `azimuth`. Zero points down. `azimuth` runs from +X toward +Z and also turns the C0 plane. Ground coordinates X/Z and mounting height use metres. The map includes a marker directly below the luminaire, physical axes, lux contours and sampled-grid statistics. The reported grid mean is an arithmetic mean of grid points, not an integrated area average.
+`aimAngle` is the angle away from nadir toward `azimuth`. Zero points down. `azimuth` runs from +X toward +Z and also turns the C0 plane. Ground coordinates X/Z and mounting height use metres. The map includes a marker directly below the luminaire, physical axes, labelled lux contours and sampled-grid statistics: peak, minimum, mean and uniformity U0 = Emin / Eavg. The reported grid mean is an arithmetic mean of grid points, not an integrated area average. The heatmap is a smooth bilinear fill: one PNG pixel per grid point, upscaled by the SVG renderer, so it needs no canvas and exports to SVG and PNG alike. Contour labels are placed greedily along each line, as far as possible from labels already placed; a label that would overlap another is omitted, and the legend still lists every drawn level.
 
-| Prop                 | Meaning and bounds                                                                                                                        |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `mountingHeight`     | Metres above ground; default 2; 0.01–10,000                                                                                               |
-| `extent`             | Full ground width/depth, centered below the fixture; number for a square or `[width, depth]`; default 10 m; each dimension 0.01–100,000 m |
-| `resolution`         | Points per axis, rather than cells; number or `[columns, rows]`; default 51; integer 2–201                                                |
-| `aimAngle`           | Fixture aiming away from nadir, 0–180°; default 0                                                                                         |
-| `azimuth`            | Fixture/C0 orientation, −360–360°; default 0                                                                                              |
-| `lampTilt`           | Separate lamp-dependent IES TILT correction angle, −180–180°; default 0                                                                   |
-| `contours`           | Strictly increasing absolute lux levels; at most 32; omitted chooses rounded levels; `[]` hides contours                                  |
-| `heatmap`            | Display the colored receiver grid; default true                                                                                           |
-| `className`, `style` | SVG styling                                                                                                                               |
+| Prop                 | Meaning and bounds                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mountingHeight`     | Metres above ground; default 2; 0.01–10,000                                                                                                |
+| `extent`             | Full ground width/depth, centered below the fixture; number for a square or `[width, depth]`; default 10 m; each dimension 0.01–100,000 m  |
+| `resolution`         | Points per axis, rather than cells; number or `[columns, rows]`; default 51; integer 2–201                                                 |
+| `aimAngle`           | Fixture aiming away from nadir, 0–180°; default 0                                                                                          |
+| `azimuth`            | Fixture/C0 orientation, −360–360°; default 0                                                                                               |
+| `lampTilt`           | Separate lamp-dependent IES TILT correction angle, −180–180°; default 0                                                                    |
+| `contourLevels`      | Strictly increasing absolute lux levels; at most 32; omitted uses the 1-2-5 series; `[]` hides contours (`contours` is a deprecated alias) |
+| `minContour`         | Lowest automatic 1-2-5 level in lux; default 1. Levels run up to the largest value below the grid peak, at most 10, dropping the lowest    |
+| `colorScale`         | `log` (default) maps colour logarithmically from the lowest level to the peak, so 1–50 lx spill stays visible; `linear` maps lux to peak   |
+| `heatmap`            | Display the colored receiver grid; default true                                                                                            |
+| `className`, `style` | SVG styling                                                                                                                                |
 
 Fixture aiming is a geometric rotation. It does **not** automatically change the lamp-dependent IES TILT correction. If the fixture's lamp correction requires a particular angle, pass it independently as `lampTilt`; intensity graphs accept the same correction prop. The workbench's isolux controls affect the footprint calculation; the 3D scene retains its downward-facing fixture.
 
@@ -126,6 +128,7 @@ import {
   buildIsoluxGrid,
   groundIlluminance,
   extractContours,
+  isoluxContourLevels,
   niceTicks,
   buildConeDiagram,
   buildLuminanceTable,
@@ -142,8 +145,9 @@ const mesh = buildIntensityTopology(profile, { upAxis: 'z', projection: 'orthogr
 
 const lux = groundIlluminance(profile, 1, 2, { mountingHeight: 3, aimAngle: 30 });
 const grid = buildIsoluxGrid(profile, { mountingHeight: 3, extent: [12, 8], resolution: [61, 41] });
-// grid.xs, grid.zs, grid.values[zIndex][xIndex], maximum, minimum and average.
-const contours = extractContours(grid, [5, 10, 20]);
+// grid.xs, grid.zs, grid.values[zIndex][xIndex], maximum, minimum, average and uniformity (U0).
+const levels = isoluxContourLevels(grid.maximum, { minContour: 1 }); // [1, 2, 5, 10, 20, 50, …]
+const contours = extractContours(grid, levels);
 // contours[].segments: [[x1, z1], [x2, z2]] in physical ground coordinates.
 const ticks = niceTicks(grid.maximum);
 
