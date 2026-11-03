@@ -224,6 +224,15 @@ describe('shared graph exports', () => {
     expect(luminance.values.gammas).toEqual([45, 50, 55, 60, 65, 70, 75, 80, 85]);
     expect(runChart('-o', join(directory, 'polar.svg')).values).toBeUndefined();
   });
+  it('passes --log-scale through to a log-scale polar chart', async () => {
+    expect((await parseImageArguments('chart', [fixture, '-o', 'out.svg'])).logScale).toBe(false);
+    expect((await parseImageArguments('chart', [fixture, '-o', 'out.svg', '--log-scale'])).logScale).toBe(true);
+    const text = await readFile(fixture, 'utf8');
+    const linear = (await chartPhotometry(text)).data.toString();
+    const log = (await chartPhotometry(text, { logScale: true })).data.toString();
+    expect(linear).not.toContain('cd (log)');
+    expect(log).toContain('cd (log)');
+  });
   it.each(
     (['polar', 'cartesian', 'topology', 'isolux', 'cone', 'luminance', 'intensity-table'] as const).flatMap((type) =>
       [

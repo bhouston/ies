@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { type IESProfile } from '@ies-tools/core';
 import { IntensityGraph } from './IntensityGraph.js';
 import { IsoluxGraph } from './IsoluxGraph.js';
@@ -26,6 +27,7 @@ export interface ChartTabsProps {
 
 /** Tab bar over the 3D viewport; chart tabs cover the viewport with the selected chart. */
 export function ChartTabs({ tab, onTabChange, profile, mountingHeight }: ChartTabsProps) {
+  const [logScale, setLogScale] = useState(false);
   return (
     <>
       <div
@@ -69,12 +71,27 @@ export function ChartTabs({ tab, onTabChange, profile, mountingHeight }: ChartTa
           ) : tab === 'isolux' ? (
             <IsoluxGraph profile={profile} mountingHeight={mountingHeight} style={{ maxHeight: '100%' }} />
           ) : (
-            <IntensityGraph
-              profile={profile}
-              projection={tab}
-              principalPlanes={tab !== 'topology'}
-              style={{ maxHeight: '100%' }}
-            />
+            <>
+              <IntensityGraph
+                profile={profile}
+                projection={tab}
+                principalPlanes={tab !== 'topology'}
+                logScale={logScale}
+                style={{ maxHeight: '100%' }}
+              />
+              {tab !== 'topology' && (
+                <label className="absolute top-3 right-3 flex items-center gap-2 text-sm">
+                  <input
+                    name="logScale"
+                    type="checkbox"
+                    checked={logScale}
+                    className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+                    onChange={(event) => setLogScale(event.currentTarget.checked)}
+                  />
+                  Log scale
+                </label>
+              )}
+            </>
           )}
         </div>
       )}

@@ -60,6 +60,39 @@ describe('React presentation without a GPU', () => {
     expect(cartesian).toContain('180°');
     expect(cartesian.match(/<polyline/g)).toHaveLength(3);
   });
+  it('draws 30° spokes, beam/field markers at the cos²γ crossings, and a log-scale option', () => {
+    const vertical = Array.from({ length: 91 }, (_, i) => i);
+    const cosine = parseIES(`IESNA:LM-63-2002
+TILT=NONE
+1 1000 1 91 1 1 2 0 0 0
+1 1 10
+${vertical.join(' ')}
+0
+${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
+`);
+    const polar = renderToStaticMarkup(createElement(IntensityGraph, { profile: cosine }));
+    for (const label of [0, 30, 60, 90, 120, 150, 180]) expect(polar).toContain(`>${label}°<`);
+    expect(polar.match(/stroke-dasharray="1 3"/g)).toHaveLength(12);
+    const angles = (kind: string) =>
+      [...polar.matchAll(new RegExp(`data-marker="${kind}" data-angle="([^"]+)"`, 'g'))].map((m) => Number(m[1]));
+    expect(angles('beam')).toHaveLength(2);
+    expect(angles('beam')[0]).toBeCloseTo(-45, 6);
+    expect(angles('beam')[1]).toBeCloseTo(45, 6);
+    expect(angles('field')[1]).toBeCloseTo((Math.acos(Math.sqrt(0.1)) * 180) / Math.PI, 1);
+    expect(polar).toContain('beam 50 % / field 10 %');
+    expect(renderToStaticMarkup(createElement(IntensityGraph, { profile: cosine, projection: 'cartesian' }))).toContain(
+      'data-marker="beam"',
+    );
+    // An isotropic source has no bracketed crossing, so no markers or marker legend.
+    const isotropic = parseIES(
+      'IESNA:LM-63-2002\nTILT=NONE\n1 1000 1 3 1 1 2 0 0 0\n1 1 10\n0 90 180\n0\n100 100 100\n',
+    );
+    expect(renderToStaticMarkup(createElement(IntensityGraph, { profile: isotropic }))).not.toContain('data-marker');
+    const log = renderToStaticMarkup(createElement(IntensityGraph, { profile: cosine, logScale: true }));
+    expect(log).toContain('cd (log)');
+    for (const ring of ['1 cd', '2 cd', '5 cd', '500 cd', '1000 cd']) expect(log).toContain(`>${ring}<`);
+    expect(log).not.toEqual(polar);
+  });
   it('renders an accessible physically scaled isolux map with requested contours', () => {
     const markup = renderToStaticMarkup(
       createElement(IsoluxGraph, { profile, mountingHeight: 2, extent: 4, resolution: 11, contours: [5, 10] }),

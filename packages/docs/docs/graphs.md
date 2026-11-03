@@ -37,7 +37,16 @@ import { IntensityGraph } from '@ies-tools/viewer/react';
 
 For horizontal sweeps, `angle` or each entry in `planes` is the fixed vertical angle, and C sweeps 0–360°. Plane lists contain one to eight angles. Angles are degrees; intensity is absolute candela, not peak-normalized attenuation.
 
-The requested uniform samples are supplemented by measured angle knots, including symmetry-expanded horizontal knots. This preserves narrow peaks on irregular input grids. `samples` defaults to 361, ranges from 3 to 1441, and must be odd for vertical cuts so the curve includes nadir. The caption reports the peak of the **shown curves**, which can differ from the maximum over every measured C-plane. Cartesian views include labeled angles, candela ticks and curve legends; polar views include radial candela scales and signed angles.
+The requested uniform samples are supplemented by measured angle knots, including symmetry-expanded horizontal knots. This preserves narrow peaks on irregular input grids. `samples` defaults to 361, ranges from 3 to 1441, and must be odd for vertical cuts so the curve includes nadir. The caption reports the peak of the **shown curves**, which can differ from the maximum over every measured C-plane. Cartesian views include labeled angles, candela ticks and curve legends; polar views include radial candela scales and dotted spokes labelled every 30°.
+
+Vertical cuts also carry `curve.beam`, the [`getBeamAngles`](./core.md) estimate for that opposed-plane cut. Both charts draw its 50 % (**beam**, dashed) and 10 % (**field**, dotted) crossings on each side of the peak in a muted copy of the curve colour, as radial lines on the polar chart and vertical lines on the Cartesian chart. A cut whose status is not `ok` gets no markers.
+
+```tsx
+// Three decades on a log scale: radius = log10(I / Imin) / 3 × R, with Imin = Imax / 1000.
+<IntensityGraph profile={profile} principalPlanes logScale />
+```
+
+`logScale` applies to polar and Cartesian views. Intensities at or below Imin sit at the centre (or the Cartesian baseline), and the rings or ticks fall on 1-2-5 candela values in each decade. `logRadius` and `logTicks` from `@ies-tools/viewer/graphs` expose the same mapping. The light viewer's chart tabs have a **Log scale** checkbox, and `ies chart --log-scale` exports the same view.
 
 ## Intensity topology
 

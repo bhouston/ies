@@ -29,6 +29,8 @@ export interface ChartOptions {
   /** Intensity table: keep at most this many C columns / γ rows. */
   maxColumns?: number;
   maxRows?: number;
+  /** Log-scale intensity (three decades) for polar and Cartesian charts. */
+  logScale?: boolean;
   /** Explicit isolux contour levels in lux. */
   contours?: number[];
   /** Lowest automatic 1-2-5 isolux contour in lux. */
@@ -108,6 +110,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
                 angle,
                 upAxis,
                 principalPlanes: axis === 'vertical' && options.angle === undefined,
+                logScale: options.logScale ?? false,
                 aspectRatio,
                 style,
               });

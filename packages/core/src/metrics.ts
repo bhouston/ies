@@ -19,13 +19,13 @@ export interface BeamAngles {
   fieldAngleDegrees: number | null;
   beamAngleStatus: BeamAngleStatus;
   fieldAngleStatus: BeamAngleStatus;
-  /** Signed vertical angle of the 50% crossing before the peak; negative is in the C+180 plane. Set when the beam status is ok. */
+  /** Signed vertical angle of the 50% crossing below the peak (negative = opposite C-plane). Absent when not bracketed. */
   beamLeftDegrees?: number;
-  /** Signed vertical angle of the 50% crossing after the peak. Set when the beam status is ok. */
+  /** Signed vertical angle of the 50% crossing above the peak. Absent when not bracketed. */
   beamRightDegrees?: number;
-  /** Signed vertical angle of the 10% crossing before the peak; negative is in the C+180 plane. Set when the field status is ok. */
+  /** Signed vertical angle of the 10% crossing below the peak. Absent when not bracketed. */
   fieldLeftDegrees?: number;
-  /** Signed vertical angle of the 10% crossing after the peak. Set when the field status is ok. */
+  /** Signed vertical angle of the 10% crossing above the peak. Absent when not bracketed. */
   fieldRightDegrees?: number;
 }
 
@@ -231,7 +231,7 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
     if (
       intensities.some((value, index) => value > threshold && (directions[index]! < left || directions[index]! > right))
     ) {
-      return { angle: null, status: 'multiple-lobes' };
+      return { angle: null, status: 'multiple-lobes', left, right };
     }
     return { angle: right - left, status: 'ok', left, right };
   };
@@ -245,8 +245,8 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
     fieldAngleDegrees: field.angle,
     beamAngleStatus: beam.status,
     fieldAngleStatus: field.status,
-    ...(beam.status === 'ok' && { beamLeftDegrees: beam.left, beamRightDegrees: beam.right }),
-    ...(field.status === 'ok' && { fieldLeftDegrees: field.left, fieldRightDegrees: field.right }),
+    ...(beam.left !== undefined && { beamLeftDegrees: beam.left, beamRightDegrees: beam.right }),
+    ...(field.left !== undefined && { fieldLeftDegrees: field.left, fieldRightDegrees: field.right }),
   };
 }
 

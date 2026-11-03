@@ -28,6 +28,7 @@ export interface ImageArguments extends Omit<RenderOptions, 'lampSetIndex' | 'in
   unit?: string;
   maxColumns?: number;
   maxRows?: number;
+  logScale?: boolean;
   contours?: string;
   minContour?: number;
   colorScale?: string;
