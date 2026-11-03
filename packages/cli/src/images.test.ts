@@ -116,6 +116,12 @@ describe('image command arguments', () => {
         '8',
         '--resolution',
         '31',
+        '--contours',
+        '1, 2,5',
+        '--min-contour',
+        '0.5',
+        '--color-scale',
+        'linear',
       ]),
     ).resolves.toMatchObject({
       type: 'isolux',
@@ -125,6 +131,9 @@ describe('image command arguments', () => {
       mountingHeight: 3,
       extent: 8,
       resolution: 31,
+      contours: [1, 2, 5],
+      minContour: 0.5,
+      colorScale: 'linear',
     }));
   it.each([
     ['render', []],
@@ -144,6 +153,10 @@ describe('image command arguments', () => {
     ['chart', [fixture, '-o', 'x.svg', '--mounting-height', '0']],
     ['chart', [fixture, '-o', 'x.svg', '--extent', '-1']],
     ['chart', [fixture, '-o', 'x.svg', '--resolution', '1.5']],
+    ['chart', [fixture, '-o', 'x.svg', '--contours', '5,2']],
+    ['chart', [fixture, '-o', 'x.svg', '--contours', '1,x']],
+    ['chart', [fixture, '-o', 'x.svg', '--min-contour', '0']],
+    ['chart', [fixture, '-o', 'x.svg', '--color-scale', 'cubic']],
     ['render', [fixture, '-o', 'x.png', '--type', 'polar']],
     ['chart', [fixture, '-o', 'x.svg', '--browser', 'chrome']],
     ['render', [fixture, fixture, '-o', 'x.png']],
