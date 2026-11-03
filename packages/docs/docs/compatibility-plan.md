@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Photometric compatibility comparison and plan
 
-This is a comparison and proposed plan, not an implementation of EULUMDAT support. Research was performed on November 3, 2026 against:
+This is a historical baseline and research plan from before the incremental implementation PRs. It is retained to explain the original comparison and priorities, rather than describe current feature support. For the implemented behavior, see [Core](./core.md), [Conversion](./conversion.md), [Graphs](./graphs.md) and [CLI](./cli.md). Research was performed on November 3, 2026 against:
 
 - This project's initial implementation, including the expanded real-file tests.
 - [eulumdat-rs](https://github.com/holg/eulumdat-rs/tree/f07581600fcf339e5db14003d714f4b285d4d86d), commit `f07581600fcf339e5db14003d714f4b285d4d86d`.
@@ -19,7 +19,7 @@ Our current viewer uses classic Three.js `WebGLRenderer` and a calibrated receiv
 
 ## Core features
 
-| Area        | ies today                                                                                                   | eulumdat-rs reference                                                                      |
+| Area        | ies at research baseline                                                                                    | eulumdat-rs reference                                                                      |
 | ----------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | IES input   | Headerless 1986, 1991, 1995, 2002                                                                           | 1991, 1995, 2002, 2019; headerless input treated as 1991                                   |
 | Coordinates | Parse A/B/C; sample and render Type C                                                                       | Raw parser represents A/B/C; IES-to-LDT path does not transform those coordinates          |
@@ -34,7 +34,7 @@ These findings come from the reference [IES parser/exporter](https://github.com/
 
 ## Graphs
 
-| Graph capability     | ies today                                          | Reference                                                            |
+| Graph capability     | ies at research baseline                           | Reference                                                            |
 | -------------------- | -------------------------------------------------- | -------------------------------------------------------------------- |
 | Polar                | One 0–180° vertical meridian or a horizontal sweep | Complete opposed-plane cuts; paired C0–C180 and C90–C270 curves      |
 | Cartesian            | One configurable sweep                             | Multiple C-plane overlays with scales and legends                    |
