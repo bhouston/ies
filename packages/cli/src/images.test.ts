@@ -2,14 +2,14 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
 import { chartPhotometry } from './chart.js';
 import { imageDimensions, requireHardwareGPU } from './render.js';
 import yargs from 'yargs';
 import { command as chart } from './commands/chart.js';
 import { command as render } from './commands/render.js';
-import { imageOptions, writeImageExclusively, type ImageCommandOptions } from './images.js';
+import { imageOptions, runImageCommand, writeImageExclusively, type ImageCommandOptions } from './images.js';
 
 /** Parse through the real yargs command definitions, stopping before any rendering. */
 async function parseImageArguments(name: 'render' | 'chart', argv: string[]) {
@@ -167,11 +167,14 @@ describe('image command arguments', () => {
     [{ contours: Array.from({ length: 33 }, (_, i) => String(i)).join(',') }, 'at most 32'],
     [{ contours: '-1,2' }, 'nonnegative'],
     [{ contours: '1,Infinity' }, 'Contours must'],
-    [{ colorScale: 'cubic' }, 'Colour scale'],
     [{ type: 'pie' }, 'Chart type'],
     [{ axis: 'diagonal' }, 'Axis'],
     [{ upAxis: 'w' }, 'Up axis'],
-  ])('rejects chart arguments %j that bypass yargs choices', (extra, message) =>
+    [{ colorScale: 'cubic' }, 'Colour scale'],
+    [{ timeout: 601 }, 'Timeout'],
+    [{ exposure: -1 }, 'Exposure'],
+    [{ angle: Infinity }, 'finite number'],
+  ])('validates %j without relying on yargs choices', (extra, message) =>
     expect(() => imageOptions('chart', { file: fixture, output: 'x.svg', ...extra })).toThrow(message),
   );
   it('bounds image memory using finite integer dimensions', () => {
@@ -262,6 +265,52 @@ describe('shared graph exports', () => {
     expect(floor).toContain('log colour');
     expect(floor).not.toContain('data-level="2"');
     expect(floor).toContain('data-level="5"');
+  });
+  it.each([
+    [{ type: 'pie' }, 'Unknown chart type'],
+    [{ format: 'jpg' }, 'svg or png'],
+    [{ axis: 'diagonal' }, 'Invalid chart axis'],
+    [{ upAxis: 'w' }, 'Invalid chart axis'],
+    [{ angle: NaN }, 'finite'],
+  ])('rejects chart options %j', async (extra, message) => {
+    const text = await readFile(fixture, 'utf8');
+    await expect(chartPhotometry(text, extra as Parameters<typeof chartPhotometry>[1])).rejects.toThrow(message);
+  });
+  it('defaults to a 900×700 polar SVG framed at that aspect ratio', async () => {
+    const exported = await chartPhotometry(await readFile(fixture, 'utf8'));
+    expect(exported).toMatchObject({ type: 'polar', format: 'svg', width: 900, height: 700 });
+    const [, , width, height] = exported.data
+      .toString()
+      .match(/viewBox="([^"]+)"/)![1]!
+      .split(' ')
+      .map(Number);
+    expect(width! / height!).toBeCloseTo(900 / 700, 9);
+  });
+  it.each([
+    [false, /^Wrote .*chart\.svg \(640 × 320; isolux\)$/],
+    [true, /"format": "svg"/],
+  ])('runs the chart command in-process (json %s)', async (json, report) => {
+    const output = join(await temporary(), 'chart.svg');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await runImageCommand('chart', {
+        input: fixture,
+        output,
+        json,
+        type: 'isolux',
+        width: 640,
+        height: 320,
+        resolution: 11,
+      });
+      expect(log.mock.calls[0]![0]).toMatch(report);
+    } finally {
+      log.mockRestore();
+    }
+    const [, , width, height] = (await readFile(output, 'utf8'))
+      .match(/viewBox="([^"]+)"/)![1]!
+      .split(' ')
+      .map(Number);
+    expect(width! / height!).toBeCloseTo(2, 9);
   });
   it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
     const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
