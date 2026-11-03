@@ -1,6 +1,29 @@
 import { defineCommand } from 'yargs-file-commands';
 import { inputOptions, readInput } from '../options.js';
-import { inspectPhotometry } from '../photometry.js';
+import { inspectPhotometry, type PhotometryInspection } from '../photometry.js';
+
+const percentCell = (value: number | null) => (value === null ? '—' : value.toFixed(1)).padStart(11);
+
+/** Compact human lines for the flux breakdown, ratios, CIE flux code and zonal lumens (Type C only). */
+function extendedMetricLines(summary: PhotometryInspection): string[] {
+  if (summary.downwardFluxLumens === null || summary.upwardFluxLumens === null) return [];
+  return [
+    `Downward / upward flux: ${summary.downwardFluxLumens.toFixed(3)} lm / ${summary.upwardFluxLumens.toFixed(3)} lm`,
+    `DFF ${summary.downwardFluxFraction === null ? 'unavailable (no light)' : `${(summary.downwardFluxFraction * 100).toFixed(0)} %`}`,
+    summary.lightOutputRatio === null
+      ? 'LOR unavailable (no declared lamp flux)'
+      : `LOR ${summary.lightOutputRatio.toFixed(2)} (DLOR ${summary.downwardLightOutputRatio!.toFixed(2)} / ULOR ${summary.upwardLightOutputRatio!.toFixed(2)})`,
+    `CIE flux code: ${summary.cieFluxCode!.map((n) => n ?? '—').join(' ')}`,
+    `Peak (tilt applied): ${summary.peakIntensityCandela!.toFixed(3)} cd at C${summary.peakDirection!.horizontalDegrees}° γ${summary.peakDirection!.verticalDegrees}°`,
+    `Nadir intensity: ${summary.nadirCandela!.toFixed(3)} cd`,
+    'Zonal lumens:',
+    `  ${'Zone'.padEnd(9)}${'lm'.padStart(12)}${'% lamp'.padStart(11)}${'% luminaire'.padStart(13)}`,
+    ...summary.zonalLumens!.map(
+      (zone) =>
+        `  ${`${zone.fromDegrees}–${zone.toDegrees}°`.padEnd(9)}${zone.lumens.toFixed(3).padStart(12)}${percentCell(zone.percentOfLamp)}${percentCell(zone.percentOfLuminaire).padStart(13)}`,
+    ),
+  ];
+}
 
 export const command = defineCommand({
   command: 'inspect <file>',
@@ -41,6 +64,7 @@ export const command = defineCommand({
         (cut) =>
           `C${cut.horizontalDegrees}–C${(cut.horizontalDegrees + 180) % 360} beam / field estimate: ${cut.beamAngleDegrees === null ? `unavailable (${cut.beamAngleStatus})` : `${cut.beamAngleDegrees.toFixed(3)}°`} / ${cut.fieldAngleDegrees === null ? `unavailable (${cut.fieldAngleStatus})` : `${cut.fieldAngleDegrees.toFixed(3)}°`} (peak direction ${cut.peakDirectionDegrees}°)`,
       ),
+      ...extendedMetricLines(summary),
       `Angles: ${summary.verticalAngles} vertical × ${summary.horizontalAngles} horizontal`,
       `Dimensions (width × length × height): ${dimensions.width} × ${dimensions.length} × ${dimensions.height} ${summary.units}`,
       `Tilt correction: ${summary.hasTilt ? 'embedded' : 'none'}`,

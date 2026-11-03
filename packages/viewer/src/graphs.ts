@@ -1,4 +1,4 @@
-import { sampleIntensity, type IESProfile } from '@ies-tools/core';
+import { getBeamAngles, sampleIntensity, type BeamAngles, type IESProfile } from '@ies-tools/core';
 
 export type GraphAxis = 'vertical' | 'horizontal';
 export type UpAxis = 'x' | 'y' | 'z';
@@ -42,6 +42,25 @@ export function niceTicks(maximum: number, intervals = 4): number[] {
   if (!Number.isFinite(last * step)) return Array.from({ length: intervals + 1 }, (_, i) => (i / intervals) * maximum);
   return Array.from({ length: last + 1 }, (_, i) => Number((i * step).toPrecision(12)));
 }
+/** Decades shown by log-scale intensity graphs. */
+export const LOG_DECADES = 3;
+/** Log radius fraction log10(I / Imin) / decades, Imin = Imax / 10^decades; at or below Imin maps to 0. */
+export function logRadius(intensity: number, maximum: number, decades = LOG_DECADES): number {
+  if (!(maximum > 0) || !(intensity > 0)) return 0;
+  return Math.max(0, Math.log10(intensity / maximum) / decades + 1);
+}
+/** 1-2-5 candela ticks from Imax / 10^decades up to Imax, for log-scale rings. */
+export function logTicks(maximum: number, decades = LOG_DECADES): number[] {
+  if (!(maximum > 0)) return [];
+  const minimum = maximum / 10 ** decades;
+  const ticks: number[] = [];
+  for (let power = Math.floor(Math.log10(minimum)); power <= Math.ceil(Math.log10(maximum)); power++)
+    for (const step of [1, 2, 5]) {
+      const tick = Number((step * 10 ** power).toPrecision(12));
+      if (tick >= minimum && tick <= maximum) ticks.push(tick);
+    }
+  return ticks;
+}
 /**
  * SVG viewBox for a `width`×`height` graph layout, widened or heightened to `aspectRatio` (width / height)
  * with the layout centered. Without an aspect ratio the viewBox is the layout itself.
@@ -74,6 +93,8 @@ export interface IntensityCurve {
   oppositePlane?: number;
   label: string;
   points: { angle: number; intensity: number }[];
+  /** Vertical sweeps only: beam (50%) and field (10%) estimate of this opposed-plane cut. */
+  beam?: BeamAngles;
 }
 export interface IntensityCurves {
   axis: GraphAxis;
@@ -135,6 +156,7 @@ export function buildIntensityCurves(profile: IESProfile, options: IntensityCurv
             : sample(profile, fixed, position, lampTilt);
         return { angle: position, intensity: cd };
       }),
+      ...(axis === 'vertical' && { beam: getBeamAngles(profile, fixed, lampTilt) }),
     };
   });
   const maximum = curves.reduce(
@@ -252,6 +274,8 @@ export interface IsoluxGrid extends ContourGrid {
   maximum: number;
   minimum: number;
   average: number;
+  /** Uniformity U0 = Emin / Eavg over the grid points; 0 when the grid is unlit. */
+  uniformity: number;
   mountingHeight: number;
   extent: Point2;
 }
@@ -321,9 +345,29 @@ export function buildIsoluxGrid(profile: IESProfile, options: IsoluxOptions = {}
     maximum,
     minimum,
     average,
+    uniformity: average > 0 ? minimum / average : 0,
     mountingHeight: parameters.mountingHeight,
     extent: [width, depth],
   };
+}
+export interface ContourLevelOptions {
+  /** Lowest 1-2-5 level in lux; default 1. */
+  minContour?: number;
+  /** Keep at most this many levels, dropping the lowest first; default 10. */
+  maxLevels?: number;
+}
+/** 1-2-5 series (…, 1, 2, 5, 10, 20, 50, …) from `minContour` up to the largest value below `maximum`. */
+export function isoluxContourLevels(maximum: number, options: ContourLevelOptions = {}): number[] {
+  finite(maximum, 'Maximum', 0);
+  const floor = finite(options.minContour ?? 1, 'Minimum contour', 1e-9, 1e12);
+  const cap = count(options.maxLevels ?? 10, 'Contour level cap', 1, 32);
+  const levels: number[] = [];
+  for (let power = Math.floor(Math.log10(floor)); ; power++)
+    for (const mantissa of [1, 2, 5]) {
+      const level = Number((mantissa * 10 ** power).toPrecision(12));
+      if (level >= maximum) return levels.slice(-cap);
+      if (level >= floor * (1 - 1e-9)) levels.push(level);
+    }
 }
 export interface Contour {
   level: number;

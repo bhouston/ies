@@ -26,6 +26,11 @@ export const command = defineCommand({
         type: 'number',
         describe: 'Fixed plane angle in degrees; omit for both principal planes on a vertical sweep',
       })
+      .option('log-scale', {
+        type: 'boolean',
+        default: false,
+        describe: 'Polar and Cartesian: log intensity scale spanning three decades below the peak',
+      })
       .option('up-axis', {
         type: 'string',
         choices: ['x', 'y', 'z'] as const,
@@ -35,6 +40,21 @@ export const command = defineCommand({
       .option('mounting-height', { type: 'number', default: 2, describe: 'Isolux mounting height in meters' })
       .option('extent', { type: 'number', default: 10, describe: 'Isolux ground extent in meters' })
       .option('resolution', { type: 'number', default: 61, describe: 'Isolux grid resolution (2–201)' })
+      .option('contours', {
+        type: 'string',
+        describe: 'Isolux contour levels in lux, comma-separated (for example 1,2,5,10); default is a 1-2-5 series',
+      })
+      .option('min-contour', {
+        type: 'number',
+        default: 1,
+        describe: 'Lowest automatic 1-2-5 isolux contour in lux; ignored with --contours',
+      })
+      .option('color-scale', {
+        type: 'string',
+        choices: ['log', 'linear'] as const,
+        default: 'log',
+        describe: 'Isolux heatmap colour mapping; log keeps low-light spill visible',
+      })
       .option('json', { type: 'boolean', describe: 'Print a JSON output report' }),
   handler: (argv) => runImageCommand('chart', imageOptions('chart', argv)),
 });

@@ -35,9 +35,17 @@ In the text editor, the extension reports diagnostics through one `ies-tools` di
 
 The features apply to `.ies`, `.IES`, `.ldt` and `.LDT` files, matched by language ID or file pattern. Parse results are cached per document version. They are read-only and supported in untrusted workspaces. Turn them off with `iesTools.validation.enabled`, `iesTools.hover.enabled` and `iesTools.codeLens.enabled`; `iesTools.validation.strict` reports warnings as errors. Ranges and descriptions come from `describePhotometrySource` in `@ies-tools/core`.
 
+## Converting files
+
+The Explorer context menu for `.ies` and `.ldt` files has a **Convert Photometric File** submenu with **Convert to IES (LM-63)**, **Convert to EULUMDAT (.ldt)** and **Convert to JSON**; the entry for the file's own format is hidden. Multi-selections convert every selected file. The commands also run from the Command Palette on the active text or light-preview editor, using its unsaved text. **Convert Folder…** on a folder asks for a target format and whether to include subfolders, skipping dot-folders and `node_modules`; files already in the target format are skipped.
+
+Conversion uses the same `@ies-tools/core` serializers as `ies convert`, so JSON output is the native parsed document and warnings are identical. Output is written next to the source through `vscode.workspace.fs`, so remote and virtual workspaces work. If the target exists, a modal offers **Overwrite**, **Keep Both** (appends ` (1)`, ` (2)`, …) or **Skip**. The `iesTools.convert.overwrite` setting is `ask` (default), `always` or `never` (skip existing targets).
+
+IES output from an LDT file with multiple alternative lamp configurations asks for one configuration in a Quick Pick, using the preview's labels; cancelling skips that file. Every `ConversionWarning` is written to the **IES Tools** output channel. A summary notification reports _Converted N file(s), M warning(s)_ with **Open** (single file) and **Show Log** actions. Errors are shown per file and do not abort the rest of the batch.
+
 ## File information and validation
 
-The right-hand panel shares the core inspection/validation model with `ies inspect` and `ies validate`. It includes format/version, coordinate type, source and lamp descriptions, power, peak candela, declared and integrated flux, efficacy, principal-plane beam/field estimates, angular counts, dimensions, tilt, generation provenance and every metadata keyword. Native LDT alternative configurations remain separate and require a selection for calculated output.
+The right-hand panel shares the core inspection/validation model with `ies inspect` and `ies validate`. It includes format/version, coordinate type, source and lamp descriptions, power, peak candela, declared and integrated flux, efficacy, downward/upward flux, light output ratios, downward flux fraction, CIE flux code, peak and nadir intensity, collapsible zonal lumens, principal-plane beam/field estimates, angular counts, dimensions, tilt, generation provenance and every metadata keyword. Native LDT alternative configurations remain separate and require a selection for calculated output.
 
 Validation lists codes, severity, fields and messages. **Strict validation** makes warnings fail validation without changing their original severity. Invalid unsaved edits replace old statistics with the current errors; unsupported 3D coordinates can still be inspected. The layout places the panel to the right on wider webviews and below the preview on narrow ones.
 

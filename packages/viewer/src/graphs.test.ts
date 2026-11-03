@@ -6,6 +6,9 @@ import {
   buildIsoluxGrid,
   extractContours,
   groundIlluminance,
+  logRadius,
+  logTicks,
+  isoluxContourLevels,
   niceTicks,
   orientGraphPoint,
   type Point3,
@@ -84,6 +87,32 @@ describe('Complete photometric curves', () => {
     expect(niceTicks(0.04)).toEqual([0, 0.01, 0.02, 0.03, 0.04]);
     expect(niceTicks(5e-324)).toEqual([0, 5e-324]);
     expect(niceTicks(Number.MAX_VALUE).every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('Log-scale intensity radius and beam markers', () => {
+  it('maps three decades below the peak onto the radius and clamps below Imin to the centre', () => {
+    expect(logRadius(1000, 1000)).toBe(1);
+    expect(logRadius(100, 1000)).toBeCloseTo(2 / 3, 12);
+    expect(logRadius(10, 1000)).toBeCloseTo(1 / 3, 12);
+    expect(logRadius(1, 1000)).toBe(0);
+    expect(logRadius(0.01, 1000)).toBe(0);
+    expect(logRadius(0, 1000)).toBe(0);
+    expect(logRadius(5, 0)).toBe(0);
+    expect(logTicks(1000)).toEqual([1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]);
+    expect(logTicks(750)).toEqual([1, 2, 5, 10, 20, 50, 100, 200, 500]);
+    expect(logTicks(0)).toEqual([]);
+  });
+  it('attaches signed beam and field crossings of an analytic cos²γ profile to vertical cuts', () => {
+    const vertical = Array.from({ length: 181 }, (_, i) => i);
+    const cut = buildIntensityCurves(
+      profile({ vertical, values: [vertical.map((v) => 100 * Math.max(0, Math.cos((v * Math.PI) / 180)) ** 2)] }),
+    ).curves[0]!.beam!;
+    expect(cut.beamAngleStatus).toBe('ok');
+    expect(cut.beamLeftDegrees).toBeCloseTo(-45, 6);
+    expect(cut.beamRightDegrees).toBeCloseTo(45, 6);
+    expect(cut.fieldRightDegrees).toBeCloseTo((Math.acos(Math.sqrt(0.1)) * 180) / Math.PI, 1);
+    expect(buildIntensityCurves(profile(), { axis: 'horizontal' }).curves[0]!.beam).toBeUndefined();
   });
 });
 
@@ -182,6 +211,40 @@ describe('Physical ground illuminance', () => {
     expect(grid.maximum).toBe(25);
     expect(grid.minimum).toBeCloseTo((100 * 2) / Math.sqrt(17) ** 3);
     expect(grid.average).toBeCloseTo(grid.values.flat().reduce((a, b) => a + b, 0) / 15);
+    expect(grid.uniformity).toBeCloseTo(grid.minimum / grid.average);
+  });
+  it('reports zero uniformity for an unlit grid', () => {
+    const dark = profile({ values: [[0, 0, 0]] });
+    expect(buildIsoluxGrid(dark, { resolution: 3 }).uniformity).toBe(0);
+  });
+});
+
+describe('Isolux contour levels', () => {
+  it('builds a 1-2-5 series from 1 lx to the largest value below the maximum', () => {
+    expect(isoluxContourLevels(352.8)).toEqual([1, 2, 5, 10, 20, 50, 100, 200]);
+  });
+  it('excludes a maximum that lands exactly on a 1-2-5 value', () => {
+    expect(isoluxContourLevels(200)).toEqual([1, 2, 5, 10, 20, 50, 100]);
+  });
+  it('returns no levels below the floor', () => {
+    expect(isoluxContourLevels(0.8)).toEqual([]);
+    expect(isoluxContourLevels(0)).toEqual([]);
+    expect(isoluxContourLevels(0.8, { minContour: 0.1 })).toEqual([0.1, 0.2, 0.5]);
+  });
+  it('starts at the next series value above a non-series floor', () => {
+    expect(isoluxContourLevels(60, { minContour: 3 })).toEqual([5, 10, 20, 50]);
+  });
+  it('drops the lowest levels first beyond the cap', () => {
+    const levels = isoluxContourLevels(1e6);
+    expect(levels).toHaveLength(10);
+    expect(levels[0]).toBe(500);
+    expect(levels.at(-1)).toBe(500000);
+    expect(isoluxContourLevels(1e6, { maxLevels: 3 })).toEqual([100000, 200000, 500000]);
+  });
+  it('rejects invalid inputs', () => {
+    expect(() => isoluxContourLevels(Infinity)).toThrow('Maximum');
+    expect(() => isoluxContourLevels(10, { minContour: 0 })).toThrow('Minimum contour');
+    expect(() => isoluxContourLevels(10, { maxLevels: 0 })).toThrow('Contour level cap');
   });
 });
 

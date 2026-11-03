@@ -2,9 +2,11 @@ import * as vscode from 'vscode';
 import { getPreviewHtml } from './previewHtml.js';
 import { createPreviewUpdate } from './previewData.js';
 import { isReadyMessage } from './protocol.js';
+import { registerConvertCommands } from './convert.js';
 import { registerLanguageFeatures } from './languageProviders.js';
 
 export function activate(context: vscode.ExtensionContext): void {
+  registerConvertCommands(context);
   const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'media');
   const provider: vscode.CustomTextEditorProvider = {
     async resolveCustomTextEditor(document, panel) {

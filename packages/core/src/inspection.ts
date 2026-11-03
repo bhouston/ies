@@ -14,6 +14,7 @@ import {
   type PhotometricLampSet,
 } from './index.js';
 import { profileRanges, type SourceField } from './source.js';
+import { unsupportedExtendedMetrics } from './metrics.js';
 
 export type InputFormat = 'ies' | 'ldt';
 export interface PhotometryDiagnostic extends Omit<IESDiagnostic, 'code'> {
@@ -221,6 +222,7 @@ export function inspectParsedPhotometry(profile: IESProfile | LDTProfile, lampSe
         luminousEfficacyLumensPerWatt: null,
         beamAngles: [],
         metricsTiltDegrees: 0,
+        ...unsupportedExtendedMetrics,
       };
   return {
     ...summary,
