@@ -35,7 +35,18 @@ describe('modern photometric CLI', () => {
     expect(summary.luminousEfficacyLumensPerWatt).toBeCloseTo(20 * Math.PI, 10);
     expect(summary.diagnostics).toEqual([]);
     expect(summary.beamAngles[0].beamAngleDegrees).toBeNull();
+    expect(summary.downwardFluxFraction).toBeCloseTo(0.5, 10);
+    expect(summary.lightOutputRatio).toBeCloseTo((400 * Math.PI) / 2000, 10);
+    expect(summary.cieFluxCode).toEqual([25, 50, 75, 31, 63]);
+    expect(summary.zonalLumens).toHaveLength(9);
     const text = run('inspect', file).stdout;
+    expect(text).toContain('Downward / upward flux: 628.319 lm / 628.319 lm');
+    expect(text).toContain('DFF 50 %');
+    expect(text).toContain('LOR 0.63 (DLOR 0.31 / ULOR 0.31)');
+    expect(text).toContain('CIE flux code: 25 50 75 31 63');
+    expect(text).toContain('Peak (tilt applied): 100.000 cd at C0° γ0°');
+    expect(text).toContain('Nadir intensity: 100.000 cd');
+    expect(text).toMatch(/0–180°\s+1256\.637\s+62\.8\s+100\.0/);
     expect(text).toContain('Declared lamp flux: 2000 lm (lamp rating, not luminaire output)');
     expect(text).toContain('Integrated luminaire flux: 1256.637 lm (angular table estimate)');
     expect(text).toContain('Integrated luminous efficacy: 62.832 lm/W');

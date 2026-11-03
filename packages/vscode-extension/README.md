@@ -14,6 +14,7 @@ See how a luminaire distributes light without leaving VS Code. Open an IES or EU
 - **Live updates:** keep the preview open while editing the source, including unsaved changes.
 - **Syntax highlighting:** open the source as text to see IES keywords, `TILT` lines and numbers, or EULUMDAT numeric and text lines, highlighted in the **IES Photometric (LM-63)** and **EULUMDAT (LDT)** language modes.
 - **IES and LDT support:** preview either format and choose between alternative lamp configurations when an LDT file provides them.
+- **Format conversion:** convert IES, LDT and JSON from the Explorer context menu or the Command Palette, one file, a multi-selection or a whole folder at a time.
 - **A familiar workspace:** controls and file details follow your VS Code color theme. Files are processed locally, with no upload or account required.
 
 Declared lamp ratings and calculated luminaire values are labeled separately, so you can distinguish file-provided information from estimates derived from the intensity distribution.
@@ -32,6 +33,12 @@ For an LDT file with multiple lamp configurations, choose one from the selector 
 Split the editor into two groups. In one copy, select **Open as Text** in the title bar (or choose **Reopen Editor With → Text Editor**) and leave the other copy in the light preview. Source changes refresh the preview and file information without requiring a save.
 
 If an edit makes the file incomplete or invalid, the information panel shows the current diagnostics instead of retaining outdated statistics. Inspection and validation remain available when a file cannot be rendered in 3D.
+
+## Convert between formats
+
+Right-click one or more `.ies` or `.ldt` files in the Explorer and choose **Convert Photometric File → Convert to IES (LM-63)**, **Convert to EULUMDAT (.ldt)** or **Convert to JSON**. The same commands are available from the Command Palette for the open file. Right-click a folder and choose **Convert Folder…** to convert every IES and LDT file in it, optionally including subfolders (dot-folders and `node_modules` are skipped).
+
+Each result is written next to its source with the new extension. When that file already exists you choose **Overwrite**, **Keep Both** (saves `name (1).ies`, `name (2).ies`, …) or **Skip**; the `iesTools.convert.overwrite` setting (`ask`, `always` or `never`) changes this default. Converting an LDT file with several lamp configurations to IES asks which configuration to use. Conversion warnings, such as fields the target format cannot represent, are listed in the **IES Tools** output channel. A file that fails to convert is reported without stopping the rest of the batch.
 
 ## Supported files
 

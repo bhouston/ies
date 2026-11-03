@@ -61,9 +61,29 @@ The returned `integratedFluxLumens` is an angular-table estimate of luminaire ou
 
 `calculateLuminousFlux` accepts the `PhotometricGrid` structural subset: photometric type, horizontal and vertical angles, absolute horizontal-major candela, and optional embedded tilt. This lets format converters reuse the integration without fabricating IES metadata. Input grids should already satisfy the parser's numeric and angular constraints.
 
-Beam estimates use complete opposed-plane cuts C0–C180 and C90–C270 by default. Each cut reports the dominant measured peak direction, peak candela, and full angular widths between interpolated 50%-peak (**beam**) and 10%-peak (**field**) crossings. A custom cut is available through `getBeamAngles(profile, horizontalDegrees)`. Off-axis peaks retain their measured signed vertical direction; cuts are not automatically rotated to a nominal optical axis. The [IES beam-angle](https://ies.org/definitions/beam-angle/) and [field-angle definitions](https://ies.org/definitions/field-angle/) describe the threshold convention.
+Beam estimates use complete opposed-plane cuts C0–C180 and C90–C270 by default. Each cut reports the dominant measured peak direction, peak candela, and full angular widths between interpolated 50%-peak (**beam**) and 10%-peak (**field**) crossings. A custom cut is available through `getBeamAngles(profile, horizontalDegrees)`. `beamLeftDegrees`/`beamRightDegrees` and `fieldLeftDegrees`/`fieldRightDegrees` give each crossing as a signed vertical angle (negative = the opposite C-plane, C+180°), and are present whenever both crossings bracket the peak. Off-axis peaks retain their measured signed vertical direction; cuts are not automatically rotated to a nominal optical axis. The [IES beam-angle](https://ies.org/definitions/beam-angle/) and [field-angle definitions](https://ies.org/definitions/field-angle/) describe the threshold convention.
 
 Widths are null with `no-light`, `no-crossing`, or `multiple-lobes` status when the data cannot support a single bounded estimate. Missing hemispheres never invent zero-intensity threshold crossings. These principal-plane estimates are not certified manufacturer beam angles, global maximum/minimum beam widths, or a general optical-axis finder. Type A/B summaries return `metricsSupported: false`, null integrated metrics, an empty beam array and an explicit reason; low-level Type C metric functions reject those types.
+
+## Flux breakdown, LOR, DFF and CIE flux code
+
+```ts
+import { calculateFluxBreakdown } from '@ies-tools/core';
+const { total, downward, upward, cumulative } = calculateFluxBreakdown(profile, tiltDegrees);
+// cumulative[g]: flux from γ = 0 to γ = g degrees, g = 0…180
+```
+
+`calculateFluxBreakdown` runs the same exact integration as `calculateLuminousFlux` (whose result is its `total`), splitting measured intervals at whole degrees so one pass also yields downward (γ = 0…90°), upward (γ = 90…180°) and 1° cumulative zonal flux. `computePhotometricMetrics` and the inspection models derive these additional fields from it; each is null for Type A/B data or an unselected LDT configuration:
+
+- `downwardFluxLumens`, `upwardFluxLumens`.
+- `peakIntensityCandela` and `peakDirection` (`horizontalDegrees`, `verticalDegrees`): the largest tabulated intensity after lamp tilt and its first measured direction. The summary's existing `peakCandela` remains the raw table maximum.
+- `nadirCandela`: intensity at γ = 0.
+- `lightOutputRatio`, `downwardLightOutputRatio`, `upwardLightOutputRatio`: luminaire flux divided by declared lamp flux. Null for absolute photometry (`lumensPerLamp = -1`), which has no lamp rating.
+- `downwardFluxFraction` (DFF): downward ÷ total flux; null when no light is emitted.
+- `cieFluxCode`: `[N1, N2, N3, N4, N5]` rounded percentages. N1–N3 are the flux within γ = 41.4°, 60° and 75.5° (interpolated in the 1° cumulative array) as a percentage of downward flux; N4 and N5 are downward and total flux as a percentage of lamp flux and are null without a lamp rating.
+- `zonalLumens`: `{ fromDegrees, toDegrees, lumens, percentOfLamp, percentOfLuminaire }` for 0–30°, 0–40°, 0–60°, 0–90°, 90–120°, 90–130°, 90–150°, 90–180° and 0–180°.
+
+All of these are angular-table estimates with the same assumptions as `integratedFluxLumens`.
 
 ## Shared inspection and validation
 

@@ -28,6 +28,8 @@ const value = (number: number | null | undefined, unit = ''): string =>
   number === null || number === undefined
     ? 'Not available'
     : `${Number(number.toPrecision(7))}${unit ? ` ${unit}` : ''}`;
+const percent = (fraction: number | null): string =>
+  fraction === null ? 'Not available' : `${(fraction * 100).toFixed(1)} %`;
 function Details({ title, children, open = true }: { title: string; children: ReactNode; open?: boolean }) {
   return (
     <details open={open} className="rounded-lg border border-border bg-card p-3">
@@ -200,6 +202,27 @@ export function PhotometryInfoPanel({
                 ['Integrated luminaire flux', value(info.integratedFluxLumens, 'lm')],
                 ['Integrated efficacy', value(info.luminousEfficacyLumensPerWatt, 'lm/W')],
                 ['Metrics lamp tilt', value(info.metricsTiltDegrees, '°')],
+                ...(info.metricsSupported
+                  ? ([
+                      ['Downward flux', value(info.downwardFluxLumens, 'lm')],
+                      ['Upward flux', value(info.upwardFluxLumens, 'lm')],
+                      ['Downward flux fraction', percent(info.downwardFluxFraction)],
+                      [
+                        'Light output ratio',
+                        info.lightOutputRatio === null
+                          ? 'Not available (no declared lamp flux)'
+                          : `${info.lightOutputRatio.toFixed(3)} (DLOR ${info.downwardLightOutputRatio!.toFixed(3)} / ULOR ${info.upwardLightOutputRatio!.toFixed(3)})`,
+                      ],
+                      ['CIE flux code', info.cieFluxCode?.map((n) => n ?? '—').join(' ') ?? 'Not available'],
+                      [
+                        'Peak intensity (tilt applied)',
+                        info.peakDirection
+                          ? `${value(info.peakIntensityCandela, 'cd')} at C${info.peakDirection.horizontalDegrees}° γ${info.peakDirection.verticalDegrees}°`
+                          : 'Not available',
+                      ],
+                      ['Nadir intensity', value(info.nadirCandela, 'cd')],
+                    ] as [string, ReactNode][])
+                  : []),
               ]}
             />
             <p className="mt-3 text-muted-foreground">
@@ -235,6 +258,32 @@ export function PhotometryInfoPanel({
               </div>
             ))}
           </Details>
+          {info.zonalLumens && (
+            <Details title="Zonal lumens" open={false}>
+              <table className="w-full text-right tabular-nums">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="text-left font-normal">Zone</th>
+                    <th className="font-normal">lm</th>
+                    <th className="font-normal">% lamp</th>
+                    <th className="font-normal">% luminaire</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {info.zonalLumens.map((zone) => (
+                    <tr key={`${zone.fromDegrees}-${zone.toDegrees}`}>
+                      <td className="text-left">
+                        {zone.fromDegrees}–{zone.toDegrees}°
+                      </td>
+                      <td>{zone.lumens.toFixed(1)}</td>
+                      <td>{zone.percentOfLamp === null ? '—' : zone.percentOfLamp.toFixed(1)}</td>
+                      <td>{zone.percentOfLuminaire === null ? '—' : zone.percentOfLuminaire.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Details>
+          )}
           <Details title="Angular data and geometry" open={false}>
             <Rows
               rows={[
