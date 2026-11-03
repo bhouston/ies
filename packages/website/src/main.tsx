@@ -1,21 +1,63 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { parseIES, type IESProfile } from 'ies-core';
+import {
+  detectPhotometricFormat,
+  parseLDT,
+  parsePhotometry,
+  type IESProfile,
+  type PhotometricDocument,
+} from 'ies-core';
 import { LightViewer } from 'ies-viewer/react';
 import { GraphPanel } from './GraphPanel.js';
 import './style.css';
 
 function App() {
   const [profile, setProfile] = useState<IESProfile>();
+  const [photometry, setPhotometry] = useState<PhotometricDocument>();
+  const [sourceText, setSourceText] = useState('');
+  const [sourceFormat, setSourceFormat] = useState<'ies' | 'ldt'>('ies');
+  const [lampSets, setLampSets] = useState<string[]>([]);
+  const [selectedLampSet, setSelectedLampSet] = useState<number>();
+  const loadRevision = useRef(0);
   const [name, setName] = useState('No file selected');
   const [error, setError] = useState('');
   const [exposure, setExposure] = useState(1);
   const load = async (file?: File) => {
     if (!file) return;
+    const revision = ++loadRevision.current;
     try {
-      const next = parseIES(await file.text());
-      setProfile(next);
+      const text = await file.text();
+      if (revision !== loadRevision.current) return;
+      const format = detectPhotometricFormat(text);
+      const sets = format === 'ldt' ? parseLDT(text).lampSets : [];
+      setSourceText(text);
+      setSourceFormat(format);
+      setLampSets(
+        sets.map(
+          (set, index) =>
+            `${index + 1}: ${set.description || 'Lamp configuration'} · ${set.totalLumens} lm · ${set.watts} W`,
+        ),
+      );
+      setSelectedLampSet(undefined);
+      const next = sets.length > 1 ? undefined : parsePhotometry(text, format);
+      if (next && next.profile.photometricType !== 1)
+        throw new Error('The viewer and intensity graphs support Type C photometry only');
+      setPhotometry(next);
+      setProfile(next?.profile);
       setName(file.name);
+      setError('');
+    } catch (reason) {
+      if (revision !== loadRevision.current) return;
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  };
+  const selectLampSet = (value: string) => {
+    const index = value === '' ? undefined : Number(value);
+    setSelectedLampSet(index);
+    try {
+      const next = index === undefined ? undefined : parsePhotometry(sourceText, sourceFormat, { lampSetIndex: index });
+      setPhotometry(next);
+      setProfile(next?.profile);
       setError('');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -27,16 +69,29 @@ function App() {
         <div>
           <p className="eyebrow">PHOTOMETRIC WORKBENCH</p>
           <h1>Light, specified.</h1>
-          <p>Inspect an IES distribution on a floor and wall. Files stay in your browser.</p>
+          <p>Inspect an IES or EULUMDAT distribution on a floor and wall. Files stay in your browser.</p>
         </div>
         <a href="https://github.com/bhouston/ies">GitHub ↗</a>
       </header>
       <section className="toolbar">
         <label className="file">
-          Open .ies file
-          <input type="file" accept=".ies" onChange={(event) => void load(event.target.files?.[0])} />
+          Open .ies or .ldt file
+          <input type="file" accept=".ies,.ldt" onChange={(event) => void load(event.target.files?.[0])} />
         </label>
         <span>{name}</span>
+        {lampSets.length > 1 && (
+          <label>
+            Alternative lamp configuration
+            <select value={selectedLampSet ?? ''} onChange={(event) => selectLampSet(event.target.value)}>
+              <option value="">Choose a configuration</option>
+              {lampSets.map((label, index) => (
+                <option key={index} value={index}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           Exposure{' '}
           <input
@@ -53,12 +108,18 @@ function App() {
       <div className="workspace">
         <section className="scene">
           <LightViewer
-            profile={profile}
+            document={photometry}
             exposure={exposure}
             style={{ height: '100%', minHeight: 520 }}
             onError={(reason) => setError(reason.message)}
           />
-          {!profile && <div className="empty">Open an IES file to reveal its light distribution.</div>}
+          {!profile && (
+            <div className="empty">
+              {lampSets.length > 1
+                ? 'Choose a lamp configuration to view this luminaire.'
+                : 'Open an IES or LDT file to reveal its light distribution.'}
+            </div>
+          )}
         </section>
         <aside>
           <GraphPanel profile={profile} />

@@ -1,30 +1,49 @@
+import type { PhotometricDocument } from 'ies-core';
 import { createLightViewer, type LightViewerController } from './viewer.js';
+import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat } from './source.js';
 
 // Importing this module on an SSR server is safe; registration occurs only in a browser.
 // oxlint-disable-next-line typescript/no-extraneous-class
 const ElementBase = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 export class LightViewerElement extends ElementBase {
-  static observedAttributes = ['src', 'exposure'];
+  static observedAttributes = ['src', 'exposure', 'format', 'lamp-set-index'];
   #viewer?: LightViewerController;
-  #text = '';
-  #request?: AbortController;
+  #text?: string;
+  #document?: PhotometricDocument;
+  #loader = createPhotometrySourceLoader();
   #revision = 0;
   #host?: HTMLDivElement;
   #status?: HTMLDivElement;
+  get photometryText(): string {
+    return this.#text ?? '';
+  }
+  set photometryText(value: string) {
+    this.#loader.cancel();
+    this.#document = undefined;
+    this.#text = value;
+    if (this.#viewer) void this.#load();
+  }
   get iesText(): string {
-    return this.#text;
+    return this.photometryText;
   }
   set iesText(value: string) {
-    this.#request?.abort();
-    ++this.#revision;
-    this.#text = value;
-    if (this.#viewer && value) this.#show(value);
+    this.photometryText = value;
   }
   get data(): string {
-    return this.iesText;
+    return this.photometryText;
   }
   set data(value: string) {
-    this.iesText = value;
+    this.photometryText = value;
+  }
+  /** Supply the shared native-source model directly, without serializing to IES. */
+  get photometry(): PhotometricDocument | undefined {
+    return this.#document;
+  }
+  set photometry(value: PhotometricDocument | undefined) {
+    this.#loader.cancel();
+    this.#document = value;
+    if (value) this.#text = undefined;
+    if (this.#viewer) void this.#load();
   }
   connectedCallback(): void {
     if (this.#viewer) return;
@@ -43,25 +62,28 @@ export class LightViewerElement extends ElementBase {
     try {
       this.#viewer = createLightViewer(this.#host!);
       this.#applyExposure();
-      if (this.#text) this.#show(this.#text);
-      else if (this.getAttribute('src')) void this.#fetchSource();
+      void this.#load();
     } catch (error) {
       this.#error(error);
     }
   }
   disconnectedCallback(): void {
     ++this.#revision;
-    this.#request?.abort();
+    this.#loader.cancel();
     this.#viewer?.dispose();
     this.#viewer = undefined;
   }
   attributeChangedCallback(name: string): void {
+    if (name === 'exposure') {
+      if (this.#viewer) this.#applyExposure();
+      return;
+    }
+    this.#loader.cancel();
     if (name === 'src') {
-      this.#text = '';
-      this.#request?.abort();
-      ++this.#revision;
-      if (this.#viewer) void this.#fetchSource();
-    } else if (this.#viewer) this.#applyExposure();
+      this.#text = undefined;
+      this.#document = undefined;
+    }
+    if (this.#viewer) void this.#load();
   }
   #applyExposure(): void {
     const value = this.getAttribute('exposure');
@@ -71,32 +93,34 @@ export class LightViewerElement extends ElementBase {
       this.#error(error);
     }
   }
-  #show(text: string): void {
-    try {
-      const profile = this.#viewer!.load(text);
-      this.#status!.textContent = '';
-      this.dispatchEvent(new CustomEvent('load', { detail: { profile }, bubbles: true, composed: true }));
-    } catch (error) {
-      this.#error(error);
-    }
-  }
-  async #fetchSource(): Promise<void> {
-    this.#request?.abort();
+  async #load(): Promise<void> {
+    if (!this.#viewer) return;
     const revision = ++this.#revision;
-    const src = this.getAttribute('src');
-    if (!src) return;
-    const request = new AbortController();
-    this.#request = request;
-    this.#status!.textContent = 'Loading IES…';
     try {
-      const response = await fetch(src, { signal: request.signal });
-      if (!response.ok) throw new Error(`Failed to load IES: HTTP ${response.status}`);
-      const text = await response.text();
-      if (revision !== this.#revision || !this.isConnected) return;
-      this.#text = text;
-      this.#show(text);
+      this.#status!.textContent = 'Loading photometry…';
+      const next = await this.#loader.load({
+        document: this.#document,
+        text: this.#text,
+        src: this.getAttribute('src') ?? undefined,
+        format: (this.getAttribute('format') as PhotometryFormat | undefined) ?? undefined,
+        lampSetIndex: parseLampSetIndex(this.getAttribute('lamp-set-index')),
+      });
+      if (revision !== this.#revision || !this.isConnected || !this.#viewer) return;
+      if (!next) {
+        this.#status!.textContent = '';
+        return;
+      }
+      this.#viewer.setDocument(next);
+      this.#status!.textContent = '';
+      this.dispatchEvent(
+        new CustomEvent('load', {
+          detail: { profile: next.profile, document: next, sourceFormat: next.sourceFormat },
+          bubbles: true,
+          composed: true,
+        }),
+      );
     } catch (error) {
-      if (!request.signal.aborted && revision === this.#revision) this.#error(error);
+      if (revision === this.#revision && this.isConnected) this.#error(error);
     }
   }
   #error(error: unknown): void {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { parseIES, type IESProfile } from 'ies-core';
+import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from 'ies-core';
+import type { PhotometryFormat } from './source.js';
 import { createCandelaTexture } from './texture.js';
 
 export interface LightViewerOptions {
@@ -9,7 +10,10 @@ export interface LightViewerOptions {
 }
 export interface LightViewerController {
   setProfile(profile: IESProfile): void;
-  load(text: string): IESProfile;
+  setDocument(document: PhotometricDocument): void;
+  load(text: string, format?: PhotometryFormat, options?: { lampSetIndex?: number }): IESProfile;
+  loadDocument(text: string, format?: PhotometryFormat, options?: { lampSetIndex?: number }): PhotometricDocument;
+  readonly document: PhotometricDocument | undefined;
   setExposure(exposure: number): void;
   dispose(): void;
   readonly renderer: THREE.WebGLRenderer;
@@ -28,7 +32,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.domElement.setAttribute('aria-label', 'IES light illuminating a ground plane and wall');
+  renderer.domElement.setAttribute('aria-label', 'Photometric light illuminating a ground plane and wall');
   renderer.domElement.setAttribute('role', 'img');
   container.append(renderer.domElement);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -71,6 +75,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   fixture.position.set(0, uniforms.lightHeight.value, 0);
   scene.add(fixture);
   let disposed = false;
+  let document: PhotometricDocument | undefined;
   const render = () => {
     if (!disposed) renderer.render(scene, camera);
   };
@@ -88,18 +93,29 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   resize();
   return {
     renderer,
+    get document() {
+      return document;
+    },
     setProfile(profile) {
       if (disposed) throw new Error('Viewer has been disposed');
       if (profile.photometricType !== 1) throw new Error('The 3D viewer supports Type C photometry only');
       const texture = createCandelaTexture(profile);
       uniforms.distribution.value.dispose();
       uniforms.distribution.value = texture;
+      document = toPhotometricDocument(profile);
       render();
     },
-    load(text) {
-      const profile = parseIES(text);
-      this.setProfile(profile);
-      return profile;
+    setDocument(next) {
+      this.setProfile(next.profile);
+      document = next;
+    },
+    loadDocument(text, format, parseOptions) {
+      const next = parsePhotometry(text, format, parseOptions);
+      this.setDocument(next);
+      return next;
+    },
+    load(text, format, parseOptions) {
+      return this.loadDocument(text, format, parseOptions).profile;
     },
     setExposure(exposure) {
       if (!Number.isFinite(exposure) || exposure < 0) throw new Error('Exposure must be a finite nonnegative number');

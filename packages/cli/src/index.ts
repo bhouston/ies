@@ -1,18 +1,21 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { spawn } from 'node:child_process';
-import { diagnoseIES, parseIES, summarizeIES, validateIES } from 'ies-core';
+import { parseIES, parseLDT, parsePhotometry, serializeIES, serializeLDT } from 'ies-core';
+import { inputFormat, inspectPhotometry, validatePhotometry, type InputFormat } from './photometry.js';
 
-export const help = `ies — IES lighting tools
+export const help = `ies — photometric lighting tools
 
 Usage:
-  ies inspect <file.ies> [--json]     Show format, light source and photometric statistics
-  ies validate <file.ies> [--json] [--strict]  Validate; strict mode fails on warnings
-  ies convert <file.ies> [-o file]    Export parsed data as JSON (stdout by default)
-  ies view <file.ies> [--port 0] [--open]  Serve a local interactive light preview
+  ies inspect <file.ies|file.ldt> [--json] [--lamp-set N]  Show source and photometric statistics
+  ies validate <file.ies|file.ldt> [--json] [--strict]    Validate numeric data and metadata
+  ies convert <file> [--to ies|ldt|json] [-o file]       Convert locally (JSON by default)
+  ies view <file.ies|file.ldt> [--port 0] [--open]        Serve a local interactive light preview
   ies --help
   ies --version
 
+All file commands accept --format ies|ldt to override extension/content detection.
+--lamp-set N selects one alternative LDT lamp configuration (1-based).
 The viewer binds to 127.0.0.1; press Ctrl+C to stop. Files remain on your computer.
 `;
 
@@ -22,13 +25,19 @@ export interface PreviewServer {
 }
 
 /** Start a loopback-only preview server. Its input is captured, never resolved from request paths. */
-export async function servePreview(text: string, port = 0): Promise<PreviewServer> {
-  parseIES(text);
+export async function servePreview(
+  text: string,
+  port = 0,
+  options: { format?: InputFormat; lampSetIndex?: number } = {},
+): Promise<PreviewServer> {
+  const document = parsePhotometry(text, options.format, { lampSetIndex: options.lampSetIndex });
+  if (document.profile.photometricType !== 1) throw new Error('Preview supports Type C photometry only (type 1)');
+  const profilePath = `/profile.${document.sourceFormat}`;
+  const selection = options.lampSetIndex === undefined ? '' : ` lamp-set-index="${options.lampSetIndex}"`;
   if (!Number.isInteger(port) || port < 0 || port > 65535)
     throw new RangeError('Port must be an integer from 0 to 65535');
   const bundle = await readFile(new URL('../media/light-viewer.js', import.meta.url));
-  const html =
-    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>IES Light Viewer</title><style>html,body{margin:0;background:#000;color:#fff;font-family:system-ui}light-viewer{display:block;width:100vw;height:100vh}</style><light-viewer src="/profile.ies"></light-viewer><script type="module" src="/light-viewer.js"></script></html>';
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Photometric Light Viewer</title><style>html,body{margin:0;background:#000;color:#fff;font-family:system-ui}light-viewer{display:block;width:100vw;height:100vh}</style><light-viewer src="${profilePath}" format="${document.sourceFormat}"${selection}></light-viewer><script type="module" src="/light-viewer.js"></script></html>`;
   const server = createServer((request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-store');
@@ -44,7 +53,7 @@ export async function servePreview(text: string, port = 0): Promise<PreviewServe
     const route =
       path === '/'
         ? ([html, 'text/html; charset=utf-8'] as const)
-        : path === '/profile.ies'
+        : path === profilePath
           ? ([text, 'text/plain; charset=utf-8'] as const)
           : path === '/light-viewer.js'
             ? ([bundle, 'application/javascript'] as const)
@@ -87,11 +96,28 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   let output: string | undefined;
   let port = 0;
   let open = false;
+  let formatHint: InputFormat | undefined;
+  let lampSetIndex: number | undefined;
+  let target: 'ies' | 'ldt' | 'json' = 'json';
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
     if (arg === '--json' && (command === 'inspect' || command === 'validate')) json = true;
     else if (arg === '--strict' && command === 'validate') strict = true;
-    else if ((arg === '-o' || arg === '--output') && command === 'convert') {
+    else if (arg === '--format') {
+      const value = rest[++i];
+      if (value !== 'ies' && value !== 'ldt') throw new Error('Input format must be ies or ldt');
+      formatHint = value;
+    } else if (arg === '--lamp-set') {
+      const value = rest[++i];
+      if (!value || !/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)))
+        throw new Error('Lamp set must be a positive integer (1-based)');
+      lampSetIndex = Number(value) - 1;
+    } else if (arg === '--to' && command === 'convert') {
+      const value = rest[++i];
+      if (value !== 'ies' && value !== 'ldt' && value !== 'json')
+        throw new Error('Conversion target must be ies, ldt or json');
+      target = value;
+    } else if ((arg === '-o' || arg === '--output') && command === 'convert') {
       output = rest[++i];
       if (!output || output.startsWith('-')) throw new Error('Missing output file');
     } else if (arg === '--port' && command === 'view') {
@@ -105,15 +131,20 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   }
   if (!file) throw new Error(`Missing input file. Run ies ${command} <file.ies>.`);
   const text = await readFile(file, 'utf8');
+  const format = inputFormat(text, file, formatHint);
+  if (format === 'ies' && lampSetIndex !== undefined) throw new Error('--lamp-set applies to LDT inputs only');
   if (command === 'validate') {
-    const result = validateIES(text, { strict });
+    const result = validatePhotometry(text, format, strict, lampSetIndex);
     if (json) {
       console.log(
         JSON.stringify(
           {
             valid: result.valid,
             file,
-            ...(result.profile ? summarizeIES(result.profile) : {}),
+            ...(result.profile && !result.diagnostics.some((item) => item.severity === 'error')
+              ? inspectPhotometry(text, format, lampSetIndex)
+              : {}),
+            sourceFormat: format,
             diagnostics: result.diagnostics,
           },
           null,
@@ -122,7 +153,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       );
     } else {
       const label = result.valid ? 'valid' : 'invalid';
-      const message = `${file}: ${label}${result.profile ? ` ${result.profile.version}` : ''}`;
+      const message = `${file}: ${label}${result.profile ? ` ${format === 'ies' ? 'IES LM-63' : 'EULUMDAT LDT'}` : ''}`;
       if (result.valid) console.log(message);
       else console.error(message);
       for (const diagnostic of result.diagnostics) {
@@ -134,10 +165,9 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     if (!result.valid) process.exitCode = 1;
     return;
   }
-  const profile = parseIES(text);
   if (command === 'inspect') {
-    const summary = summarizeIES(profile);
-    if (json) console.log(JSON.stringify({ ...summary, diagnostics: diagnoseIES(profile) }, null, 2));
+    const summary = inspectPhotometry(text, format, lampSetIndex);
+    if (json) console.log(JSON.stringify(summary, null, 2));
     else {
       const dimensions = summary.dimensions;
       const lines = [
@@ -150,12 +180,15 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         `Luminaire: ${summary.luminaire}`,
         `Light source: ${summary.lightSource}`,
         `Lamp catalog: ${summary.lampCatalog}`,
-        `Lamp count: ${summary.lampCount}`,
-        `Lumens per lamp: ${summary.lumensPerLamp === -1 ? 'not specified (absolute photometry)' : `${summary.lumensPerLamp} lm`}`,
-        `Input power: ${summary.inputWatts} W`,
-        `Peak intensity: ${summary.peakCandela} cd`,
+        `Lamp count: ${summary.lampCount ?? 'select a lamp configuration'}`,
+        `Lumens per lamp: ${summary.lumensPerLamp === null ? 'select a lamp configuration' : summary.lumensPerLamp === -1 ? 'not specified (absolute photometry)' : `${summary.lumensPerLamp} lm`}`,
+        `Input power: ${summary.inputWatts === null ? 'select a lamp configuration' : `${summary.inputWatts} W`}`,
+        `Peak intensity: ${summary.peakCandela === null ? 'select a lamp configuration' : `${summary.peakCandela} cd`}`,
         `Declared lamp flux: ${summary.declaredLampFluxLumens === null ? 'not specified (absolute photometry)' : `${summary.declaredLampFluxLumens} lm (lamp rating, not luminaire output)`}`,
-        `Integrated luminaire flux: ${summary.integratedFluxLumens === null ? 'unavailable (Type C only)' : `${summary.integratedFluxLumens.toFixed(3)} lm (angular table estimate)`}`,
+        ...(summary.declaredLuminaireFluxLumens === null
+          ? []
+          : [`Declared luminaire flux: ${summary.declaredLuminaireFluxLumens} lm (source rating)`]),
+        `Integrated luminaire flux: ${summary.integratedFluxLumens === null ? (summary.photometricType === 1 ? 'unavailable (select a lamp configuration)' : 'unavailable (Type C only)') : `${summary.integratedFluxLumens.toFixed(3)} lm (angular table estimate)`}`,
         `Integrated luminous efficacy: ${summary.luminousEfficacyLumensPerWatt === null ? 'unavailable (unsupported coordinates or zero input power)' : `${summary.luminousEfficacyLumensPerWatt.toFixed(3)} lm/W`}`,
         `Metrics lamp tilt: ${summary.metricsTiltDegrees}°`,
         ...(summary.metricsUnsupportedReason ? [`Metrics: ${summary.metricsUnsupportedReason}`] : []),
@@ -173,17 +206,43 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
             ]),
       ];
       const metadata = Object.entries(summary.metadata).map(([key, value]) => `${key}: ${value}`);
-      const diagnostics = diagnoseIES(profile).map((item) => `${item.severity} [${item.code}]: ${item.message}`);
-      console.log([...lines, ...(metadata.length ? ['Metadata:', ...metadata] : []), ...diagnostics].join('\n'));
+      const diagnostics = summary.diagnostics.map((item) => `${item.severity} [${item.code}]: ${item.message}`);
+      const lampSets =
+        summary.sourceFormat === 'ldt'
+          ? summary.lampSets.map(
+              (set, index) =>
+                `Lamp configuration ${index + 1}${summary.selectedLampSetIndex === index ? ' (selected)' : ''}: ${set.description || 'not specified'}; ${set.totalLumens} lm; ${set.watts} W`,
+            )
+          : [];
+      console.log(
+        [...lines, ...lampSets, ...(metadata.length ? ['Metadata:', ...metadata] : []), ...diagnostics].join('\n'),
+      );
     }
   } else if (command === 'convert') {
-    const converted = `${JSON.stringify(profile, null, 2)}\n`;
+    const native = format === 'ies' ? parseIES(text) : parseLDT(text);
+    if (
+      format === 'ldt' &&
+      'lampSets' in native &&
+      native.lampSets.length > 1 &&
+      target === 'ies' &&
+      lampSetIndex === undefined
+    )
+      throw new Error('This file has alternative lamp configurations; select one with --lamp-set N');
+    const conversion =
+      target === 'json'
+        ? { value: `${JSON.stringify(native, null, 2)}\n`, warnings: [] }
+        : target === 'ies'
+          ? serializeIES(native, { lampSetIndex })
+          : serializeLDT(native, { lampSetIndex });
+    const converted = conversion.value;
+    for (const warning of conversion.warnings) console.error(`warning [${warning.code}]: ${warning.message}`);
     if (output) await writeFile(output, converted, { flag: 'wx' });
     else process.stdout.write(converted);
   } else {
-    if (profile.photometricType !== 1) throw new Error('Preview supports Type C photometry only (type 1)');
-    const preview = await servePreview(text, port);
-    console.log(`IES preview: ${preview.url}\nPress Ctrl+C to stop.`);
+    if (format === 'ldt' && lampSetIndex === undefined && parseLDT(text).lampSets.length > 1)
+      throw new Error('This file has alternative lamp configurations; select one with --lamp-set N');
+    const preview = await servePreview(text, port, { format, lampSetIndex });
+    console.log(`Photometric preview: ${preview.url}\nPress Ctrl+C to stop.`);
     const stop = () => {
       preview.server.closeAllConnections();
       preview.server.close();

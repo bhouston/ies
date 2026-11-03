@@ -2,6 +2,8 @@
 export interface UpdateMessage {
   type: 'update';
   text: string;
+  format?: 'ies' | 'ldt';
+  lampSetLabels?: string[];
 }
 
 export function isReadyMessage(message: unknown): boolean {
@@ -15,6 +17,9 @@ export function isUpdateMessage(message: unknown): message is UpdateMessage {
     'type' in message &&
     message.type === 'update' &&
     'text' in message &&
-    typeof message.text === 'string'
+    typeof message.text === 'string' &&
+    (!('format' in message) || message.format === 'ies' || message.format === 'ldt') &&
+    (!('lampSetLabels' in message) ||
+      (Array.isArray(message.lampSetLabels) && message.lampSetLabels.every((value) => typeof value === 'string')))
   );
 }

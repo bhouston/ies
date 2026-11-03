@@ -1,15 +1,17 @@
 {
   "name": "ies-vscode-extension",
-  "displayName": "IES Light Viewer",
+  "displayName": "IES and LDT Light Viewer",
   "version": "0.1.0",
-  "description": "Preview IES photometric lighting profiles on a floor and wall with an interactive 3D viewer.",
+  "description": "Preview IES and EULUMDAT lighting distributions on a floor and wall with an interactive 3D viewer.",
   "categories": [
     "Other",
     "Visualization"
   ],
   "keywords": [
     "3d",
+    "eulumdat",
     "ies",
+    "ldt",
     "lighting",
     "photometry",
     "preview"
@@ -36,6 +38,7 @@
     "package": "pnpm build && vsce package --no-dependencies"
   },
   "dependencies": {
+    "ies-core": "workspace:*",
     "ies-viewer": "workspace:*"
   },
   "devDependencies": {
@@ -54,13 +57,19 @@
     "customEditors": [
       {
         "viewType": "ies.lightPreview",
-        "displayName": "IES Light Viewer",
+        "displayName": "IES and LDT Light Viewer",
         "selector": [
           {
             "filenamePattern": "*.ies"
           },
           {
             "filenamePattern": "*.IES"
+          },
+          {
+            "filenamePattern": "*.ldt"
+          },
+          {
+            "filenamePattern": "*.LDT"
           }
         ],
         "priority": "default"
@@ -70,7 +79,7 @@
       "explorer/context": [
         {
           "command": "ies.openPreview",
-          "when": "resourceExtname =~ /\\.ies/i",
+          "when": "resourceExtname =~ /\\.(ies|ldt)/i",
           "group": "navigation"
         }
       ]

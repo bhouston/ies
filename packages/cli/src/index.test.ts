@@ -93,7 +93,7 @@ describe('local preview server', () => {
       expect(preview.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
       const page = await fetch(preview.url);
       expect(page.headers.get('content-security-policy')).toContain("script-src 'self'");
-      expect(await page.text()).toContain('<light-viewer src="/profile.ies">');
+      expect(await page.text()).toContain('<light-viewer src="/profile.ies" format="ies">');
       expect(await (await fetch(`${preview.url}profile.ies`)).text()).toBe(input);
       expect((await fetch(`${preview.url}light-viewer.js`)).headers.get('content-type')).toContain('javascript');
       expect((await fetch(`${preview.url}package.json`)).status).toBe(404);
@@ -106,8 +106,7 @@ describe('local preview server', () => {
       );
     }
   });
-  it('rejects malformed input before opening a port', async () =>
-    expect(servePreview('invalid')).rejects.toThrow('TILT'));
+  it('rejects malformed input before opening a port', async () => expect(servePreview('invalid')).rejects.toThrow());
   it('rejects invalid port values', async () =>
     expect(servePreview(await readFile(fixture, 'utf8'), 99999)).rejects.toThrow('Port'));
 });
