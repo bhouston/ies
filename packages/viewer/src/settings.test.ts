@@ -6,6 +6,7 @@ import {
   applyLightSceneSettings,
   disposeLightScene,
   fitDistanceChange,
+  helperLines,
   TONE_MAPPING,
 } from './scene.js';
 
@@ -24,6 +25,7 @@ describe('physical scene settings', () => {
     { exposure: -1 },
     { exposure: NaN },
     { showWall: 'false' },
+    { helper: 'false' },
     { toneMapping: 'unknown' },
   ])('rejects invalid settings without changing defaults %j', (patch) => {
     expect(() => resolveViewerSettings(patch as never)).toThrow();
@@ -58,5 +60,25 @@ describe('physical scene settings', () => {
     expect(camera.far).toBe(400);
     fitDistanceChange(camera, target, next, { ...DEFAULT_VIEWER_SETTINGS });
     expect(camera.position.distanceTo(new THREE.Vector3(5, 4, 7))).toBeLessThan(1e-12);
+  });
+  it('draws a ground cone for narrow beams and axis circles for wide ones', () => {
+    const cone = helperLines(45, 2);
+    // 200 circle segments plus 4 lines to the light, 2 vertices of 3 floats each.
+    expect(cone).toHaveLength((200 + 4) * 6);
+    expect(cone[0]).toBeCloseTo(2);
+    expect(cone[1]).toBeCloseTo(0.02);
+    expect(cone.slice(-6)).toEqual([0, 0.02, -2, 0, 2, 0].map((v, i) => (i === 2 ? expect.closeTo(v) : v)));
+    const sphere = helperLines(180, 2);
+    expect(sphere).toHaveLength((3 * 200 + 3) * 6);
+    for (let i = 0; i < 3 * 200 * 6; i += 3)
+      expect(Math.hypot(sphere[i]!, sphere[i + 1]! - 2, sphere[i + 2]!)).toBeCloseTo(1);
+    const objects = createLightScene({ ...DEFAULT_VIEWER_SETTINGS });
+    expect(objects.helper.visible).toBe(false);
+    objects.cutoff = 30;
+    applyLightSceneSettings(objects, DEFAULT_VIEWER_SETTINGS);
+    expect(objects.helper.visible).toBe(true);
+    applyLightSceneSettings(objects, { ...DEFAULT_VIEWER_SETTINGS, helper: false });
+    expect(objects.helper.visible).toBe(false);
+    disposeLightScene(objects);
   });
 });

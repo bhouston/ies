@@ -7,7 +7,8 @@ import {
   viewerSettingFromAttribute,
   type ViewerSettings,
 } from './settings.js';
-import { SettingsPanel, type SettingsPanelMode } from './settingsPanel.js';
+import { SettingsPanel, type SettingsPanelMode, type ViewerTab } from './settingsPanel.js';
+import type { IESProfile } from '@ies-tools/core';
 import { ELEMENT_STYLES } from './elementStyles.js';
 import { createLightViewer, type LightViewerController } from './viewer.js';
 import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat } from './source.js';
@@ -16,18 +17,27 @@ import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat 
 // oxlint-disable-next-line typescript/no-extraneous-class
 const ElementBase = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 export class LightViewerElement extends ElementBase {
-  static observedAttributes = ['src', 'format', 'lamp-set-index', 'settings-panel', ...VIEWER_SETTINGS_ATTRIBUTES];
+  static observedAttributes = [
+    'src',
+    'format',
+    'lamp-set-index',
+    'settings-panel',
+    'charts',
+    ...VIEWER_SETTINGS_ATTRIBUTES,
+  ];
   #viewer?: LightViewerController;
   #settings: ViewerSettings = { ...DEFAULT_VIEWER_SETTINGS };
   #reflecting = false;
   #panel?: SettingsPanel;
+  #tab: ViewerTab = '3d';
+  #profile?: IESProfile;
   get settings(): ViewerSettings {
     return { ...this.#settings };
   }
   set settings(patch: Partial<ViewerSettings>) {
     const next = resolveViewerSettings(patch, this.#settings);
     if (settingsEqual(next, this.#settings)) {
-      this.#panel?.update(next, this.#panelMode());
+      this.#updatePanel();
       return;
     }
     const previousSettings = this.settings;
@@ -41,18 +51,38 @@ export class LightViewerElement extends ElementBase {
         ['floor-distance', String(next.floorDistance)],
         ['tone-mapping', next.toneMapping],
         ['exposure', String(next.exposure)],
+        ['helper', String(next.helper)],
       ])
         this.setAttribute(name!, value!);
     } finally {
       this.#reflecting = false;
     }
-    this.#panel?.update(next, this.#panelMode());
+    this.#updatePanel();
     this.dispatchEvent(
       new CustomEvent('settingschange', {
         detail: { settings: this.settings, previousSettings },
         bubbles: true,
         composed: true,
       }),
+    );
+  }
+  #updatePanel(): void {
+    const value = this.getAttribute('charts');
+    const charts = value !== null && value !== 'false';
+    this.#host?.classList.toggle('with-tabs', charts);
+    this.#panel?.update(
+      this.settings,
+      this.#panelMode(),
+      charts
+        ? {
+            tab: this.#tab,
+            profile: this.#profile,
+            onTabChange: (tab) => {
+              this.#tab = tab;
+              this.#updatePanel();
+            },
+          }
+        : undefined,
     );
   }
   #panelMode(): SettingsPanelMode {
@@ -114,7 +144,7 @@ export class LightViewerElement extends ElementBase {
         },
         (mode) => this.setAttribute('settings-panel', mode),
         (error) => {
-          this.#panel?.update(this.settings, this.#panelMode());
+          this.#updatePanel();
           this.#error(error);
         },
       );
@@ -123,7 +153,7 @@ export class LightViewerElement extends ElementBase {
     try {
       this.#viewer = createLightViewer(this.#host!, this.#settings);
       this.#panel?.connect();
-      this.#panel?.update(this.settings, this.#panelMode());
+      this.#updatePanel();
       void this.#load();
     } catch (error) {
       this.#error(error);
@@ -138,8 +168,8 @@ export class LightViewerElement extends ElementBase {
   }
   attributeChangedCallback(name: string): void {
     if (this.#reflecting) return;
-    if (name === 'settings-panel') {
-      this.#panel?.update(this.settings, this.#panelMode());
+    if (name === 'settings-panel' || name === 'charts') {
+      this.#updatePanel();
       return;
     }
     if ((VIEWER_SETTINGS_ATTRIBUTES as readonly string[]).includes(name)) {
@@ -175,6 +205,8 @@ export class LightViewerElement extends ElementBase {
         return;
       }
       this.#viewer.setDocument(next);
+      this.#profile = next.profile;
+      this.#updatePanel();
       this.#status!.textContent = '';
       this.dispatchEvent(
         new CustomEvent('load', {

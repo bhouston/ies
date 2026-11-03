@@ -76,8 +76,10 @@ export default function Home() {
             <p className={styles.platform}>MIT · Node and browsers · Files never leave your machine</p>
           </div>
           <figure className={styles.live}>
-            <LiveLightViewer />
-            <figcaption>Live: a track light from its IES file. Drag to orbit, gear for settings.</figcaption>
+            <LiveLightViewer charts="true" />
+            <figcaption>
+              Live: a track light from its IES file. Drag to orbit, gear for settings, tabs for charts.
+            </figcaption>
           </figure>
         </div>
       </header>

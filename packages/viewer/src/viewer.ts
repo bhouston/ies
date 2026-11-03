@@ -8,6 +8,7 @@ import {
   applyLightSceneSettings,
   disposeLightScene,
   fitDistanceChange,
+  cutoffAngle,
   TONE_MAPPING,
 } from './scene.js';
 import {
@@ -89,6 +90,8 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       const texture = createCandelaTexture(profile);
       uniforms.distribution.value.dispose();
       uniforms.distribution.value = texture;
+      objects.cutoff = cutoffAngle(profile);
+      applyLightSceneSettings(objects, settings);
       document = toPhotometricDocument(profile);
       render();
     },

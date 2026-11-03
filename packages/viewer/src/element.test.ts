@@ -188,14 +188,19 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       tone.dispatchEvent(new Event('change', { bubbles: true }));
     });
     changeNumber(viewer, 'exposure', '0');
+    act(() => {
+      input(viewer, 'helper').click();
+    });
+    expect(viewer.getAttribute('helper')).toBe('false');
     expect(viewer.settings).toEqual({
       showWall: false,
       wallDistance: 3.5,
       floorDistance: 4,
       toneMapping: 'neutral',
       exposure: 0,
+      helper: false,
     });
-    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(5);
+    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(6);
   });
   it('updates controls from attributes without reloading its source', async () => {
     const viewer = element();
@@ -230,5 +235,36 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     const snapshot = viewer.settings;
     snapshot.exposure = 1;
     expect(viewer.settings.exposure).toBe(250);
+  });
+  it('shows chart tabs only with charts="true" and charts the loaded profile', async () => {
+    const viewer = element();
+    viewer.data = iesSource();
+    mount(viewer);
+    await flush();
+    const root = viewer.shadowRoot!;
+    expect(root.querySelector('[role="tablist"]')).toBeNull();
+    act(() => {
+      viewer.setAttribute('charts', 'true');
+    });
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['3D view', 'Polar', 'Cartesian', 'Topology', 'Isolux']);
+    expect(root.querySelector('.viewport')!.classList.contains('with-tabs')).toBe(true);
+    expect(root.querySelector('[role="tabpanel"]')).toBeNull();
+    for (const tab of tabs.slice(1)) {
+      act(() => {
+        tab.click();
+      });
+      expect(root.querySelector('[role="tabpanel"] svg')).not.toBeNull();
+      expect(root.querySelector<HTMLDivElement>('.settings-ui')!.hidden).toBe(true);
+    }
+    act(() => {
+      tabs[0]!.click();
+    });
+    expect(root.querySelector('[role="tabpanel"]')).toBeNull();
+    expect(root.querySelector<HTMLDivElement>('.settings-ui')!.hidden).toBe(false);
+    act(() => {
+      viewer.setAttribute('charts', 'false');
+    });
+    expect(root.querySelector('[role="tablist"]')).toBeNull();
   });
 });
