@@ -203,6 +203,30 @@ describe('shared graph exports', () => {
     expect(linear).not.toContain('cd (log)');
     expect(log).toContain('cd (log)');
   });
+  it.each(
+    (['polar', 'cartesian', 'topology', 'isolux'] as const).flatMap((type) =>
+      [
+        [900, 700],
+        [700, 900],
+        [700, 700],
+      ].map(([width, height]) => [type, width!, height!] as const),
+    ),
+  )('fills the whole %s canvas at %dx%d without letterboxing', async (type, width, height) => {
+    const text = await readFile(fixture, 'utf8');
+    const svg = (await chartPhotometry(text, { type, format: 'svg', width, height, resolution: 11 })).data.toString();
+    const [, , boxWidth, boxHeight] = svg
+      .match(/viewBox="([^"]+)"/)![1]!
+      .split(' ')
+      .map(Number);
+    expect(boxWidth! / boxHeight!).toBeCloseTo(width / height, 6);
+    const png = await chartPhotometry(text, { type, format: 'png', width, height, resolution: 11 });
+    const { data, info } = await (await import('sharp')).default(png.data).ensureAlpha().raw().toBuffer({
+      resolveWithObject: true,
+    });
+    const alpha = (x: number, y: number) => data[(y * info.width + x) * info.channels + 3];
+    for (let i = 0; i < width; i++) expect([alpha(i, 0), alpha(i, height - 1)]).toEqual([255, 255]);
+    for (let i = 0; i < height; i++) expect([alpha(0, i), alpha(width - 1, i)]).toEqual([255, 255]);
+  });
   it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
     const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
     native.lampSets[0]!.lampCount = 1;
