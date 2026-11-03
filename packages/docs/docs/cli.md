@@ -4,10 +4,10 @@ sidebar_position: 2
 
 # Command line
 
-Install `ies-cli` after its first npm release, or build the workspace and run `node packages/cli/bin/cli.js` in place of `ies`.
+Install `ies` after its first npm release, or build the workspace and run `node packages/cli/bin/cli.js` in place of `ies`.
 
 ```sh
-npm install -g ies-cli
+npm install -g ies
 ies validate luminaire.ies
 ies inspect luminaire.ies --json
 ies convert luminaire.ies -o luminaire.json
