@@ -1,0 +1,62 @@
+// Verify actual published tarballs in a clean production consumer.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+const root = resolve(import.meta.dirname, '..');
+const consumer = mkdtempSync(join(tmpdir(), 'ies-release-'));
+try {
+  const tarballs = ['core', 'viewer', 'cli'].map((name) => {
+    const cwd = join(root, 'packages', name);
+    const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'));
+    execFileSync('pnpm', ['pack', '--pack-destination', consumer], { cwd, stdio: 'pipe' });
+    return join(consumer, `${pkg.name}-${pkg.version}.tgz`);
+  });
+  writeFileSync(join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
+  execFileSync(
+    'npm',
+    ['install', '--omit=dev', '--no-audit', '--no-fund', ...tarballs, 'react@^19.0.0', 'react-dom@^19.0.0'],
+    {
+      cwd: consumer,
+      stdio: 'inherit',
+    },
+  );
+  for (const name of ['core', 'viewer', 'cli']) {
+    const files = readdirSync(join(consumer, 'node_modules', `ies-${name}`, 'dist'), { recursive: true });
+    assert.ok(files.includes('index.js'), `${name} has an entry point`);
+    assert.ok(
+      files.every((file) => !String(file).includes('.test.') && !String(file).endsWith('.tsbuildinfo')),
+      `${name} excludes tests and build metadata`,
+    );
+  }
+  writeFileSync(
+    join(consumer, 'check.mjs'),
+    `
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { parseIES, sampleIntensity } from 'ies-core';
+import * as viewer from 'ies-viewer';
+import * as react from 'ies-viewer/react';
+const profile = parseIES(readFileSync(process.argv[2], 'utf8'));
+assert.ok(sampleIntensity(profile, 0, 0) >= 0);
+assert.ok(Object.keys(viewer).length > 0);
+assert.ok(react.LightViewer);
+assert.ok(react.IntensityGraph);
+`,
+  );
+  execFileSync(process.execPath, ['check.mjs', join(root, 'fixtures/007cfb11e343e2f42e3b476be4ab684e.ies')], {
+    cwd: consumer,
+    stdio: 'inherit',
+  });
+  const help = execFileSync(join(consumer, 'node_modules', '.bin', 'ies'), ['--help'], {
+    cwd: consumer,
+    encoding: 'utf8',
+  });
+  assert.match(help, /inspect/);
+  assert.match(help, /validate/);
+  console.log('Production tarballs, Node imports, React exports and CLI entry point verified.');
+} finally {
+  rmSync(consumer, { recursive: true, force: true });
+}
