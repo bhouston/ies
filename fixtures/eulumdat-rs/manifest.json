@@ -1,0 +1,42 @@
+{
+  "repository": "https://github.com/holg/eulumdat-rs",
+  "commit": "f07581600fcf339e5db14003d714f4b285d4d86d",
+  "upstreamLicenseDeclaration": "AGPL-3.0-or-later",
+  "files": [
+    {
+      "file": "Floodlight_12W 3000K 54\u00b0.ies",
+      "sourcePath": "tests/files/Floodlight_12W 3000K 54\u00b0.ies",
+      "sha256": "b221295fee91c30c0bca49625c756b8c8d8449a0a3bca784a6a2dd9fb20181f9"
+    },
+    {
+      "file": "Indoor_60W_120G_5300LM_5000K_OVNI.ies",
+      "sourcePath": "tests/files/Indoor_60W_120G_5300LM_5000K_OVNI.ies",
+      "sha256": "4a9d0b9db300c8ee26245c4f007c20048bac25053bf1a712623b6bc21e682288"
+    },
+    {
+      "file": "OutdoorRoadway IES OS 8988-2022 03 AM01 60W 4000K.ies",
+      "sourcePath": "tests/files/OutdoorRoadway IES OS 8988-2022 03 AM01 60W 4000K.ies",
+      "sha256": "61a955758fb6531925aab0db31b6cbb60aa383a0b551737fcd97a0b569172a71"
+    },
+    {
+      "file": "Preliminar Interlab IPT_fotometria 1.ies",
+      "sourcePath": "tests/files/Preliminar Interlab IPT_fotometria 1.ies",
+      "sha256": "e44ef117bea8c216d92a7c9517811addd7ba2bfaac94df1d7d91969be86eacff"
+    },
+    {
+      "file": "aec/ITALO 1 5P5 S05 3.140-3M.IES",
+      "sourcePath": "tests/files/aec/ITALO 1 5P5 S05 3.140-3M.IES",
+      "sha256": "f98a19f398a845a45c51ea5bcdeb5dc6c10d9484f5c7d85009a6ec0bc3fdd084"
+    },
+    {
+      "file": "aec/S01.01.02.354_MAXWELL-8-T4 LUXEON 5050 Square with glass-MEASURED_CIE.IES",
+      "sourcePath": "tests/files/aec/S01.01.02.354_MAXWELL-8-T4 LUXEON 5050 Square with glass-MEASURED_CIE.IES",
+      "sha256": "ce40d3b9cf1365ec2fa0a00d62ae77a6492605e5b57f715b0e44fc63468125fd"
+    },
+    {
+      "file": "aec/S01.01.02.354_MAXWELL-8-T4 LUXEON 5050 Square with glass-MEASURED_IESNA.ies",
+      "sourcePath": "tests/files/aec/S01.01.02.354_MAXWELL-8-T4 LUXEON 5050 Square with glass-MEASURED_IESNA.ies",
+      "sha256": "dfb6977379b69628b4b8188e49f8d1595e1e78f8ac73f166aebad6e433ca2aa5"
+    }
+  ]
+}

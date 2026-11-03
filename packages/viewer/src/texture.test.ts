@@ -32,3 +32,33 @@ describe('Three.js IES texture interoperability', () => {
     });
   }
 });
+
+const externalDirectory = new URL('../../../fixtures/eulumdat-rs/', import.meta.url);
+const externalManifest = JSON.parse(readFileSync(new URL('manifest.json', externalDirectory), 'utf8')) as {
+  files: { file: string }[];
+};
+describe('external measured profiles in the receiver texture', () => {
+  for (const fixture of externalManifest.files) {
+    it(`keeps ${fixture.file} finite, nonnegative and correctly oriented`, () => {
+      const profile = parseIES(readFileSync(new URL(fixture.file, externalDirectory), 'utf8'));
+      const texture = createCandelaTexture(profile);
+      try {
+        expect(texture.image.data.length).toBe(texture.image.width * texture.image.height);
+        expect(Array.from(texture.image.data).every((value) => Number.isFinite(value) && value >= 0)).toBe(true);
+        for (const [vertical, horizontal] of [
+          [0, 0],
+          [45, 90],
+          [90, 180],
+          [120, 270],
+          [180, 360],
+        ]) {
+          const expected = sampleIntensity(profile, vertical!, horizontal!);
+          const actual = texture.image.data[vertical! * 361 + horizontal!]!;
+          expect(Math.abs(actual - expected)).toBeLessThanOrEqual(Math.max(1e-6, Math.abs(expected) * 1e-6));
+        }
+      } finally {
+        texture.dispose();
+      }
+    });
+  }
+});
