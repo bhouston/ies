@@ -2,11 +2,12 @@
 
 See how a luminaire distributes light without leaving VS Code. Open an IES or EULUMDAT file to preview its measured light on a floor and back wall, inspect its photometric properties, and check for data issues.
 
-![IES light preview with viewer controls and the file information panel](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/vscode-extension/images/preview.png)
+![The light preview in VS Code cycling through the 3D view and the polar, Cartesian, topology and isolux chart tabs, beside the file information panel](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/vscode-extension.gif)
 
 ## Features
 
 - **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution.
+- **Photometric charts:** switch tabs to see polar and Cartesian intensity curves, a 3D intensity topology and an isolux ground plot.
 - **Adjustable viewing conditions:** show or hide the back wall, change wall and floor distances, and choose tone mapping and exposure from the viewer's gear menu.
 - **Photometric information:** see the format and version, manufacturer, luminaire and lamp descriptions, power, peak intensity, flux, efficacy, beam and field angles, dimensions, and source metadata.
 - **Validation alongside the preview:** review errors, warnings and their diagnostic codes. Enable **Strict validation** to flag files with warnings as well as errors.

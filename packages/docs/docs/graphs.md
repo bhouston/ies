@@ -6,6 +6,15 @@ sidebar_position: 8
 
 The React graphs render SVG without creating a GPU context. They consume the same Type C `IESProfile` as the viewer. Their calculation and geometry APIs are also available through `@ies-tools/viewer/graphs`, which imports neither React nor Three.js and works in Node.
 
+The same graphs, exported from an asymmetric BEGA luminaire with `ies chart`:
+
+<p>
+<img src="/img/charts/polar.png" alt="Polar luminous intensity chart of the C0–C180 and C90–C270 planes" width="49%" />
+<img src="/img/charts/cartesian.png" alt="Cartesian luminous intensity chart of the C0–C180 and C90–C270 planes" width="49%" />
+<img src="/img/charts/topology.png" alt="3D luminous intensity topology surface" width="49%" />
+<img src="/img/charts/isolux.png" alt="Isolux ground illuminance plot with contours" width="49%" />
+</p>
+
 ## Complete intensity cuts
 
 ```tsx

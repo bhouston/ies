@@ -4,6 +4,8 @@ sidebar_position: 6
 
 # VS Code extension
 
+![The light preview in VS Code cycling through the 3D view and chart tabs](/img/vscode-extension.gif)
+
 Build and package from the workspace:
 
 ```sh

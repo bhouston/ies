@@ -4,6 +4,8 @@ sidebar_position: 3
 
 # React components
 
+![The light viewer: a floodlight lighting the floor and wall, with the beam gizmo, chart tabs and settings button](/img/light-viewer.png)
+
 Install `@ies-tools/viewer`, `three`, `react` and `react-dom` after publication. The React exports live at `@ies-tools/viewer/react`; the core package is usable separately in Node and browsers.
 
 ```tsx
