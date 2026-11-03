@@ -7,11 +7,13 @@ import {
   toPhotometricDocument,
   validateIES,
   LDTParseError,
+  IESParseError,
   type IESDiagnostic,
   type IESProfile,
   type LDTProfile,
   type PhotometricLampSet,
 } from './index.js';
+import { profileRanges, type SourceField } from './source.js';
 
 export type InputFormat = 'ies' | 'ldt';
 export interface PhotometryDiagnostic extends Omit<IESDiagnostic, 'code'> {
@@ -24,6 +26,7 @@ export function inputFormat(text: string, file = '', hint?: InputFormat): InputF
 }
 export function ldtDiagnostics(profile: LDTProfile): PhotometryDiagnostic[] {
   const diagnostics: PhotometryDiagnostic[] = [];
+  const ranges = profileRanges.get(profile);
   // Usability advisories, not invented EULUMDAT required-keyword rules.
   for (const field of ['identification', 'luminaireName'] as const) {
     if (!profile[field].trim())
@@ -32,6 +35,7 @@ export function ldtDiagnostics(profile: LDTProfile): PhotometryDiagnostic[] {
         severity: 'warning',
         field,
         message: `The ${field} description is empty; adding it makes this file easier to identify`,
+        ...(ranges?.[field] ? { range: ranges[field] } : {}),
       });
   }
   return diagnostics;
@@ -56,6 +60,7 @@ export function validatePhotometry(
         severity: 'error',
         field: 'lampSetIndex',
         message: 'The selected lamp configuration is outside the available lamp sets',
+        ...lampSetRange(profile),
       });
     }
     return {
@@ -68,8 +73,57 @@ export function validatePhotometry(
     return {
       valid: false,
       profile: null,
-      diagnostics: [{ code: error.code, severity: 'error' as const, message: error.message }],
+      diagnostics: [parseErrorDiagnostic(error)],
     };
+  }
+}
+
+function lampSetRange(profile: LDTProfile): Pick<PhotometryDiagnostic, 'range'> {
+  const range = profileRanges.get(profile)?.lampSetCount;
+  return range ? { range } : {};
+}
+
+function parseErrorDiagnostic(error: IESParseError | LDTParseError): PhotometryDiagnostic {
+  return {
+    code: error.code,
+    severity: 'error',
+    message: error.message,
+    ...(error instanceof IESParseError && error.field ? { field: error.field } : {}),
+    ...(error.range ? { range: error.range } : {}),
+  };
+}
+
+export interface PhotometrySourceDescription {
+  valid: boolean;
+  profile: IESProfile | LDTProfile | null;
+  diagnostics: PhotometryDiagnostic[];
+  /** Described source tokens and lines in document order. Partial when the text is invalid. */
+  fields: SourceField[];
+}
+
+/**
+ * Validate source text and describe every header line, keyword, angle and intensity it contains, for
+ * editor hover help and outlines. Never throws for malformed photometry: parse errors become diagnostics
+ * and `fields` covers the text read before the error. Diagnostics carry source ranges.
+ */
+export function describePhotometrySource(
+  text: string,
+  format: InputFormat,
+  strict = false,
+): PhotometrySourceDescription {
+  const fields: SourceField[] = [];
+  try {
+    const profile = format === 'ies' ? parseIES(text, fields) : parseLDT(text, fields);
+    const diagnostics = format === 'ies' ? diagnoseIES(profile as IESProfile) : ldtDiagnostics(profile as LDTProfile);
+    return {
+      valid: !diagnostics.some((item) => item.severity === 'error' || (strict && item.severity === 'warning')),
+      profile,
+      diagnostics,
+      fields,
+    };
+  } catch (error) {
+    if (!(error instanceof IESParseError || error instanceof LDTParseError)) throw error;
+    return { valid: false, profile: null, diagnostics: [parseErrorDiagnostic(error)], fields };
   }
 }
 
@@ -125,6 +179,7 @@ export function inspectParsedPhotometry(profile: IESProfile | LDTProfile, lampSe
       field: 'lampSetIndex',
       message:
         'Lamp sets are alternative configurations; select a configuration to calculate intensity, flux and efficacy',
+      ...lampSetRange(native),
     });
   const nativeLamp = selected ? native.lampSets[selected.selectedLampSetIndex ?? 0]! : undefined;
   const summary = selected
