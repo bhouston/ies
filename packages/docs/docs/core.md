@@ -64,3 +64,14 @@ The returned `integratedFluxLumens` is an angular-table estimate of luminaire ou
 Beam estimates use complete opposed-plane cuts C0–C180 and C90–C270 by default. Each cut reports the dominant measured peak direction, peak candela, and full angular widths between interpolated 50%-peak (**beam**) and 10%-peak (**field**) crossings. A custom cut is available through `getBeamAngles(profile, horizontalDegrees)`. Off-axis peaks retain their measured signed vertical direction; cuts are not automatically rotated to a nominal optical axis. The [IES beam-angle](https://ies.org/definitions/beam-angle/) and [field-angle definitions](https://ies.org/definitions/field-angle/) describe the threshold convention.
 
 Widths are null with `no-light`, `no-crossing`, or `multiple-lobes` status when the data cannot support a single bounded estimate. Missing hemispheres never invent zero-intensity threshold crossings. These principal-plane estimates are not certified manufacturer beam angles, global maximum/minimum beam widths, or a general optical-axis finder. Type A/B summaries return `metricsSupported: false`, null integrated metrics, an empty beam array and an explicit reason; low-level Type C metric functions reject those types.
+
+## Shared inspection and validation
+
+```ts
+import { inspectPhotometry, validatePhotometry, inspectParsedPhotometry } from 'ies-core';
+const validation = validatePhotometry(source, 'ies', false);
+const inspection = validation.profile ? inspectParsedPhotometry(validation.profile) : null;
+const direct = inspectPhotometry(source, 'ldt', 0); // zero-based alternative lamp configuration
+```
+
+The CLI and VS Code panel consume these same browser-safe models. `validatePhotometry` accepts a strict flag, returns diagnostic codes/severity/fields, and keeps structural parse errors separate from metadata warnings. `inspectParsedPhotometry` avoids reparsing a validated profile. Native LDT alternatives remain unselected unless the caller supplies an index; intensity/flux are unavailable until then. Inspection and validation are independent of Three.js rendering capabilities.
