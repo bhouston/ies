@@ -4,6 +4,7 @@ import type { Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { mountPreview } from './bootstrap.js';
 import { createPreviewUpdate } from '../previewData.js';
+import { getPreviewHtml } from '../previewHtml.js';
 import { iesSource } from '../../../core/test/iesSource.js';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -44,9 +45,12 @@ async function startWithImmediateHostUpdate() {
 
 describe('preview bootstrap across installed extension updates', () => {
   it('keeps the current HTML root and receives an immediate ready response', async () => {
-    const container = document.createElement('div');
-    container.id = 'root';
-    document.body.append(container);
+    const html = getPreviewHtml('vscode-resource:', 'preview.js', 'preview.css');
+    document.body.innerHTML = new DOMParser().parseFromString(html, 'text/html').body.innerHTML;
+    expect(document.querySelectorAll('#root')).toHaveLength(1);
+    expect(document.querySelector('light-viewer')).toBeNull();
+    expect(document.querySelector('#status')).toBeNull();
+    const container = document.getElementById('root')!;
     await startWithImmediateHostUpdate();
     expect(document.getElementById('root')).toBe(container);
     expect(document.querySelectorAll('light-viewer')).toHaveLength(1);
