@@ -41,8 +41,15 @@ export interface LDTProfile {
   intensities: number[][];
 }
 
+export class LDTParseError extends Error {
+  readonly code = 'LDT_PARSE_ERROR';
+  constructor(message: string) {
+    super(`Invalid EULUMDAT: ${message}`);
+    this.name = 'LDTParseError';
+  }
+}
 function error(message: string): never {
-  throw new Error(`Invalid EULUMDAT: ${message}`);
+  throw new LDTParseError(message);
 }
 function finite(value: number, name: string): void {
   if (!Number.isFinite(value)) error(`${name} must be finite`);
@@ -82,14 +89,15 @@ export function validateLDT(profile: LDTProfile): void {
   increasing(profile.gammaAngles, 'Gamma angles', 180);
   if (profile.cAngles[0] !== 0 || profile.cAngles.at(-1)! >= 360)
     error('C angles must start at 0° and exclude the duplicate 360° plane');
-  if (profile.gammaAngles[0] !== 0) error('Gamma angles must start at 0°');
+  // Preserve real-world upper-only datasets; a nonzero gamma start is structurally usable,
+  // although DIAL's interchange description recommends starting at zero.
   nonnegative(profile.cPlaneSpacing, 'C spacing');
   nonnegative(profile.gammaSpacing, 'Gamma spacing');
   for (const [angles, spacing, name] of [
     [profile.cAngles, profile.cPlaneSpacing, 'C'],
     [profile.gammaAngles, profile.gammaSpacing, 'Gamma'],
   ] as const) {
-    if (spacing > 0 && angles.some((angle, index) => Math.abs(angle - index * spacing) > 1e-6))
+    if (spacing > 0 && angles.some((angle, index) => Math.abs(angle - angles[0]! - index * spacing) > 1e-6))
       error(`${name} spacing does not match the listed angles; use zero for irregular grids`);
   }
   for (const [name, dimension] of Object.entries(profile.luminaire)) nonnegative(dimension, `luminaire ${name}`);

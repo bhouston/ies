@@ -74,6 +74,12 @@ describe('independent EULUMDAT native parser/writer', () => {
     profile.gammaSpacing = 0;
     expect(parseLDT(writeLDT(profile))).toEqual(profile);
   });
+  it('preserves partial upper-hemisphere gamma grids without inventing lower samples', () => {
+    const data = fixture();
+    data.gammaAngles = [90, 135, 180];
+    data.gammaSpacing = 45;
+    expect(parseLDT(writeLDT(data))).toEqual(data);
+  });
   it('rejects counts and scalar corruption before allocating tables', () => {
     expect(() => parseLDT('Manufacturer\n3\n0\n-3\n')).toThrow('C-plane count');
     expect(() => parseLDT(writeLDT(fixture()).replace('2000\n', 'Infinity\n'))).toThrow('invalid lamp-set lumens');
