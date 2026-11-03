@@ -40,6 +40,12 @@ describe('attributed real-world eulumdat-rs IES measurements', () => {
       );
       expect(sampleIntensity(profile, 30, 0)).toBeCloseTo(sampleIntensity(profile, 30, 360), 6);
       if (expected.vertical === 91) expect(sampleIntensity(profile, 120, 0)).toBe(0);
+      const metrics = summarizeIES(profile);
+      expect(metrics.peakIntensityCandela).toBeCloseTo(expected.peak, 6);
+      expect(metrics.nadirCandela).toBeCloseTo(expected.nadir, 6);
+      expect(metrics.downwardFluxLumens! + metrics.upwardFluxLumens!).toBeCloseTo(metrics.integratedFluxLumens!, 6);
+      expect(metrics.zonalLumens!.at(-1)!.percentOfLuminaire).toBeCloseTo(100, 8);
+      for (const code of metrics.cieFluxCode!.slice(0, 3)) expect(code).toBeGreaterThanOrEqual(0);
     });
   }
   it('retains measured azimuth differences between CIE and IESNA named files', () => {

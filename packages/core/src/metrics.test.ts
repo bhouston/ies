@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { calculateLuminousFlux, computePhotometricMetrics, getBeamAngles, parseIES, summarizeIES } from './index.js';
+import {
+  calculateFluxBreakdown,
+  calculateLuminousFlux,
+  computePhotometricMetrics,
+  getBeamAngles,
+  parseIES,
+  summarizeIES,
+} from './index.js';
 import { iesSource } from '../test/iesSource.js';
 
 describe('solid-angle flux integration', () => {
@@ -188,5 +195,123 @@ describe('principal-plane beam and field estimates', () => {
       integratedFluxLumens: 0,
       luminousEfficacyLumensPerWatt: 0,
     });
+  });
+});
+
+describe('extended photometric metrics', () => {
+  const vertical = Array.from({ length: 181 }, (_, g) => g);
+  const lambertian = (lumens = -1) =>
+    parseIES(
+      iesSource({
+        vertical,
+        lumens,
+        values: [vertical.map((g) => (g <= 90 ? 100 * Math.cos(g * (Math.PI / 180)) : 0))],
+      }),
+    );
+
+  it('splits a Lambertian downlight into all-downward flux with a sin²γ cumulative profile', () => {
+    const metrics = computePhotometricMetrics(lambertian());
+    expect(metrics.integratedFluxLumens).toBeCloseTo(Math.PI * 100, 1);
+    expect(metrics.downwardFluxLumens).toBeCloseTo(Math.PI * 100, 1);
+    expect(metrics.upwardFluxLumens).toBeCloseTo(0, 10);
+    expect(metrics.downwardFluxFraction).toBeCloseTo(1, 10);
+    const [n1, n2, n3, n4, n5] = metrics.cieFluxCode!;
+    expect(Math.abs(n1! - 44)).toBeLessThanOrEqual(1);
+    expect(n2).toBe(75);
+    expect(Math.abs(n3! - 94)).toBeLessThanOrEqual(1);
+    expect([n4, n5]).toEqual([null, null]);
+    expect(metrics.nadirCandela).toBe(100);
+    expect(metrics.peakIntensityCandela).toBe(100);
+    expect(metrics.peakDirection).toEqual({ horizontalDegrees: 0, verticalDegrees: 0 });
+    const zone = (from: number, to: number) =>
+      metrics.zonalLumens!.find((item) => item.fromDegrees === from && item.toDegrees === to)!;
+    expect(metrics.zonalLumens!.map((item) => [item.fromDegrees, item.toDegrees])).toEqual([
+      [0, 30],
+      [0, 40],
+      [0, 60],
+      [0, 90],
+      [90, 120],
+      [90, 130],
+      [90, 150],
+      [90, 180],
+      [0, 180],
+    ]);
+    expect(zone(0, 60).percentOfLuminaire).toBeCloseTo(75, 2);
+    expect(zone(0, 30).lumens).toBeCloseTo(Math.PI * 100 * 0.25, 1);
+    expect(zone(90, 180).lumens).toBeCloseTo(0, 10);
+    expect(zone(0, 180).percentOfLamp).toBeNull();
+  });
+
+  it('reports light output ratios against declared lamp flux for relative photometry', () => {
+    const metrics = computePhotometricMetrics(lambertian(1000));
+    const flux = metrics.integratedFluxLumens!;
+    expect(metrics.lightOutputRatio).toBeCloseTo(flux / 1000, 12);
+    expect(metrics.downwardLightOutputRatio).toBeCloseTo(flux / 1000, 12);
+    expect(metrics.upwardLightOutputRatio).toBeCloseTo(0, 10);
+    expect(metrics.cieFluxCode!.slice(3)).toEqual([31, 31]);
+    expect(metrics.zonalLumens!.at(-1)!.percentOfLamp).toBeCloseTo(flux / 10, 10);
+    const absolute = computePhotometricMetrics(lambertian());
+    expect(absolute).toMatchObject({
+      lightOutputRatio: null,
+      downwardLightOutputRatio: null,
+      upwardLightOutputRatio: null,
+    });
+  });
+
+  it('splits an isotropic source evenly and keeps calculateLuminousFlux identical to the breakdown total', () => {
+    const profile = parseIES(iesSource({ vertical: [0, 45.5, 90, 180] }));
+    const breakdown = calculateFluxBreakdown(profile);
+    expect(breakdown.total).toBeCloseTo(4 * Math.PI * 100, 10);
+    expect(breakdown.downward).toBeCloseTo(2 * Math.PI * 100, 10);
+    expect(breakdown.cumulative).toHaveLength(181);
+    expect(breakdown.cumulative[0]).toBe(0);
+    // Flux from 0 to γ for a uniform sphere is 2πI(1 - cos γ), exact at every whole degree.
+    expect(breakdown.cumulative[60]).toBeCloseTo(2 * Math.PI * 100 * 0.5, 10);
+    expect(calculateLuminousFlux(profile)).toBe(breakdown.total);
+    expect(computePhotometricMetrics(profile).downwardFluxFraction).toBeCloseTo(0.5, 12);
+  });
+
+  it('applies lamp tilt to the breakdown, peak and nadir like calculateLuminousFlux', () => {
+    const profile = parseIES(iesSource({ tilt: 'INCLUDE\n1\n2\n0 90\n1 0.5' }));
+    const metrics = computePhotometricMetrics(profile, 90);
+    expect(metrics.integratedFluxLumens).toBeCloseTo(calculateLuminousFlux(profile, 90), 12);
+    expect(metrics.downwardFluxLumens).toBeCloseTo(Math.PI * 100, 10);
+    expect(metrics.peakIntensityCandela).toBe(50);
+    expect(metrics.nadirCandela).toBe(50);
+  });
+
+  it('starts cumulative flux at the first measured angle for upward-only data', () => {
+    const breakdown = calculateFluxBreakdown(parseIES(iesSource({ vertical: [90, 180] })));
+    expect(breakdown.cumulative[90]).toBe(0);
+    expect(breakdown.downward).toBe(0);
+    expect(breakdown.upward).toBeCloseTo(2 * Math.PI * 100, 10);
+    const metrics = computePhotometricMetrics(parseIES(iesSource({ vertical: [90, 180] })));
+    expect(metrics.cieFluxCode!.slice(0, 3)).toEqual([null, null, null]);
+    expect(metrics.nadirCandela).toBe(0);
+  });
+
+  it('returns null extended metrics for dark output and unsupported coordinate systems', () => {
+    const dark = computePhotometricMetrics(parseIES(iesSource({ values: [[0, 0, 0]] })));
+    expect(dark.downwardFluxFraction).toBeNull();
+    expect(dark.zonalLumens![0]!.percentOfLuminaire).toBeNull();
+    for (const type of [2, 3]) {
+      const metrics = computePhotometricMetrics(
+        parseIES(iesSource({ type, vertical: [-90, 0, 90], lumens: 1000, values: [[100, 100, 100]] })),
+      );
+      expect(metrics).toMatchObject({
+        metricsSupported: false,
+        downwardFluxLumens: null,
+        upwardFluxLumens: null,
+        peakIntensityCandela: null,
+        peakDirection: null,
+        nadirCandela: null,
+        lightOutputRatio: null,
+        downwardLightOutputRatio: null,
+        upwardLightOutputRatio: null,
+        downwardFluxFraction: null,
+        cieFluxCode: null,
+        zonalLumens: null,
+      });
+    }
   });
 });
