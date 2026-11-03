@@ -14,6 +14,7 @@ export interface ChartOptions {
   extent?: number;
   resolution?: number;
   lampSetIndex?: number;
+  inputFormat?: 'ies' | 'ldt';
 }
 export interface RenderedChart {
   data: Buffer;
@@ -36,7 +37,7 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
   if (!['vertical', 'horizontal'].includes(axis) || !['x', 'y', 'z'].includes(upAxis))
     throw new Error('Invalid chart axis');
   if (!Number.isFinite(angle)) throw new Error('Chart angle must be finite');
-  const document = parsePhotometry(text, undefined, { lampSetIndex: options.lampSetIndex });
+  const document = parsePhotometry(text, options.inputFormat, { lampSetIndex: options.lampSetIndex });
   const [{ createElement }, { renderToStaticMarkup }, { IntensityGraph, IsoluxGraph }] = await Promise.all([
     import('react'),
     import('react-dom/server'),

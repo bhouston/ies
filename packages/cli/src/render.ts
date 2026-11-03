@@ -15,6 +15,7 @@ export interface RenderOptions {
   /** Browser startup/load/render timeout in seconds. */
   timeout?: number;
   lampSetIndex?: number;
+  inputFormat?: 'ies' | 'ldt';
 }
 export interface RenderedPhotometry {
   png: Buffer;
@@ -93,7 +94,7 @@ export async function renderPhotometry(text: string, options: RenderOptions = {}
   if (!Number.isFinite(exposure) || exposure < 0) throw new RangeError('Exposure must be finite and nonnegative');
   if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 600)
     throw new RangeError('Timeout must be between 0 and 600 seconds');
-  const document = parsePhotometry(text, undefined, { lampSetIndex: options.lampSetIndex });
+  const document = parsePhotometry(text, options.inputFormat, { lampSetIndex: options.lampSetIndex });
   const preview = await servePreview(serializeIES(document).value);
   let browser: Browser | undefined;
   try {
@@ -120,6 +121,8 @@ export async function renderPhotometry(text: string, options: RenderOptions = {}
       return gl.getError();
     })()`);
     if (glError !== 0) throw new Error(`WebGL failed while completing the image (error ${glError})`);
+    const finalState = await page.evaluate<{ error: string }>('window.__iesImageState');
+    if (finalState.error) throw new Error(finalState.error);
     if (pageErrors.length) throw new Error(`Shared viewer error: ${pageErrors.join('; ')}`);
     const png = await page.screenshot({ type: 'png', animations: 'disabled', timeout: timeout * 1000 });
     return { png, width, height, gpu };

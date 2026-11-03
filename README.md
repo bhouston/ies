@@ -1,15 +1,17 @@
 # ies
 
-IES photometric lighting tools for JavaScript and TypeScript, modeled on [mtlx](https://github.com/bhouston/mtlx).
+IES and EULUMDAT photometric lighting tools for JavaScript and TypeScript, modeled on [mtlx](https://github.com/bhouston/mtlx).
 
-| Package                | Purpose                                                           |
-| ---------------------- | ----------------------------------------------------------------- |
-| `ies-core`             | Parse LM-63 files, interpolate intensities and inspect photometry |
-| `ies-cli`              | Validate, report stats, convert to JSON and preview local files   |
-| `ies-viewer`           | Three.js scene, `<light-viewer>` and React viewer/graphs          |
-| `ies-vscode-extension` | Live `.ies` preview for VS Code                                   |
-| `ies-website`          | React demo with local file input                                  |
-| `ies-docs`             | Docusaurus documentation built as a GitHub Pages artifact         |
+| Package                | Purpose                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| `ies-core`             | Parse IES/LDT, convert photometry and calculate statistics         |
+| `ies-cli`              | Inspect, validate, convert, preview and export render/chart images |
+| `ies-viewer`           | Three.js scene, `<light-viewer>` and React viewer/graphs           |
+| `ies-vscode-extension` | Live `.ies` and `.ldt` previews for VS Code                        |
+| `ies-website`          | React demo with local file input                                   |
+| `ies-docs`             | Docusaurus documentation built as a GitHub Pages artifact          |
+
+The shared components include polar, Cartesian, topology and isolux diagrams. `ies render` exports hardware-rendered PNGs; `ies chart` exports the same diagrams as SVG or PNG.
 
 The viewer places a downward-facing light above a ground plane and in front of a wall, against a black background. It uses the IES angular intensity distribution to illuminate both receiving planes.
 

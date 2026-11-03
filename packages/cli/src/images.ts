@@ -1,5 +1,6 @@
 import { open, readFile, unlink } from 'node:fs/promises';
 import { extname } from 'node:path';
+import { inputFormat } from './photometry.js';
 import { chartPhotometry, type ChartOptions, type ChartType } from './chart.js';
 import { imageDimensions, renderPhotometry, type RenderOptions } from './render.js';
 
@@ -26,6 +27,7 @@ export function parseImageArguments(command: 'render' | 'chart', argv: string[])
     '--extent',
     '--resolution',
     '--lamp-set',
+    '--format',
   ]);
   const renderOnly = new Set(['--exposure', '--browser', '--timeout']);
   const chartOnly = new Set([
@@ -52,6 +54,10 @@ export function parseImageArguments(command: 'render' | 'chart', argv: string[])
         case '-o':
         case '--output':
           options.output = value;
+          break;
+        case '--format':
+          if (value !== 'ies' && value !== 'ldt') throw new Error('--format must be ies or ldt');
+          options.inputFormat = value;
           break;
         case '--browser':
           options.browser = value;
@@ -144,6 +150,7 @@ export const imageHelp = {
   --exposure <number>                 Default 1, nonnegative
   --browser <executable>              Installed Chromium browser, or IES_BROWSER
   --timeout <seconds>                Default 60, maximum 600
+  --format ies|ldt                   Optional explicit input format
   --lamp-set <index> --json           One-based LDT configuration; JSON GPU report
 Requires confirmed hardware WebGL2; software and unknown renderers are rejected.`,
   chart: `ies chart <file.ies|file.ldt> -o output.svg|output.png
@@ -152,6 +159,7 @@ Requires confirmed hardware WebGL2; software and unknown renderers are rejected.
   --axis vertical|horizontal --angle <degrees>
   --up-axis x|y|z                    Topology orientation
   --mounting-height <meters> --extent <meters> --resolution <count>
+  --format ies|ldt                   Optional explicit input format
   --lamp-set <index> --json           One-based LDT configuration; JSON output report
 Uses the shared React diagrams; PNG rasterization is 2D and does not require WebGL.`,
 };
@@ -162,6 +170,7 @@ export async function runImageCommand(command: 'render' | 'chart', argv: string[
   }
   const options = parseImageArguments(command, argv);
   const text = await readFile(options.input, 'utf8');
+  options.inputFormat = inputFormat(text, options.input, options.inputFormat);
   if (command === 'render') {
     const image = await writeImageExclusively(options.output, async () => {
       const rendered = await renderPhotometry(text, options);

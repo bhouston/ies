@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from 'ies-core';
 import { chartPhotometry } from './chart.js';
 import { imageDimensions, requireHardwareGPU } from './render.js';
 import { parseImageArguments, writeImageExclusively } from './images.js';
@@ -117,6 +118,7 @@ describe('image command arguments', () => {
     ['chart', [fixture, '-o', 'x.svg', '--axis', 'unknown']],
     ['chart', [fixture, '-o', 'x.svg', '--up-axis', 'a']],
     ['chart', [fixture, '-o', 'x.svg', '--lamp-set', '0']],
+    ['chart', [fixture, '-o', 'x.svg', '--format', 'unknown']],
     ['chart', [fixture, '-o', 'x.svg', '--mounting-height', '0']],
     ['chart', [fixture, '-o', 'x.svg', '--extent', '-1']],
     ['chart', [fixture, '-o', 'x.svg', '--resolution', '1.5']],
@@ -170,6 +172,19 @@ describe('shared graph exports', () => {
       expect(metadata).toMatchObject({ width: 420, height: 300, format: 'png' });
     },
   );
+  it('exports LDT input and requires an explicit selection for alternative configurations', async () => {
+    const native = parseLDT(serializeLDT(parsePhotometry(await readFile(fixture, 'utf8'))).value);
+    native.lampSets[0]!.lampCount = 1;
+    native.lampSets.push({
+      ...native.lampSets[0]!,
+      description: 'Alternative configuration',
+      totalLumens: native.lampSets[0]!.totalLumens * 2,
+    });
+    const text = writeLDT(native);
+    await expect(chartPhotometry(text)).rejects.toThrow('lampSetIndex');
+    const image = await chartPhotometry(text, { lampSetIndex: 1, format: 'png', width: 320, height: 240 });
+    expect(await (await import('sharp')).default(image.data).metadata()).toMatchObject({ width: 320, height: 240 });
+  });
   it('runs the chart CLI and preserves existing outputs', async () => {
     const output = join(await temporary(), 'polar.png');
     const report = JSON.parse(
@@ -183,6 +198,22 @@ describe('shared graph exports', () => {
     const repeat = spawnSync(process.execPath, [bin, 'chart', fixture, '-o', output], { encoding: 'utf8' });
     expect(repeat.status).toBe(1);
     expect(repeat.stderr).toContain('EEXIST');
+  });
+  it('honors explicit input format over an incorrect filename extension', async () => {
+    const directory = await temporary();
+    const input = join(directory, 'misnamed.ldt');
+    const output = join(directory, 'chart.svg');
+    await writeFile(input, await readFile(fixture));
+    const failed = spawnSync(process.execPath, [bin, 'chart', input, '-o', output], { encoding: 'utf8' });
+    expect(failed.status).toBe(1);
+    await expect(stat(output)).rejects.toMatchObject({ code: 'ENOENT' });
+    const report = JSON.parse(
+      execFileSync(process.execPath, [bin, 'chart', input, '-o', output, '--format', 'ies', '--json'], {
+        encoding: 'utf8',
+      }),
+    );
+    expect(report.type).toBe('polar');
+    expect(await readFile(output, 'utf8')).toContain('<svg');
   });
   it('rejects render arguments without requiring a browser/GPU in CI', () => {
     const result = spawnSync(process.execPath, [bin, 'render', fixture, '-o', 'bad.svg'], { encoding: 'utf8' });
