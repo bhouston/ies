@@ -71,6 +71,8 @@ vi.mock('vscode', () => ({
 
 // Conversion commands have their own tests; here we only check that activate() delegates to them.
 vi.mock('./convert.js', () => ({ registerConvertCommands: vi.fn() }));
+// Language features are covered separately; their module reads vscode enums at load time.
+vi.mock('./languageProviders.js', () => ({ registerLanguageFeatures: vi.fn() }));
 
 const { activate } = await import('./extension.js');
 const { registerConvertCommands } = await import('./convert.js');
