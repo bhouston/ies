@@ -64,7 +64,7 @@ The Three.js scene has a black background, floor, wall and a downward-facing lum
 <IsoluxGraph profile={profile} mountingHeight={3} extent={[12, 8]} aimAngle={30} />;
 ```
 
-Import both components from `@ies-tools/viewer/react`. See [Photometric graphs](./graphs.md) for the complete prop reference, coordinate conventions and pure Node-compatible `@ies-tools/viewer/graphs` APIs. The SVG graphs require no GPU; the 3D light scene requires a real hardware GPU.
+Import both components from `@ies-tools/viewer/react`. See [Photometric graphs](./graphs.md) for the complete prop reference, coordinate conventions and the pure chart data APIs in `@ies-tools/core`. The SVG graphs require no GPU; the 3D light scene requires a real hardware GPU.
 
 ## IES and EULUMDAT sources
 

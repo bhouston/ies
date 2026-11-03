@@ -1,13 +1,13 @@
 import { type CSSProperties } from 'react';
-import { type IESProfile } from '@ies-tools/core';
 import {
+  type IESProfile,
   buildIsoluxGrid,
   extractContours,
   formatGraphValue,
-  graphFrame,
   isoluxContourLevels,
   type IsoluxOptions,
-} from '../graphs.js';
+} from '@ies-tools/core';
+import { graphFrame } from '../graphs.js';
 
 /** Props for {@link IsoluxGraph}. */
 export interface IsoluxGraphProps extends IsoluxOptions {

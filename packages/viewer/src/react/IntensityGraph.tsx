@@ -1,15 +1,15 @@
 import { type CSSProperties } from 'react';
-import { type IESProfile } from '@ies-tools/core';
 import {
+  type IESProfile,
   buildIntensityCurves,
   buildIntensityTopology,
   formatGraphValue,
   logRadius,
   logTicks,
-  graphFrame,
   type IntensityCurveOptions,
   type UpAxis,
-} from '../graphs.js';
+} from '@ies-tools/core';
+import { graphFrame } from '../graphs.js';
 
 const colors = ['#7dd3fc', '#fbbf24', '#86efac', '#f9a8d4', '#c4b5fd', '#5eead4', '#fdba74', '#d9f99d'];
 /** Props for {@link IntensityGraph}. */
@@ -42,7 +42,7 @@ export interface IntensityGraphProps extends IntensityCurveOptions {
 
 /**
  * SVG photometric intensity diagrams: complete polar or Cartesian cuts, or a 3D intensity topology.
- * Needs no GPU; all geometry is also available through `@ies-tools/viewer/graphs`.
+ * Needs no GPU; all geometry comes from the `@ies-tools/core` chart builders.
  *
  * @param props - See {@link IntensityGraphProps}.
  *

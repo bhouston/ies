@@ -1,4 +1,4 @@
-import { parsePhotometry } from '@ies-tools/core';
+import { buildConeDiagram, buildIntensityTable, buildLuminanceTable, parsePhotometry } from '@ies-tools/core';
 import { imageDimensions } from './render.js';
 
 export const CHART_TYPES = [
@@ -63,11 +63,10 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
     throw new Error('Invalid chart axis');
   if (!Number.isFinite(angle)) throw new Error('Chart angle must be finite');
   const document = parsePhotometry(text, options.inputFormat, { lampSetIndex: options.lampSetIndex });
-  const [{ createElement }, { renderToStaticMarkup }, react, graphs] = await Promise.all([
+  const [{ createElement }, { renderToStaticMarkup }, react] = await Promise.all([
     import('react'),
     import('react-dom/server'),
     import('@ies-tools/viewer/react'),
-    import('@ies-tools/viewer/graphs'),
   ]);
   const { IntensityGraph, IsoluxGraph } = react;
   const style = { width, height, maxWidth: 'none' };
@@ -77,11 +76,11 @@ export async function chartPhotometry(text: string, options: ChartOptions = {}):
   const values = !typeC
     ? undefined
     : type === 'cone'
-      ? graphs.buildConeDiagram(profile, { maxDistance: options.maxDistance })
+      ? buildConeDiagram(profile, { maxDistance: options.maxDistance })
       : type === 'luminance'
-        ? graphs.buildLuminanceTable(profile)
+        ? buildLuminanceTable(profile)
         : type === 'intensity-table'
-          ? graphs.buildIntensityTable(profile, table)
+          ? buildIntensityTable(profile, table)
           : undefined;
   const aspectRatio = width / height;
   const element =
