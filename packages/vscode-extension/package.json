@@ -68,6 +68,26 @@
         "title": "Open as Text",
         "category": "IES",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "iesTools.convertToIES",
+        "title": "Convert to IES (LM-63)",
+        "category": "IES"
+      },
+      {
+        "command": "iesTools.convertToLDT",
+        "title": "Convert to EULUMDAT (.ldt)",
+        "category": "IES"
+      },
+      {
+        "command": "iesTools.convertToJSON",
+        "title": "Convert to JSON",
+        "category": "IES"
+      },
+      {
+        "command": "iesTools.convertFolder",
+        "title": "Convert Folder…",
+        "category": "IES"
       }
     ],
     "languages": [
@@ -144,8 +164,16 @@
       ],
       "commandPalette": [
         {
-          "command": "ies.openAsText",
-          "when": "activeCustomEditorId == 'ies.lightPreview'"
+          "command": "iesTools.convertToIES",
+          "when": "resourceExtname =~ /^\\.ldt$/i"
+        },
+        {
+          "command": "iesTools.convertToLDT",
+          "when": "resourceExtname =~ /^\\.ies$/i"
+        },
+        {
+          "command": "iesTools.convertToJSON",
+          "when": "resourceExtname =~ /^\\.(ies|ldt)$/i"
         }
       ],
       "explorer/context": [
@@ -153,8 +181,61 @@
           "command": "ies.openPreview",
           "when": "resourceExtname =~ /\\.(ies|ldt)/i",
           "group": "navigation"
+        },
+        {
+          "submenu": "iesTools.convertSubmenu",
+          "when": "!explorerResourceIsFolder && resourceExtname =~ /^\\.(ies|ldt)$/i",
+          "group": "7_modification"
+        },
+        {
+          "command": "iesTools.convertFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "7_modification"
+        }
+      ],
+      "iesTools.convertSubmenu": [
+        {
+          "command": "iesTools.convertToIES",
+          "when": "resourceExtname =~ /^\\.ldt$/i",
+          "group": "navigation@1"
+        },
+        {
+          "command": "iesTools.convertToLDT",
+          "when": "resourceExtname =~ /^\\.ies$/i",
+          "group": "navigation@2"
+        },
+        {
+          "command": "iesTools.convertToJSON",
+          "group": "navigation@3"
         }
       ]
+    },
+    "submenus": [
+      {
+        "id": "iesTools.convertSubmenu",
+        "label": "Convert Photometric File"
+      }
+    ],
+    "configuration": {
+      "title": "IES Tools",
+      "properties": {
+        "iesTools.convert.overwrite": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "default": "ask",
+          "enumDescriptions": [
+            "Ask whether to overwrite, keep both or skip.",
+            "Always overwrite the existing file.",
+            "Never overwrite; skip files whose target already exists."
+          ],
+          "description": "What to do when a converted file's target already exists.",
+          "scope": "resource"
+        }
+      }
     }
   },
   "icon": "images/icon.png",
