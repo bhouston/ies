@@ -3,7 +3,7 @@ slug: /
 sidebar_position: 1
 ---
 
-# ies
+# ies-tools
 
 JavaScript and TypeScript tools for IES LM-63 and EULUMDAT photometric lighting files. Parse and inspect real luminaire data, preview light on a floor and wall, and embed the same viewer in a browser, React app, or VS Code.
 

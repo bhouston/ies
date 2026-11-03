@@ -72,7 +72,7 @@ function App() {
           <h1>Light, specified.</h1>
           <p>Inspect an IES or EULUMDAT distribution on a floor and wall. Files stay in your browser.</p>
         </div>
-        <a href="https://github.com/bhouston/ies">GitHub ↗</a>
+        <a href="https://github.com/bhouston/ies-tools">GitHub ↗</a>
       </header>
       <section className="toolbar">
         <label className="file">
@@ -140,7 +140,7 @@ function App() {
         </aside>
       </div>
       <footer>
-        IES toolkit · <a href="https://ies.ben3d.ca/">Documentation</a> · Drag to orbit · Scroll to zoom
+        IES toolkit · <a href="https://ies-tools.ben3d.ca/">Documentation</a> · Drag to orbit · Scroll to zoom
       </footer>
     </main>
   );

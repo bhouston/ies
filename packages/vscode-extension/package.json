@@ -16,9 +16,9 @@
     "photometry",
     "preview"
   ],
-  "homepage": "https://ies.ben3d.ca/",
+  "homepage": "https://ies-tools.ben3d.ca/",
   "bugs": {
-    "url": "https://github.com/bhouston/ies/issues"
+    "url": "https://github.com/bhouston/ies-tools/issues"
   },
   "license": "MIT",
   "author": {
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bhouston/ies.git",
+    "url": "https://github.com/bhouston/ies-tools.git",
     "directory": "packages/vscode-extension"
   },
   "publisher": "benhouston3d",
