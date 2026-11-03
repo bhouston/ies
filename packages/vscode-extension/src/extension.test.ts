@@ -69,17 +69,23 @@ vi.mock('vscode', () => ({
   },
 }));
 
+// Conversion commands have their own tests; here we only check that activate() delegates to them.
+vi.mock('./convert.js', () => ({ registerConvertCommands: vi.fn() }));
+
 const { activate } = await import('./extension.js');
+const { registerConvertCommands } = await import('./convert.js');
 const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   contributes: {
     commands: { command: string }[];
     customEditors: { viewType: string }[];
-    menus: Record<string, { command: string; when?: string }[]>;
+    menus: Record<string, { command?: string; submenu?: string; when?: string }[]>;
+    submenus: { id: string }[];
   };
 };
 
 const IES = 'IESNA:LM-63-2002\nTILT=NONE\n';
 let subscriptions: { dispose: unknown }[];
+let context: unknown;
 
 beforeEach(() => {
   vscode.commands.clear();
@@ -90,16 +96,22 @@ beforeEach(() => {
   vscode.window.activeTextEditor = undefined;
   vscode.window.activeTab = undefined;
   subscriptions = [];
-  activate({ extensionUri: uri('/ext'), subscriptions } as never);
+  vi.mocked(registerConvertCommands).mockClear();
+  context = { extensionUri: uri('/ext'), subscriptions };
+  activate(context as never);
 });
 
 const run = (command: string, ...args: unknown[]) => vscode.commands.get(command)?.(...args);
 
 describe('activate', () => {
-  it('registers every contributed command and custom editor', () => {
+  it('registers every contributed ies.* command and custom editor, and delegates conversion commands', () => {
     expect([...vscode.commands.keys()].toSorted()).toEqual(
-      manifest.contributes.commands.map((entry) => entry.command).toSorted(),
+      manifest.contributes.commands
+        .map((entry) => entry.command)
+        .filter((command) => command.startsWith('ies.'))
+        .toSorted(),
     );
+    expect(registerConvertCommands).toHaveBeenCalledExactlyOnceWith(context);
     expect([...vscode.providers.keys()]).toEqual(manifest.contributes.customEditors.map((entry) => entry.viewType));
     expect(vscode.providers.get('ies.lightPreview')?.options).toEqual({
       webviewOptions: { retainContextWhenHidden: true },
@@ -108,16 +120,26 @@ describe('activate', () => {
     expect(subscriptions).toHaveLength(vscode.commands.size + vscode.providers.size);
   });
 
-  it('only references contributed commands and editors in menus', () => {
+  it('only references contributed commands, submenus and editors in menus', () => {
     const commands = new Set(manifest.contributes.commands.map((entry) => entry.command));
+    const submenus = new Set(manifest.contributes.submenus.map((entry) => entry.id));
     const editors = new Set(manifest.contributes.customEditors.map((entry) => entry.viewType));
     const entries = Object.values(manifest.contributes.menus).flat();
     expect(entries.length).toBeGreaterThan(0);
     for (const entry of entries) {
-      expect(commands, entry.command).toContain(entry.command);
+      if (entry.submenu) expect(submenus, entry.submenu).toContain(entry.submenu);
+      else expect(commands, entry.command).toContain(entry.command);
       for (const [, id] of entry.when?.matchAll(/activeCustomEditorId\s*[!=]=\s*'([^']+)'/g) ?? [])
         expect(editors, entry.when).toContain(id);
     }
+    for (const submenu of submenus) expect(Object.keys(manifest.contributes.menus)).toContain(submenu);
+  });
+
+  it('hides ies.openAsText from the Command Palette outside the light preview', () => {
+    expect(manifest.contributes.menus.commandPalette).toContainEqual({
+      command: 'ies.openAsText',
+      when: "activeCustomEditorId == 'ies.lightPreview'",
+    });
   });
 });
 
