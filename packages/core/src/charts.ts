@@ -487,10 +487,10 @@ export function buildConeDiagram(profile: IESProfile, options: ConeOptions = {})
     distance,
     illuminance: centerIntensity / distance ** 2,
     beamDiameters: planes.map(({ beam }) =>
-      coneDiameter(distance, beam.beamLeftDegrees, beam.beamRightDegrees),
+      beam.beamAngleStatus === 'ok' ? coneDiameter(distance, beam.beamLeftDegrees, beam.beamRightDegrees) : null,
     ) as ConeRow['beamDiameters'],
     fieldDiameters: planes.map(({ beam }) =>
-      coneDiameter(distance, beam.fieldLeftDegrees, beam.fieldRightDegrees),
+      beam.fieldAngleStatus === 'ok' ? coneDiameter(distance, beam.fieldLeftDegrees, beam.fieldRightDegrees) : null,
     ) as ConeRow['fieldDiameters'],
   }));
   return { centerIntensity, planes, rows };

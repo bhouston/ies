@@ -308,6 +308,18 @@ ${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
     expect(table).toContain('cd/klm');
     expect(table).toContain('fill-opacity');
   });
+  it.each([20, 80])('omits invalid cone polygons and width labels for a %s cd secondary lobe', (secondary) => {
+    const markup = renderToStaticMarkup(createElement(ConeDiagramGraph, { profile: source(`100 0 ${secondary} 0 0`) }));
+    expect(markup).not.toContain('<title>Field cone</title>');
+    expect(markup).toContain('Field C0–C180 —');
+    if (secondary > 50) {
+      expect(markup).not.toContain('<polygon');
+      expect(markup).toContain('Beam C0–C180 —');
+    } else {
+      expect(markup).toContain('<title>Beam cone</title>');
+      expect(markup).not.toContain('Beam C0–C180 —');
+    }
+  });
   it('labels rectangular openings, dark tables and the cd/klm fallback', () => {
     const box = { ...profile, dimensions: { width: 0.2, length: 0.3, height: 0.05 } };
     const luminance = renderToStaticMarkup(createElement(LuminanceTableGraph, { profile: box }));
