@@ -144,6 +144,62 @@ describe('solid-angle flux integration', () => {
 const crossing = (fraction: number, n: number) => (Math.acos(fraction ** (1 / n)) * 180) / Math.PI;
 
 describe('principal-plane beam and field estimates', () => {
+  it.each([
+    [0, 90, 120, 150, 180],
+    [90, 120, 150, 180],
+  ])('wraps zenith-centered beam and field crossings for measured angles %j', (...vertical) => {
+    const values = vertical.map((angle) => (angle === 180 ? 100 : angle === 150 ? 50 : angle === 120 ? 10 : 0));
+    const profile = parseIES(iesSource({ vertical, values: [values] }));
+    expect(getBeamAngles(profile)).toMatchObject({
+      peakDirectionDegrees: -180,
+      beamAngleDegrees: 60,
+      fieldAngleDegrees: 120,
+      beamAngleStatus: 'ok',
+      fieldAngleStatus: 'ok',
+      beamLeftDegrees: -210,
+      beamRightDegrees: -150,
+      fieldLeftDegrees: -240,
+      fieldRightDegrees: -120,
+    });
+  });
+  it('interpolates asymmetric crossings through zenith without inventing a second lobe', () => {
+    const profile = parseIES(
+      iesSource({
+        vertical: [0, 90, 120, 150, 165, 180],
+        horizontal: [0, 180],
+        values: [
+          [0, 0, 0, 0, 100, 80],
+          [0, 0, 0, 0, 0, 80],
+        ],
+      }),
+    );
+    expect(getBeamAngles(profile)).toMatchObject({
+      peakDirectionDegrees: 165,
+      beamAngleStatus: 'ok',
+      beamLeftDegrees: 157.5,
+      beamRightDegrees: 185.625,
+      beamAngleDegrees: 28.125,
+    });
+    const reversed = getBeamAngles(profile, 180);
+    expect(reversed.beamAngleDegrees).toBe(28.125);
+    expect(reversed.beamLeftDegrees).toBe(-185.625);
+    expect(reversed.beamRightDegrees).toBe(-157.5);
+  });
+  it('keeps missing nadir or zenith coverage from supplying a wrapped crossing', () => {
+    const partial = parseIES(iesSource({ vertical: [90, 150, 180], values: [[80, 90, 100]] }));
+    expect(getBeamAngles(partial)).toMatchObject({ beamAngleDegrees: null, beamAngleStatus: 'no-crossing' });
+    const missingZenith = parseIES(iesSource({ vertical: [0, 90, 150], values: [[0, 0, 100]] }));
+    expect(getBeamAngles(missingZenith)).toMatchObject({ beamAngleDegrees: null, beamAngleStatus: 'no-crossing' });
+  });
+  it('still rejects disconnected lobes when one crosses the zenith boundary', () => {
+    const profile = parseIES(iesSource({ vertical: [0, 30, 120, 150, 180], values: [[100, 0, 0, 50, 100]] }));
+    expect(getBeamAngles(profile)).toMatchObject({
+      beamAngleDegrees: null,
+      beamAngleStatus: 'multiple-lobes',
+      fieldAngleDegrees: null,
+      fieldAngleStatus: 'multiple-lobes',
+    });
+  });
   it('finds full opposed-plane 50% and 10% threshold widths', () => {
     const profile = parseIES(iesSource({ vertical: [0, 15, 30, 60, 90], values: [[100, 75, 50, 10, 0]] }));
     expect(getBeamAngles(profile)).toMatchObject({

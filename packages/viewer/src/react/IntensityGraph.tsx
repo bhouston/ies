@@ -115,7 +115,12 @@ export function IntensityGraph({
       return (['beam', 'field'] as const).flatMap((kind) =>
         beam[`${kind}AngleStatus`] === 'ok'
           ? // An ok status always has both crossings.
-            [beam[`${kind}LeftDegrees`]!, beam[`${kind}RightDegrees`]!].map((angle) => ({ i, kind, angle }))
+            [beam[`${kind}LeftDegrees`]!, beam[`${kind}RightDegrees`]!].map((angle) => ({
+              i,
+              kind,
+              // Beam crossings are unwrapped around their peak; plot them in the signed cut.
+              angle: ((((angle + 180) % 360) + 360) % 360) - 180,
+            }))
           : [],
       );
     }) ?? [];

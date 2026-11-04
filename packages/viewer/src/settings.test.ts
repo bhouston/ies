@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { parseIES } from '@ies-tools/core';
+import { iesSource } from '../../core/test/iesSource.js';
 import { DEFAULT_VIEWER_SETTINGS, resolveViewerSettings, TONE_MAPPING_OPTIONS } from './settings.js';
 import {
   createLightScene,
@@ -7,10 +9,18 @@ import {
   disposeLightScene,
   fitDistanceChange,
   helperLines,
+  cutoffAngle,
   TONE_MAPPING,
 } from './scene.js';
 
 describe('physical scene settings', () => {
+  it('computes cutoff for a valid half-degree grid without exceeding the argument limit', () => {
+    const vertical = Array.from({ length: 361 }, (_, i) => i / 2);
+    const horizontal = Array.from({ length: 721 }, (_, i) => i / 2);
+    const values = horizontal.map(() => vertical.map((angle) => (angle <= 60 ? 100 : 0)));
+    const profile = parseIES(iesSource({ vertical, horizontal, values }));
+    expect(cutoffAngle(profile)).toBe(60);
+  });
   it('keeps defaults and accepts all supported tone curves and nonnegative exposures', () => {
     expect(resolveViewerSettings({})).toEqual(DEFAULT_VIEWER_SETTINGS);
     for (const option of TONE_MAPPING_OPTIONS)

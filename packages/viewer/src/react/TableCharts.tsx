@@ -20,8 +20,7 @@ interface ChartStyleProps {
 const muted = '#b7c1ce';
 const format = (value: number | null) => (value === null ? '—' : formatGraphValue(value));
 const offset = (distance: number, angle: number) => distance * Math.tan((angle * Math.PI) / 180);
-const angles = (left?: number, right?: number) =>
-  left === undefined || right === undefined ? '—' : `${formatGraphValue(right - left)}°`;
+const angleLabel = (angle: number | null) => (angle === null ? '—' : `${formatGraphValue(angle)}°`);
 const fractions = (values: (number | null)[][]) => {
   const max = Math.max(0, ...values.flat().map((v) => v ?? 0));
   return values.map((row) => row.map((v) => (max > 0 && v !== null ? v / max : 0)));
@@ -181,11 +180,29 @@ export function ConeDiagramGraph({ profile, aspectRatio, className, style, ...op
   const deepest = Math.max(...cone.rows.map((row) => row.distance));
   const [c0] = cone.planes;
   const crossings = [
-    { name: 'Field cone', tone: 0.35, opacity: 0.3, left: c0.beam.fieldLeftDegrees, right: c0.beam.fieldRightDegrees },
-    { name: 'Beam cone', tone: 0.85, opacity: 0.45, left: c0.beam.beamLeftDegrees, right: c0.beam.beamRightDegrees },
+    {
+      name: 'Field cone',
+      tone: 0.35,
+      opacity: 0.3,
+      left: c0.beam.fieldLeftDegrees,
+      right: c0.beam.fieldRightDegrees,
+      status: c0.beam.fieldAngleStatus,
+    },
+    {
+      name: 'Beam cone',
+      tone: 0.85,
+      opacity: 0.45,
+      left: c0.beam.beamLeftDegrees,
+      right: c0.beam.beamRightDegrees,
+      status: c0.beam.beamAngleStatus,
+    },
   ].filter(
     (cut): cut is typeof cut & { left: number; right: number } =>
-      cut.left !== undefined && cut.right !== undefined && Math.abs(cut.left) < 90 && Math.abs(cut.right) < 90,
+      cut.status === 'ok' &&
+      cut.left !== undefined &&
+      cut.right !== undefined &&
+      Math.abs(cut.left) < 90 &&
+      Math.abs(cut.right) < 90,
   );
   const widest = Math.max(
     1e-9,
@@ -251,10 +268,9 @@ export function ConeDiagramGraph({ profile, aspectRatio, className, style, ...op
         cellHeight={rowHeight}
       />
       <text x="24" y={height - 26} fill={muted} fontSize="10">
-        Beam C0–C180 {angles(c0.beam.beamLeftDegrees, c0.beam.beamRightDegrees)} · C90–C270{' '}
-        {angles(cone.planes[1].beam.beamLeftDegrees, cone.planes[1].beam.beamRightDegrees)} · Field C0–C180{' '}
-        {angles(c0.beam.fieldLeftDegrees, c0.beam.fieldRightDegrees)} · C90–C270{' '}
-        {angles(cone.planes[1].beam.fieldLeftDegrees, cone.planes[1].beam.fieldRightDegrees)}
+        Beam C0–C180 {angleLabel(c0.beam.beamAngleDegrees)} · C90–C270{' '}
+        {angleLabel(cone.planes[1].beam.beamAngleDegrees)} · Field C0–C180 {angleLabel(c0.beam.fieldAngleDegrees)} ·
+        C90–C270 {angleLabel(cone.planes[1].beam.fieldAngleDegrees)}
       </text>
       <text x="24" y={height - 10} fill="#9ca3af" fontSize="10">
         Diameters use per-side 50 %/10 % crossings of the peak · — means no crossing below 90°

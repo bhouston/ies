@@ -383,6 +383,18 @@ describe('Graph input validation', () => {
 const fine = Array.from({ length: 361 }, (_, i) => i / 4);
 const cosine = (power: number, peak = 1000) => fine.map((g) => peak * Math.cos((g * Math.PI) / 180) ** power);
 describe('Cone diagram', () => {
+  it.each([20, 80])('withholds multiple-lobe diameters independently at a secondary peak of %s cd', (secondary) => {
+    const cone = buildConeDiagram(profile({ vertical: [0, 15, 30, 60, 90], values: [[100, 0, secondary, 0, 0]] }));
+    for (const { beam } of cone.planes) {
+      expect(beam.fieldAngleStatus).toBe('multiple-lobes');
+      expect(beam.beamAngleStatus).toBe(secondary > 50 ? 'multiple-lobes' : 'ok');
+    }
+    for (const row of cone.rows) {
+      expect(row.fieldDiameters).toEqual([null, null]);
+      if (secondary > 50) expect(row.beamDiameters).toEqual([null, null]);
+      else expect(row.beamDiameters.every((diameter) => diameter !== null && diameter > 0)).toBe(true);
+    }
+  });
   it('follows the inverse-square law below a Lambertian source with known beam and field widths', () => {
     const cone = buildConeDiagram(profile({ vertical: fine, values: [cosine(1)] }));
     expect(cone.rows.map((row) => row.distance)).toEqual([1, 2, 3, 4, 5]);

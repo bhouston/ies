@@ -140,7 +140,12 @@ export function LightViewer({
     void loader
       .load({ document: photometry, profile, text, iesText, src, format, lampSetIndex })
       .then((next) => {
-        if (!active || !next || !controller.current) return;
+        if (!active || !controller.current) return;
+        if (!next) {
+          controller.current.clear();
+          setError('');
+          return;
+        }
         controller.current.setDocument(next);
         setError('');
         callbacks.current.onLoad?.(next.profile, { document: next, sourceFormat: next.sourceFormat });

@@ -3,11 +3,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseIES } from '@ies-tools/core';
+import { parseIES, toPhotometricDocument, serializeIES } from '@ies-tools/core';
 import { DEFAULT_VIEWER_SETTINGS, resolveViewerSettings, type ViewerSettings } from '../settings.js';
 const mocks = vi.hoisted(() => ({ createLightViewer: vi.fn() }));
 vi.mock('../viewer.js', () => ({ createLightViewer: mocks.createLightViewer }));
-import { LightViewer, ViewerSettingsPanel } from './index.js';
+import { LightViewer, ViewerSettingsPanel, type LightViewerProps } from './index.js';
 let root: Root | undefined;
 const profile = () => parseIES('IESNA:LM-63-2002\nTILT=NONE\n1 -1 1 3 1 1 2 0 0 0\n1 1 10\n0 90 180\n0\n100 20 0\n');
 beforeEach(() => {
@@ -22,6 +22,43 @@ afterEach(async () => {
 });
 
 describe('shared React viewer controls', () => {
+  it.each(['document', 'profile', 'text', 'iesText', 'src'] as const)(
+    'clears the controller when its last %s source is removed and can load again',
+    async (source) => {
+      const viewer = {
+        setDocument: vi.fn(),
+        clear: vi.fn(),
+        setSettings: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispose: vi.fn(),
+      };
+      mocks.createLightViewer.mockReturnValue(viewer);
+      const parsed = profile();
+      const text = serializeIES(parsed).value;
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => text }));
+      const sources: Record<typeof source, LightViewerProps> = {
+        document: { document: toPhotometricDocument(parsed) },
+        profile: { profile: parsed },
+        text: { text },
+        iesText: { iesText: text },
+        src: { src: '/fixture.ies' },
+      };
+      const container = document.createElement('div');
+      document.body.append(container);
+      root = createRoot(container);
+      const onLoad = vi.fn();
+      await act(async () => root!.render(<LightViewer {...sources[source]} onLoad={onLoad} />));
+      expect(viewer.setDocument).toHaveBeenCalledOnce();
+      await act(async () => root!.render(<LightViewer onLoad={onLoad} />));
+      expect(viewer.clear).toHaveBeenCalledOnce();
+      expect(onLoad).toHaveBeenCalledOnce();
+      await act(async () => root!.render(<LightViewer {...sources[source]} onLoad={onLoad} />));
+      expect(viewer.setDocument).toHaveBeenCalledTimes(2);
+      expect(onLoad).toHaveBeenCalledTimes(2);
+      expect(mocks.createLightViewer).toHaveBeenCalledOnce();
+    },
+  );
   it('renders accessible semantic controls with shared theme utilities during SSR', () => {
     const html = renderToStaticMarkup(
       <ViewerSettingsPanel
