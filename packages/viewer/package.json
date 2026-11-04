@@ -1,7 +1,24 @@
 {
   "name": "@ies-tools/viewer",
   "version": "0.1.0",
-  "description": "Photometric IES lighting viewer, React components, and light-viewer custom element.",
+  "description": "IES and EULUMDAT lighting previews and photometric charts for Three.js, React and web components.",
+  "keywords": [
+    "eulumdat",
+    "ies",
+    "ldt",
+    "lighting",
+    "lm-63",
+    "photometry",
+    "react",
+    "threejs",
+    "typescript",
+    "visualization",
+    "web-component"
+  ],
+  "homepage": "https://ies-tools.ben3d.ca/docs/react",
+  "bugs": {
+    "url": "https://github.com/bhouston/ies-tools/issues"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

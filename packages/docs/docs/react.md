@@ -13,6 +13,8 @@ sidebar_label: React
 npm install @ies-tools/viewer @ies-tools/core three react react-dom
 ```
 
+For a first integration with a supplied fixture, follow [Show the sample in React](./quick-start.md#show-the-sample-in-react).
+
 ## Show a file the user picks
 
 ```tsx
@@ -23,6 +25,7 @@ import '@ies-tools/viewer/styles.css';
 
 export function Photometry() {
   const [document, setDocument] = useState<PhotometricDocument>();
+  const [error, setError] = useState<string>();
   const profile = document?.profile;
   return (
     <>
@@ -31,10 +34,18 @@ export function Photometry() {
         accept=".ies,.ldt"
         onChange={async (event) => {
           const file = event.target.files?.[0];
-          if (file) setDocument(parsePhotometry(await file.text()));
+          if (!file) return;
+          try {
+            setDocument(parsePhotometry(await file.text()));
+            setError(undefined);
+          } catch (cause) {
+            setDocument(undefined);
+            setError(cause instanceof Error ? cause.message : String(cause));
+          }
         }}
       />
-      <LightViewer document={document} exposure={1} onError={console.error} />
+      {error && <p role="alert">{error}</p>}
+      {document && <LightViewer document={document} exposure={1} onError={console.error} />}
       {profile && <IntensityGraph profile={profile} projection="topology" upAxis="y" />}
     </>
   );

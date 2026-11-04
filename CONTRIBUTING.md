@@ -57,3 +57,36 @@ When there are no release-worthy commits, the run is a no-op. Never bump version
 ## Security
 
 Report vulnerabilities privately through GitHub's private vulnerability reporting (see `SECURITY.md` where present), never in a public issue.
+
+## Workspace and documentation
+
+| Directory                   | Role                                                             |
+| --------------------------- | ---------------------------------------------------------------- |
+| `packages/core`             | Dependency-free parsing, validation, conversion and calculations |
+| `packages/viewer`           | Three.js renderer, custom element and React UI                   |
+| `packages/cli`              | Terminal commands and image exports                              |
+| `packages/vscode-extension` | VS Code language features and preview                            |
+| `packages/website`          | Vite/React workbench; run `pnpm dev`                             |
+| `packages/docs`             | User documentation; run `pnpm --filter ies-docs start`           |
+
+Use the root and published-package READMEs to help developers evaluate and install the tools. Keep Docusaurus guides focused on user tasks; generate API and CLI reference from source comments and command definitions. Put contributor setup here and registry administration in RELEASING.md.
+
+Run `pnpm docs:build` to generate reference pages and check documentation links. The Documentation workflow deploys the site on pushes to `main`. Representative fixtures and their licenses are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Regenerate chart screenshots with `pnpm build && pnpm docs:charts`; this is not run in CI. To try the extension from source, run `pnpm --filter ies-vscode-extension package` after building, then install the resulting VSIX from `packages/vscode-extension/` using VS Code's **Install from VSIX** action.
+
+### VS Code extension internals
+
+- The preview is a webview that reuses the bundled `<light-viewer>` script; it loads no CDN resources. File text, format hints and lamp-configuration labels are sent as validated structured messages, never interpolated into HTML, and labels are assigned through `textContent`.
+- The webview uses a content security policy and restricts local resources to its media directory.
+- The webview UI is React with Tailwind v4 and `@ies-tools/viewer`'s theme stylesheet; the compiled CSS ships in the VSIX, and the theme tokens are mapped to VS Code editor colors.
+- Diagnostics, hover, outline and CodeLens come from `describePhotometrySource` in `@ies-tools/core`. Parse results are cached per document version, and diagnostics refresh 250 ms after an edit.
+- Conversion uses the same `@ies-tools/core` serializers as `ies convert` and writes through `vscode.workspace.fs`, so remote and virtual workspaces work.
+
+## Coverage
+
+Run `pnpm test --coverage && pnpm coverage:report`. Open `coverage/index.html` for file-level HTML and `coverage/packages/summary.md` for package-level statements, branches, functions and lines. CI uploads the full report as the `coverage` artifact and adds the package table to its job summary. The Documentation workflow publishes the same reports at `/coverage/`, with package statement badges under `/coverage/packages/`.
+
+The report counts all included package source, including untested files, and aggregates covered/total counters rather than averaging percentages. Badges describe the current deployed `main` tests, not necessarily the latest published npm version. They measure code execution, not visual correctness or photometric accuracy. Monthly npm downloads include automation and dependencies and should not be described as user counts.
+
+`scripts/coverage-thresholds.json` sets package floors from the initial Node 24 baseline, rounded down with about two percentage points of headroom for platform differences: core 98.68% statements / 96.36% branches; CLI 61.74% / 71.15%; viewer 81.64% / 82.00%; extension 98.60% / 92.71%. The website has no tests and is reported at zero with zero floors until coverage is introduced. Raise floors as coverage improves; explain any reduction in the PR. Missing package coverage fails the reporting step.

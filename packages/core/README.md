@@ -1,6 +1,20 @@
 # @ies-tools/core
 
-Dependency-free TypeScript IES LM-63 parser and Type C photometry sampler for browsers and Node.
+[![npm version](https://img.shields.io/npm/v/@ies-tools/core)](https://www.npmjs.com/package/@ies-tools/core)
+[![npm downloads per month](https://img.shields.io/npm/dm/@ies-tools/core)](https://www.npmjs.com/package/@ies-tools/core)
+[![Statement coverage](https://ies-tools.ben3d.ca/coverage/packages/core.svg)](https://ies-tools.ben3d.ca/coverage/)
+
+[Documentation](https://ies-tools.ben3d.ca/docs/core) · [npm](https://www.npmjs.com/package/@ies-tools/core) · [Issues](https://github.com/bhouston/ies-tools/issues)
+
+Dependency-free TypeScript tools to parse, validate, convert and measure IES LM-63 and EULUMDAT photometry in browsers and Node.
+
+```sh
+npm install @ies-tools/core
+```
+
+Node.js 22+; browser use requires an ESM-capable bundler or module loader. Start with the [runnable parsing example](https://ies-tools.ben3d.ca/docs/quick-start#parse-a-file-in-node) and [API reference](https://ies-tools.ben3d.ca/docs/api/core).
+
+## Parse and sample
 
 ```ts
 import { parseIES, sampleIntensity, summarizeIES } from '@ies-tools/core';

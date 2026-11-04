@@ -11,7 +11,7 @@ const surfaces = [
     title: 'In your terminal',
     body: 'Validate, inspect and convert files, serve a local preview, and export PNG renders and SVG charts.',
     code: 'npm install -g @ies-tools/cli\nies inspect luminaire.ies\nies view luminaire.ldt --open',
-    href: '/docs/cli/reference',
+    href: '/docs/cli',
   },
   {
     label: 'React',
@@ -48,7 +48,7 @@ const facts = [
 export default function Home() {
   return (
     <Layout
-      title="See how a luminaire really lights a room"
+      title="Preview measured light. Build with photometric data"
       description="Parse, validate, convert and preview IES and EULUMDAT photometric files from the terminal, React, a web component or VS Code."
     >
       <header className={styles.hero}>
@@ -56,9 +56,9 @@ export default function Home() {
           <div className={styles.copy}>
             <p className={styles.kicker}>IES · EULUMDAT · PHOTOMETRY</p>
             <h1>
-              See how a luminaire
+              Preview measured light
               <br />
-              <em>really lights a room.</em>
+              <em>from its photometry.</em>
             </h1>
             <p className={styles.lead}>
               <code>ies-tools</code> reads the photometric files lighting manufacturers publish. It validates them,
@@ -66,7 +66,7 @@ export default function Home() {
               from the measured intensity table.
             </p>
             <div className={styles.actions}>
-              <Link className={styles.primary} to="/docs">
+              <Link className={styles.primary} to="/docs/quick-start">
                 Get started <span aria-hidden="true">→</span>
               </Link>
               <Link className={styles.secondary} to="/docs/cli/reference">
@@ -134,7 +134,8 @@ export default function Home() {
             </p>
             <p>
               It renders on your GPU with WebGL2. The CLI's PNG export confirms the browser reports a hardware renderer
-              and rejects software rasterizers, so exported images are trustworthy.
+              and rejects software rasterizers. The preview shows direct diffuse light; it does not simulate room
+              interreflection or luminaire-body shadows.
             </p>
             <Link to="/docs/graphs">Explore the photometric graphs →</Link>
           </div>

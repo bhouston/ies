@@ -1,6 +1,9 @@
 module.exports = {
   docs: [
     'index',
+    'quick-start',
+    'automation',
+    'troubleshooting',
     'vscode',
     {
       type: 'category',

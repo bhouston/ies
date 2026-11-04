@@ -18,7 +18,8 @@
     "docs:build": "pnpm --filter ies-docs build",
     "docs:charts": "node scripts/chart-screenshots.mjs",
     "release": "semantic-release",
-    "check:release": "node scripts/check-release.mjs"
+    "check:release": "node scripts/check-release.mjs",
+    "coverage:report": "node scripts/coverage-report.mjs"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.25",

@@ -1,7 +1,23 @@
 {
   "name": "@ies-tools/core",
   "version": "0.1.0",
-  "description": "Parse, validate, sample and inspect IES LM-63 lighting photometry in Node and browsers.",
+  "description": "Parse, validate, convert and measure IES LM-63 and EULUMDAT photometry in Node and browsers.",
+  "keywords": [
+    "conversion",
+    "eulumdat",
+    "ies",
+    "ldt",
+    "lighting",
+    "lm-63",
+    "parser",
+    "photometry",
+    "typescript",
+    "validation"
+  ],
+  "homepage": "https://ies-tools.ben3d.ca/docs/core",
+  "bugs": {
+    "url": "https://github.com/bhouston/ies-tools/issues"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
