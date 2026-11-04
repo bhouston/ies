@@ -52,6 +52,34 @@ describe('luminousShape', () => {
     // Rounded equal dimensions are still circles.
     expect(luminousShape({ width: -0.3333, length: -0.3334, height: 0 }).kind).toBe('circular');
   });
+
+  // Pre-2002 encodings from Radiance ies2rad makeiesshape (width, length, height).
+  it.each([
+    ['LM-63-1995', -0.1, 0, -0.1, 'sphere', 'ellipsoid', 'y', 0.1, 0.1, 0.1],
+    ['LM-63-1995', -0.1, 0, -0.2, 'ellipsoidal-spheroid', 'ellipsoid', 'y', 0.1, 0.1, 0.2],
+    ['LM-63-1995', 0, 1.2, -0.1, 'horizontal-cylinder-along-length', 'cylinder', 'x', 0.1, 1.2, 0.1],
+    ['LM-63-1995', 1.2, 0, -0.1, 'horizontal-cylinder-along-width', 'cylinder', 'z', 1.2, 0.1, 0.1],
+    ['LM-63-1995', -0.2, 0.4, 0.3, 'vertical-ellipsoidal-cylinder', 'cylinder', 'y', 0.2, 0.4, 0.3],
+    ['LM-63-1995', 0.2, -0.4, 0.3, 'vertical-ellipsoidal-cylinder', 'cylinder', 'y', 0.2, 0.4, 0.3],
+    ['LM-63-1995', -0.2, 0.4, -0.3, 'ellipsoidal-spheroid', 'ellipsoid', 'y', 0.2, 0.4, 0.3],
+    ['LM-63-1995', 0.2, -0.4, -0.3, 'ellipsoidal-spheroid', 'ellipsoid', 'y', 0.2, 0.4, 0.3],
+    ['LM-63-1995', -0.2, 0, 0.3, 'vertical-cylinder', 'cylinder', 'y', 0.2, 0.2, 0.3],
+    ['LM-63-1995', 0.3, 1.2, 0, 'rectangular', 'box', 'y', 0.3, 1.2, 0],
+    ['LM-63-1991', -0.2, 0.4, 0, 'ellipse', 'cylinder', 'y', 0.2, 0.4, 0],
+    ['LM-63-1986', -0.2, 0.4, 0.3, 'ellipsoidal-spheroid', 'ellipsoid', 'y', 0.2, 0.4, 0.3],
+    ['LM-63-1986', -0.2, 0, 0, 'circular', 'cylinder', 'y', 0.2, 0.2, 0],
+    ['LM-63-1986', -0.1, 1.2, -0.1, 'horizontal-cylinder-along-length', 'cylinder', 'x', 0.1, 1.2, 0.1],
+    ['LM-63-2002', -0.1, 0, -0.1, 'vertical-circle-facing-length', 'cylinder', 'x', 0.1, 0, 0.1],
+  ] as const)('reads %s %f %f %f as %s', (version, w, l, h, kind, solid, axis, width, length, height) => {
+    expect(luminousShape({ width: w, length: l, height: h }, 'meters', version)).toEqual({
+      kind,
+      solid,
+      axis,
+      width,
+      length,
+      height,
+    });
+  });
 });
 
 describe('projectedLuminousArea', () => {

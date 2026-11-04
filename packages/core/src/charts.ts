@@ -1,6 +1,7 @@
 // Pure photometric chart data: no React, Three.js or DOM. Renderers live in @ies-tools/viewer.
 import { sampleIntensity, type IESProfile } from './index.js';
 import { getBeamAngles, type BeamAngles } from './metrics.js';
+import { luminousShape } from './shape.js';
 
 export type GraphAxis = 'vertical' | 'horizontal';
 export type UpAxis = 'x' | 'y' | 'z';
@@ -510,7 +511,7 @@ export interface LuminanceTable {
   intensity: number[][];
   /** luminance[gammaIndex][cIndex] in cd/m²; null when the luminous opening has no projected area. */
   luminance: (number | null)[][] | null;
-  /** Luminous opening in metres; negative IES width means circular with diameter |width|. */
+  /** Luminous opening in metres, classified by `luminousShape`; non-circular shapes use their absolute extents. */
   opening: { shape: 'rectangular' | 'circular'; width: number; length: number; height: number };
   bottomArea: number;
 }
@@ -526,11 +527,8 @@ export function buildLuminanceTable(profile: IESProfile, options: LuminanceTable
   const cPlanes = [...(options.cPlanes ?? [0, 45, 90, 135, 180, 225, 270, 315])];
   gammas.forEach((g) => finite(g, 'Vertical angle', 0, 180));
   cPlanes.forEach((c) => finite(c, 'Horizontal angle', 0, 360));
-  const scale = profile.units === 'feet' ? 0.3048 : 1;
-  const circular = profile.dimensions.width < 0;
-  const width = Math.abs(profile.dimensions.width) * scale;
-  const length = circular ? width : Math.abs(profile.dimensions.length) * scale;
-  const height = Math.abs(profile.dimensions.height) * scale;
+  const { kind, width, length, height } = luminousShape(profile.dimensions, profile.units, profile.version);
+  const circular = kind === 'circular' || kind === 'vertical-cylinder';
   const bottomArea = circular ? (Math.PI * width * width) / 4 : width * length;
   const intensity = gammas.map((g) => cPlanes.map((c) => sample(profile, g, c, lampTilt)));
   const hasArea = bottomArea > 0 || height * (width + length) > 0;
