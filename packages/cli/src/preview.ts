@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { parsePhotometry } from '@ies-tools/core';
+import { getPhotometricTypeSupport, parsePhotometry } from '@ies-tools/core';
 import type { InputFormat } from './photometry.js';
 
 export interface PreviewServer {
@@ -15,7 +15,8 @@ export async function servePreview(
   options: { format?: InputFormat; lampSetIndex?: number } = {},
 ): Promise<PreviewServer> {
   const document = parsePhotometry(text, options.format, { lampSetIndex: options.lampSetIndex });
-  if (document.profile.photometricType !== 1) throw new Error('Preview supports Type C photometry only (type 1)');
+  const support = getPhotometricTypeSupport(document.profile);
+  if (!support.supported) throw new Error(support.message);
   const profilePath = `/profile.${document.sourceFormat}`;
   const selection = options.lampSetIndex === undefined ? '' : ` lamp-set-index="${options.lampSetIndex}"`;
   if (!Number.isInteger(port) || port < 0 || port > 65535)
