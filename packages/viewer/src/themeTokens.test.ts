@@ -21,7 +21,8 @@ let page: Page;
 beforeAll(async () => {
   browser = await chromium.launch({ channel: 'chrome' }).catch(() => chromium.launch());
   page = await browser.newPage();
-});
+  // A cold CI runner can take well over the default 10 s hook timeout to start Chrome.
+}, 60_000);
 afterAll(async () => browser?.close());
 
 async function mount(pageCss: string) {
