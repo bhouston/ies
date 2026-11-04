@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from '@ies-tools/core';
+import {
+  illuminanceLegend,
+  parsePhotometry,
+  peakReceiverIlluminance,
+  toPhotometricDocument,
+  type IESProfile,
+  type PhotometricDocument,
+} from '@ies-tools/core';
+import { renderIlluminanceLegend } from './legend.js';
 import type { PhotometryFormat } from './source.js';
 import { DEFAULT_COLOR_TEMPERATURE, documentColorTemperature, temperatureColor } from './lightColor.js';
 import {
@@ -8,6 +16,7 @@ import {
   applyLightSceneSettings,
   disposeLightScene,
   fitDistanceChange,
+  applyIlluminanceLegend,
   setLightSceneProfile,
   TONE_MAPPING,
 } from './scene.js';
@@ -65,6 +74,17 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   renderer.domElement.setAttribute('aria-label', 'Photometric light illuminating a ground plane and wall');
   renderer.domElement.setAttribute('role', 'img');
   container.append(renderer.domElement);
+  // HTML annotations over the canvas (the measurement legend); never intercepts orbit input.
+  if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  const overlay = container.ownerDocument.createElement('div');
+  overlay.className = 'viewer-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden';
+  const legend = container.ownerDocument.createElement('div');
+  legend.className = 'illuminance-legend';
+  legend.style.cssText =
+    'position:absolute;top:12px;right:12px;padding:8px 10px;border-radius:8px;background:rgb(0 0 0 / 60%);color:#e5e7eb;font:11px/1.3 var(--viewer-font-family, var(--vscode-font-family, system-ui, sans-serif))';
+  overlay.append(legend);
+  container.append(overlay);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 1, 0);
   if (settings.floorDistance !== 2 || settings.wallDistance !== 2)
@@ -74,6 +94,22 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   const { scene, uniforms, material } = objects;
   let disposed = false;
   let document: PhotometricDocument | undefined;
+  let peak: number | undefined;
+  const updatePeak = () => {
+    peak =
+      document &&
+      peakReceiverIlluminance(
+        document.profile,
+        settings.floorDistance,
+        settings.showWall ? settings.wallDistance : undefined,
+      );
+  };
+  const updateLegend = () => {
+    const scale = peak === undefined ? undefined : illuminanceLegend(peak, settings.units);
+    applyIlluminanceLegend(objects, scale);
+    renderIlluminanceLegend(legend, settings.viewMode === 'measurement' ? scale : undefined);
+  };
+  updateLegend();
   const render = () => {
     if (!disposed) renderer.render(scene, camera);
   };
@@ -99,6 +135,8 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     uniforms.lightColor.value.copy(temperatureColor(documentColorTemperature(next)));
     setLightSceneProfile(objects, profile, settings);
     document = next;
+    updatePeak();
+    updateLegend();
     render();
   };
   return {
@@ -111,6 +149,8 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       uniforms.lightColor.value.copy(temperatureColor(DEFAULT_COLOR_TEMPERATURE));
       setLightSceneProfile(objects, undefined, settings);
       document = undefined;
+      updatePeak();
+      updateLegend();
       render();
     },
     setProfile(profile) {
@@ -144,6 +184,13 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
         controls.update();
       }
       settings = next;
+      if (
+        next.floorDistance !== previousSettings.floorDistance ||
+        next.wallDistance !== previousSettings.wallDistance ||
+        next.showWall !== previousSettings.showWall
+      )
+        updatePeak();
+      updateLegend();
       render();
       events.dispatchEvent(
         new CustomEvent('settingschange', { detail: { settings: { ...settings }, previousSettings } }),
@@ -170,6 +217,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       listeners.clear();
       renderer.dispose();
       renderer.domElement.remove();
+      overlay.remove();
     },
   };
 }

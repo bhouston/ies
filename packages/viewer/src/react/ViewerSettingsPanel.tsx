@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
-import { TONE_MAPPING_OPTIONS, type ViewerSettings } from '../settings.js';
+import { lengthFromUnits, lengthInUnits, lengthUnit } from '@ies-tools/core';
+import { TONE_MAPPING_OPTIONS, UNITS_OPTIONS, VIEW_MODE_OPTIONS, type ViewerSettings } from '../settings.js';
 
 /** `open` shows the panel, `closed` shows only its toggle button, and `hidden` shows neither. */
 export type SettingsPanelMode = 'open' | 'closed' | 'hidden';
@@ -66,11 +67,40 @@ export function ViewerSettingsPanel({
   };
   const control =
     'rounded-md border border-border bg-input px-2 py-1 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  const unit = lengthUnit(settings.units);
+  // Distances are stored in metres; imperial inputs show feet rounded to hundredths.
+  const shownLength = (meters: number) =>
+    settings.units === 'imperial' ? Number(lengthInUnits(meters, 'imperial').toFixed(2)) : meters;
+  const toggles = [
+    ['viewMode', 'View mode', VIEW_MODE_OPTIONS],
+    ['units', 'Units', UNITS_OPTIONS],
+  ] as const;
   return (
     <div
       className="settings-ui pointer-events-none absolute inset-0 z-20 font-sans text-[length:var(--vscode-font-size,13px)] text-foreground"
       hidden={mode === 'hidden'}
     >
+      <div className="viewer-toggles pointer-events-auto absolute right-14 bottom-3 flex gap-2">
+        {toggles.map(([key, label, options]) => (
+          <fieldset
+            key={key}
+            aria-label={label}
+            className="m-0 flex h-9 min-w-0 p-0 overflow-hidden rounded-md border border-border bg-input shadow-sm"
+          >
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={settings[key] === option.value}
+                className="cursor-pointer px-2.5 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                onClick={() => change({ [key]: option.value })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </fieldset>
+        ))}
+      </div>
       <button
         ref={button}
         type="button"
@@ -135,23 +165,43 @@ export function ViewerSettingsPanel({
         ))}
         {(
           [
-            ['wallDistance', 'Wall distance (m)', 0.1, 100],
-            ['floorDistance', 'Floor distance (m)', 0.1, 100],
-            ['exposure', 'Exposure', 0, undefined],
+            ['wallDistance', 'Wall distance', true],
+            ['floorDistance', 'Floor distance', true],
+            ['exposure', 'Exposure', false],
           ] as const
-        ).map(([key, label, min, max]) => (
+        ).map(([key, label, length]) => (
           <label key={key} className="my-3 flex items-center justify-between gap-3">
-            {label}
+            {length ? `${label} (${unit})` : label}
             <input
               name={key}
               type="number"
-              min={min}
-              max={max}
+              min={length ? shownLength(0.1) : 0}
+              max={length ? shownLength(100) : undefined}
               step="0.1"
-              value={settings[key]}
+              value={length ? shownLength(settings[key]) : settings[key]}
               className={`w-24 ${control}`}
-              onChange={(event) => change({ [key]: event.currentTarget.valueAsNumber })}
+              onChange={(event) => {
+                const value = event.currentTarget.valueAsNumber;
+                change({ [key]: length ? lengthFromUnits(value, settings.units) : value });
+              }}
             />
+          </label>
+        ))}
+        {toggles.map(([key, label, options]) => (
+          <label key={key} className="my-3 flex items-center justify-between gap-3">
+            {label}
+            <select
+              name={key}
+              value={settings[key]}
+              className={`w-36 ${control}`}
+              onChange={(event) => change({ [key]: event.currentTarget.value })}
+            >
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
         ))}
         <label className="my-3 flex items-center justify-between gap-3">

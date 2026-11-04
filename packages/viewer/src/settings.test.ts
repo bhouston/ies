@@ -51,6 +51,8 @@ describe('physical scene settings', () => {
     { helper: 'false' },
     { photometricSolid: 1 },
     { toneMapping: 'unknown' },
+    { viewMode: 'falsecolor' },
+    { units: 'feet' },
   ])('rejects invalid settings without changing defaults %j', (patch) => {
     expect(() => resolveViewerSettings(patch as never)).toThrow();
     expect(DEFAULT_VIEWER_SETTINGS.floorDistance).toBe(2);
@@ -63,7 +65,7 @@ describe('physical scene settings', () => {
       expect(objects.wall.position.z).toBe(-5);
       expect(objects.fixture.position.y - objects.floor.position.y).toBe(4);
       expect(objects.wall.visible).toBe(false);
-      expect(objects.uniforms.lightHeight.value).toBe(4);
+      expect(objects.uniforms.lightPosition.value.toArray()).toEqual([0, 4, 0]);
       expect(objects.uniforms.exposure.value).toBe(2);
       expect(objects.scene.background).toEqual(new THREE.Color(0));
     } finally {

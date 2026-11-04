@@ -461,5 +461,18 @@ export type {
   TopologyVertex,
   UpAxis,
 } from './charts.js';
+export {
+  LUX_PER_FOOTCANDLE,
+  METERS_PER_FOOT,
+  illuminanceInUnits,
+  illuminanceLegend,
+  illuminanceRampRgb,
+  illuminanceUnit,
+  lengthFromUnits,
+  lengthInUnits,
+  lengthUnit,
+  peakReceiverIlluminance,
+} from './measurement.js';
+export type { IlluminanceLegend, MeasurementUnits } from './measurement.js';
 export { luminousShape, projectedLuminousArea } from './shape.js';
 export type { LuminousShape, LuminousShapeKind } from './shape.js';

@@ -4,7 +4,8 @@ import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { parseIES } from '@ies-tools/core';
 import { buildIsoluxGrid } from '../graphs.js';
-import { IsoluxGraph, pngDataUri, rampRgb, type IsoluxGraphProps } from './IsoluxGraph.js';
+import { IsoluxGraph, pngDataUri, type IsoluxGraphProps } from './IsoluxGraph.js';
+import { illuminanceRampRgb as rampRgb } from '@ies-tools/core';
 
 const lamp = (values: string) =>
   parseIES(`IESNA:LM-63-2002\nTILT=NONE\n1 -1 1 3 1 1 2 0 0 0\n1 1 10\n0 90 180\n0\n${values}\n`);
@@ -40,14 +41,6 @@ describe('inline PNG encoder', () => {
     const image = await decode(pngDataUri(width, height, raw));
     expect(image).toMatchObject({ width, height, channels: 3 });
     expect([...image.data]).toEqual([...rgb]);
-  });
-});
-
-describe('isolux colour ramp', () => {
-  it('matches the CSS hsl ramp at its ends and midpoint', () => {
-    expect(rampRgb(0)).toEqual([8, 13, 69]);
-    expect(rampRgb(0.5)).toEqual([20, 184, 68]);
-    expect(rampRgb(1)).toEqual([237, 190, 94]);
   });
 });
 

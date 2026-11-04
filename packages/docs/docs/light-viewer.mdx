@@ -46,6 +46,15 @@ Missing, invalid, conflicting, or unsupported temperatures default to **6500 K**
 
 The approximate temperature tint is applied in linear RGB before tone mapping and normalized to preserve luminance. Measured candela, calculated lux, and charts remain unchanged. This previews warm/cool white appearance; it does not simulate spectra, CRI, Duv, multiple color channels, or color varying with angle. Tone mapping and exposure affect the displayed color.
 
+## Realistic and measurement views
+
+The buttons beside the gear switch between two views, and between metric and imperial units.
+
+- **Realistic** shows how the light looks on a matte floor (30% reflectance) and a lighter wall (60% reflectance). Exposure and tone mapping set the displayed brightness.
+- **Measurement** colors the floor and wall by illuminance and draws isolux lines. The legend lists each line's level in lux, or footcandles in imperial units. The scale runs from the peak illuminance at the current distances down three decades; the colors match the isolux chart. Exposure and tone mapping do not change it.
+
+Imperial units also show the wall and floor distances in feet. The `wall-distance` and `floor-distance` attributes are always metres.
+
 ## Load a file from JavaScript
 
 To show a file the user picked, set its text instead of a URL:
@@ -113,19 +122,23 @@ The gear button opens a settings panel. Set the same options with attributes:
   exposure="1"
   helper="true"
   photometric-solid="false"
+  view-mode="realistic"
+  units="metric"
 ></light-viewer>
 ```
 
-| Attribute           | Values                                                                           | Default  |
-| ------------------- | -------------------------------------------------------------------------------- | -------- |
-| `show-wall`         | `true` or `false`: show the back wall                                            | `true`   |
-| `wall-distance`     | Distance from the light to the wall, 0.1–100 metres                              | `2`      |
-| `floor-distance`    | Height of the light above the floor, 0.1–100 metres                              | `2`      |
-| `tone-mapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`               | `aces`   |
-| `exposure`          | Display brightness, any number 0 or above                                        | `1`      |
-| `helper`            | `true` or `false`: blue lines showing the beam's extent                          | `true`   |
-| `photometric-solid` | `true` or `false`: amber 3D shape of the candela distribution                    | `false`  |
-| `settings-panel`    | `closed` (gear shown), `open`, or `hidden` (no controls, useful for screenshots) | `closed` |
+| Attribute           | Values                                                                                                                 | Default     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `show-wall`         | `true` or `false`: show the back wall                                                                                  | `true`      |
+| `wall-distance`     | Distance from the light to the wall, 0.1–100 metres                                                                    | `2`         |
+| `floor-distance`    | Height of the light above the floor, 0.1–100 metres                                                                    | `2`         |
+| `tone-mapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`                                                     | `aces`      |
+| `exposure`          | Display brightness, any number 0 or above                                                                              | `1`         |
+| `helper`            | `true` or `false`: blue lines showing the beam's extent                                                                | `true`      |
+| `photometric-solid` | `true` or `false`: amber 3D shape of the candela distribution                                                          | `false`     |
+| `view-mode`         | `realistic` or `measurement`: false-color illuminance with isolux lines                                                | `realistic` |
+| `units`             | `metric` (lux, metres) or `imperial` (footcandles, feet) for the legend and panel                                      | `metric`    |
+| `settings-panel`    | `closed` (gear shown), `open`, or `hidden` (no buttons or panel, useful for screenshots; the measurement legend stays) | `closed`    |
 
 The helper draws a downward beam's ground circle with four lines to the light. Wider distributions get three axis circles at half the mounting height.
 

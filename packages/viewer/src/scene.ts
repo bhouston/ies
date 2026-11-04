@@ -1,5 +1,11 @@
 import * as THREE from 'three';
-import { buildIntensityTopology, luminousShape, type IESProfile, type LuminousShape } from '@ies-tools/core';
+import {
+  buildIntensityTopology,
+  luminousShape,
+  type IESProfile,
+  type IlluminanceLegend,
+  type LuminousShape,
+} from '@ies-tools/core';
 import { type ViewerSettings } from './settings.js';
 import { DEFAULT_COLOR_TEMPERATURE, temperatureColor } from './lightColor.js';
 import { createCandelaTexture, createLuminanceTexture } from './texture.js';
@@ -14,6 +20,12 @@ export const TONE_MAPPING = {
   neutral: THREE.NeutralToneMapping,
 } as const;
 
+/** Diffuse reflectances of the realistic floor and wall. */
+export const FLOOR_REFLECTANCE = 0.3;
+export const WALL_REFLECTANCE = 0.6;
+/** Isolux contour lines drawn by the measurement shader. */
+export const MAX_CONTOUR_LEVELS = 10;
+
 /** Scene construction is independent of WebGL and can be inspected without a GPU context. */
 export function createLightScene(settings: ViewerSettings) {
   const scene = new THREE.Scene();
@@ -21,24 +33,46 @@ export function createLightScene(settings: ViewerSettings) {
   const uniforms = {
     distribution: { value: blankTexture() },
     lightColor: { value: temperatureColor(DEFAULT_COLOR_TEMPERATURE) },
-    lightHeight: { value: settings.floorDistance },
+    lightPosition: { value: new THREE.Vector3(0, settings.floorDistance, 0) },
     exposure: { value: settings.exposure },
+    // Measurement mode: log ramp from rampPeak / 10^rampDecades to rampPeak lux, with isolux lines.
+    rampPeak: { value: 1 },
+    rampDecades: { value: 3 },
+    logLevels: { value: Array.from({ length: MAX_CONTOUR_LEVELS }, () => 0) },
+    levelCount: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
     vertexShader: `varying vec3 worldPosition; varying vec3 worldNormal;
       void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; worldNormal=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*world; }`,
-    fragmentShader: `uniform sampler2D distribution; uniform vec3 lightColor; uniform float lightHeight; uniform float exposure;
+    fragmentShader: `uniform sampler2D distribution; uniform vec3 lightColor; uniform vec3 lightPosition; uniform float exposure;
+      uniform float rampPeak; uniform float rampDecades; uniform float logLevels[${MAX_CONTOUR_LEVELS}]; uniform int levelCount;
       varying vec3 worldPosition; varying vec3 worldNormal;
-      void main() { vec3 delta=worldPosition-vec3(0.,lightHeight,0.); float r=max(length(delta),0.001);
+      // The isolux chart ramp hsl(235 - 195t, 80%, 15 + 50t%), in sRGB.
+      vec3 ramp(float t) { float h=235.-195.*t, l=.15+.5*t, a=.8*min(l,1.-l); vec3 k=mod(vec3(0.,8.,4.)+h/30.,12.);
+        return l-a*clamp(min(k-3.,9.-k),-1.,1.); }
+      void main() { vec3 delta=worldPosition-lightPosition; float r=max(length(delta),0.001);
         vec3 d=delta/r; float theta=acos(clamp(-d.y,-1.,1.)); float phi=0.; if(length(d.xz)>0.000001) phi=atan(d.z,d.x); if(phi<0.) phi+=6.28318530718;
         // Pixel centers preserve the exact 0/180 and 0/360 endpoints.
         vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
         float cd=texture2D(distribution,uv).r;
-        float lux=cd*max(dot(normalize(worldNormal),-d),0.)/(r*r);
-        gl_FragColor=vec4(lightColor*(lux*exposure/100.),1.);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
+        vec3 n=normalize(worldNormal);
+        float lux=cd*max(dot(n,-d),0.)/(r*r);
+        #ifdef MEASUREMENT
+          float logLux=log(max(lux,1e-30)), width=max(fwidth(logLux),1e-6), line=0.;
+          for(int i=0;i<${MAX_CONTOUR_LEVELS};i++) if(i<levelCount) line=max(line,1.-smoothstep(.25,1.25,abs(logLux-logLevels[i])/width));
+          // A cutoff jumps decades within a pixel; it is an edge, not a contour.
+          line*=step(width,1.);
+          vec3 color=ramp(clamp((logLux-log(rampPeak))/(rampDecades*2.30258509)+1.,0.,1.));
+          // False colours are already sRGB: no tone mapping or colour-space conversion.
+          gl_FragColor=vec4(mix(color,vec3(1.),line*.8),1.);
+        #else
+          // Diffuse luminance L = reflectance * E / pi; exposure 1 displays 10 cd/m2 as 1.
+          float reflectance=n.y>.5?${FLOOR_REFLECTANCE.toFixed(2)}:${WALL_REFLECTANCE.toFixed(2)};
+          gl_FragColor=vec4(lightColor*(reflectance*lux/3.14159265359*exposure/10.),1.);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        #endif
       }`,
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), material);
@@ -69,7 +103,7 @@ export function createLightScene(settings: ViewerSettings) {
       }`,
     }),
   );
-  fixture.position.set(0, uniforms.lightHeight.value, 0);
+  fixture.position.copy(uniforms.lightPosition.value);
   scene.add(fixture);
   const helper = new THREE.LineSegments(
     new THREE.BufferGeometry(),
@@ -123,8 +157,14 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   objects.solid.position.y = settings.floorDistance;
   objects.solid.scale.setScalar(settings.floorDistance / 2);
   objects.solid.visible = settings.photometricSolid && objects.cutoff !== undefined;
-  objects.uniforms.lightHeight.value = settings.floorDistance;
+  objects.uniforms.lightPosition.value.set(0, settings.floorDistance, 0);
   objects.uniforms.exposure.value = settings.exposure;
+  const measurement = settings.viewMode === 'measurement';
+  if (measurement !== 'MEASUREMENT' in objects.material.defines) {
+    if (measurement) objects.material.defines.MEASUREMENT = '';
+    else delete objects.material.defines.MEASUREMENT;
+    objects.material.needsUpdate = true;
+  }
   objects.helper.visible = settings.helper && objects.cutoff !== undefined;
   if (objects.helper.visible)
     objects.helper.geometry.setAttribute(
@@ -194,6 +234,14 @@ export function fitDistanceChange(
   camera.position.copy(target).add(offset);
   camera.far = Math.max(100, distanceScale(next) * 100);
   camera.updateProjectionMatrix();
+}
+/** Point the measurement ramp and contour lines at a legend; undefined shows an empty scale. */
+export function applyIlluminanceLegend(objects: LightScene, legend: IlluminanceLegend | undefined): void {
+  const levels = legend?.levels.slice(-MAX_CONTOUR_LEVELS) ?? [];
+  objects.uniforms.rampPeak.value = legend?.peak || 1;
+  objects.uniforms.rampDecades.value = legend?.decades ?? 3;
+  objects.uniforms.levelCount.value = levels.length;
+  levels.forEach((level, i) => (objects.uniforms.logLevels.value[i] = Math.log(level.lux)));
 }
 export function disposeLightScene(objects: LightScene): void {
   objects.floor.geometry.dispose();
