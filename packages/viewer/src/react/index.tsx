@@ -70,6 +70,7 @@ export function LightViewer({
   toneMapping,
   helper,
   photometricSolid,
+  rulers,
   viewMode,
   units,
   settingsPanel = 'closed',
@@ -104,6 +105,7 @@ export function LightViewer({
           toneMapping,
           helper,
           photometricSolid,
+          rulers,
           viewMode,
           units,
         }),
@@ -185,6 +187,7 @@ export function LightViewer({
         toneMapping,
         helper,
         photometricSolid,
+        rulers,
         viewMode,
         units,
       });
@@ -201,7 +204,7 @@ export function LightViewer({
     return () => {
       active = false;
     };
-  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper, photometricSolid, viewMode, units]);
+  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper, photometricSolid, rulers, viewMode, units]);
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     const next = resolveViewerSettings(patch, controller.current?.getSettings() ?? panelSettings);
     controller.current?.setSettings(next);

@@ -1,7 +1,12 @@
 import * as THREE from 'three';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import {
   buildIntensityTopology,
+  formatLength,
   luminousShape,
+  rulerTicks,
   type IESProfile,
   type IlluminanceLegend,
   type LuminousShape,
@@ -128,6 +133,19 @@ export function createLightScene(settings: ViewerSettings) {
   );
   solid.add(solidLines);
   scene.add(solid);
+  // Pixel-width lines over a dark halo stay legible on the dark realistic and bright false-colour floors.
+  const rulerGeometry = new LineSegmentsGeometry();
+  const rulerLine = (color: number, linewidth: number, opacity: number, renderOrder: number) => {
+    const line = new LineSegments2(
+      rulerGeometry,
+      new LineMaterial({ color, linewidth, opacity, transparent: true, depthWrite: false, toneMapped: false }),
+    );
+    line.renderOrder = renderOrder;
+    return line;
+  };
+  const rulers = new THREE.Group();
+  rulers.add(rulerLine(0x0f172a, 4, 0.7, 1), rulerLine(RULER_COLOR, 1.5, 1, 2));
+  scene.add(rulers);
   // Set from the loaded profile; undefined until then, which hides the helper.
   const objects = {
     scene,
@@ -140,6 +158,9 @@ export function createLightScene(settings: ViewerSettings) {
     helper,
     solid,
     solidLines,
+    rulers,
+    /** Ruler labels in world space, positioned by the viewer's HTML overlay. */
+    rulerLabels: [] as RulerLabel[],
     cutoff: undefined as number | undefined,
   };
   applyLightSceneSettings(objects, settings);
@@ -165,6 +186,10 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
     else delete objects.material.defines.MEASUREMENT;
     objects.material.needsUpdate = true;
   }
+  objects.rulers.visible = settings.rulers;
+  const ruler = settings.rulers ? rulerLines(settings, extent) : undefined;
+  if (ruler) rulerSegments(objects)[0]!.geometry.setPositions(ruler.positions);
+  objects.rulerLabels = ruler?.labels ?? [];
   objects.helper.visible = settings.helper && objects.cutoff !== undefined;
   if (objects.helper.visible)
     objects.helper.geometry.setAttribute(
@@ -215,6 +240,44 @@ export function helperLines(cutoff: number, height: number): number[] {
   out.push(-r, height, 0, r, height, 0, 0, height - r, 0, 0, height + r, 0, 0, height, -r, 0, height, r);
   return out;
 }
+export const RULER_COLOR = 0xf1f5f9;
+export const rulerSegments = (objects: LightScene) => objects.rulers.children as LineSegments2[];
+export interface RulerLabel {
+  position: [number, number, number];
+  text: string;
+  /** The mounting-height label, which takes priority over floor distances. */
+  height?: boolean;
+}
+/** Floor rulers along X and Z through the nadir and a mounting-height ruler on the wall (or at the nadir
+ * when the wall is hidden), as line-segment vertex pairs plus their labels. */
+export function rulerLines(settings: ViewerSettings, extent: number): { positions: number[]; labels: RulerLabel[] } {
+  const scale = distanceScale(settings);
+  const lift = scale * 0.004;
+  const tick = scale * 0.05;
+  const positions: number[] = [];
+  const labels: RulerLabel[] = [];
+  const half = extent / 2;
+  const back = settings.showWall ? -settings.wallDistance : -half;
+  for (const axis of ['x', 'z'] as const) {
+    const at = (along: number, across: number): [number, number, number] =>
+      axis === 'x' ? [along, lift, across] : [across, lift, along];
+    const min = axis === 'x' ? -half : back;
+    positions.push(...at(min, 0), ...at(half, 0));
+    for (const { meters, label } of rulerTicks(min, half, settings.units)) {
+      const size = label ? tick * 2 : tick;
+      positions.push(...at(meters, -size), ...at(meters, size));
+      // One "0" at the nadir, shared by both axes.
+      if (label && !(axis === 'z' && meters === 0)) labels.push({ position: at(meters, tick * 5), text: label });
+    }
+  }
+  const z = settings.showWall ? -settings.wallDistance + lift : 0;
+  const h = settings.floorDistance;
+  positions.push(0, 0, z, 0, h, z, -tick * 2, 0, z, tick * 2, 0, z, -tick * 2, h, z, tick * 2, h, z);
+  labels.push({ position: [0, h / 2, z], text: formatLength(h, settings.units), height: true });
+  // The overlay drops labels that would overlap earlier ones: keep the height, then the nearest distances.
+  const rank = (label: RulerLabel) => (label.height ? -1 : Math.hypot(label.position[0], label.position[2]));
+  return { positions, labels: labels.toSorted((a, b) => rank(a) - rank(b)) };
+}
 const distanceScale = (settings: ViewerSettings) => Math.max(1, settings.floorDistance / 2, settings.wallDistance / 2);
 const sceneCenter = (settings: ViewerSettings) =>
   new THREE.Vector3(0, settings.floorDistance / 2, -(settings.wallDistance - 2) / 4);
@@ -255,6 +318,9 @@ export function disposeLightScene(objects: LightScene): void {
   objects.solid.material.dispose();
   objects.solidLines.geometry.dispose();
   objects.solidLines.material.dispose();
+  const rulers = rulerSegments(objects);
+  rulers[0]!.geometry.dispose();
+  for (const line of rulers) line.material.dispose();
   objects.uniforms.distribution.value.dispose();
   objects.material.dispose();
 }

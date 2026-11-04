@@ -464,6 +464,7 @@ export type {
 export {
   LUX_PER_FOOTCANDLE,
   METERS_PER_FOOT,
+  formatLength,
   illuminanceInUnits,
   illuminanceLegend,
   illuminanceRampRgb,
@@ -472,7 +473,8 @@ export {
   lengthInUnits,
   lengthUnit,
   peakReceiverIlluminance,
+  rulerTicks,
 } from './measurement.js';
-export type { IlluminanceLegend, MeasurementUnits } from './measurement.js';
+export type { IlluminanceLegend, MeasurementUnits, RulerTick } from './measurement.js';
 export { luminousShape, projectedLuminousArea } from './shape.js';
 export type { LuminousShape, LuminousShapeKind } from './shape.js';

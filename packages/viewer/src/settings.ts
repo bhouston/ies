@@ -38,6 +38,8 @@ export interface ViewerSettings {
   units: Units;
   /** Overlay the 3D candela distribution, its peak at half the floor distance. Defaults to false. */
   photometricSolid: boolean;
+  /** Show floor distance rulers and the mounting-height ruler. Defaults to true. */
+  rulers: boolean;
 }
 export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   showWall: true,
@@ -49,6 +51,7 @@ export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   viewMode: 'realistic',
   units: 'metric',
   photometricSolid: false,
+  rulers: true,
 });
 export const VIEWER_SETTINGS_ATTRIBUTES = [
   'show-wall',
@@ -60,6 +63,7 @@ export const VIEWER_SETTINGS_ATTRIBUTES = [
   'view-mode',
   'units',
   'photometric-solid',
+  'rulers',
 ] as const;
 export interface ViewerSettingsChangeDetail {
   settings: ViewerSettings;
@@ -78,6 +82,7 @@ export function resolveViewerSettings(
   if (typeof next.showWall !== 'boolean') throw new TypeError('showWall must be a boolean');
   if (typeof next.helper !== 'boolean') throw new TypeError('helper must be a boolean');
   if (typeof next.photometricSolid !== 'boolean') throw new TypeError('photometricSolid must be a boolean');
+  if (typeof next.rulers !== 'boolean') throw new TypeError('rulers must be a boolean');
   if (!TONE_MAPPING_OPTIONS.some((option) => option.value === next.toneMapping))
     throw new RangeError('Unsupported toneMapping function');
   if (!VIEW_MODE_OPTIONS.some((option) => option.value === next.viewMode))
@@ -102,8 +107,14 @@ export function viewerSettingFromAttribute(name: string, value: string | null): 
   const number = (key: 'wallDistance' | 'floorDistance' | 'exposure') => ({
     [key]: value === null ? DEFAULT_VIEWER_SETTINGS[key] : value.trim() ? Number(value) : NaN,
   });
-  if (name === 'show-wall' || name === 'helper' || name === 'photometric-solid') {
-    const key = name === 'helper' ? 'helper' : name === 'show-wall' ? 'showWall' : 'photometricSolid';
+  const booleans = {
+    'show-wall': 'showWall',
+    helper: 'helper',
+    'photometric-solid': 'photometricSolid',
+    rulers: 'rulers',
+  } as const;
+  if (Object.hasOwn(booleans, name)) {
+    const key = booleans[name as keyof typeof booleans];
     if (value === null) return { [key]: DEFAULT_VIEWER_SETTINGS[key] };
     if (value === '' || value === 'true') return { [key]: true };
     if (value === 'false') return { [key]: false };

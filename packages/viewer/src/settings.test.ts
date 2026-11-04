@@ -9,6 +9,7 @@ import {
   disposeLightScene,
   fitDistanceChange,
   helperLines,
+  rulerLines,
   cutoffAngle,
   displayedShape,
   fixtureGeometry,
@@ -50,6 +51,7 @@ describe('physical scene settings', () => {
     { showWall: 'false' },
     { helper: 'false' },
     { photometricSolid: 1 },
+    { rulers: 'yes' },
     { toneMapping: 'unknown' },
     { viewMode: 'falsecolor' },
     { units: 'feet' },
@@ -107,7 +109,26 @@ describe('physical scene settings', () => {
     expect(objects.helper.visible).toBe(false);
     disposeLightScene(objects);
   });
-  it('reads the photometric-solid attribute', () => {
+  it('draws floor rulers to the wall and a labelled mounting height', () => {
+    const { positions, labels } = rulerLines({ ...DEFAULT_VIEWER_SETTINGS, floorDistance: 3 }, 10);
+    expect(labels[0]).toEqual({ position: [0, 1.5, -2 + 0.006], text: '3.00 m', height: true });
+    expect(labels[1]!.text).toBe('0');
+    expect(labels.filter((label) => label.text === '0')).toHaveLength(1);
+    // The Z ruler stops at the wall, 2 m behind the light.
+    expect(labels.filter((label) => label.text === '2 m')).toHaveLength(4);
+    expect(Math.min(...positions.filter((_, i) => i % 3 === 2))).toBeCloseTo(-2);
+    const noWall = rulerLines({ ...DEFAULT_VIEWER_SETTINGS, showWall: false, units: 'imperial' }, 10);
+    expect(noWall.labels[0]).toMatchObject({ position: [0, 1, 0], text: '6.56 ft' });
+    expect(noWall.labels.map((label) => label.text)).toContain('15 ft');
+    const objects = createLightScene({ ...DEFAULT_VIEWER_SETTINGS });
+    expect(objects.rulerLabels.length).toBeGreaterThan(0);
+    applyLightSceneSettings(objects, { ...DEFAULT_VIEWER_SETTINGS, rulers: false });
+    expect(objects.rulers.visible).toBe(false);
+    expect(objects.rulerLabels).toEqual([]);
+    disposeLightScene(objects);
+  });
+  it('reads the photometric-solid and rulers attributes', () => {
+    expect(viewerSettingFromAttribute('rulers', 'false')).toEqual({ rulers: false });
     expect(viewerSettingFromAttribute('photometric-solid', null)).toEqual({ photometricSolid: false });
     expect(viewerSettingFromAttribute('photometric-solid', '')).toEqual({ photometricSolid: true });
     expect(viewerSettingFromAttribute('helper', null)).toEqual({ helper: true });

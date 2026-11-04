@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { groundIlluminance, parseIES } from './index.js';
 import { iesSource } from '../test/iesSource.js';
 import {
+  formatLength,
   illuminanceInUnits,
   illuminanceLegend,
   illuminanceRampRgb,
   lengthFromUnits,
   lengthInUnits,
   peakReceiverIlluminance,
+  rulerTicks,
 } from './measurement.js';
 
 describe('measurement units', () => {
@@ -55,5 +57,36 @@ describe('peak receiver illuminance', () => {
     const sideways = parseIES(iesSource({ vertical: [0, 89, 90, 180], values: [[0, 0, 100, 0]] }));
     expect(peakReceiverIlluminance(sideways, 2)).toBeCloseTo(0, 9);
     expect(peakReceiverIlluminance(sideways, 2, 1)).toBeCloseTo(100, 9);
+  });
+});
+
+describe('rulers', () => {
+  it('formats lengths in the display unit', () => {
+    expect(formatLength(2, 'metric')).toBe('2.00 m');
+    expect(formatLength(2, 'imperial')).toBe('6.56 ft');
+  });
+  it('ticks every metre and labels each one on short spans', () => {
+    const ticks = rulerTicks(-2, 5, 'metric');
+    expect(ticks.map((tick) => tick.meters)).toEqual([-2, -1, 0, 1, 2, 3, 4, 5]);
+    expect(ticks.map((tick) => tick.label)).toEqual(['2 m', '1 m', '0', '1 m', '2 m', '3 m', '4 m', '5 m']);
+  });
+  it('ticks every foot and labels a coarser 1-2-5 step', () => {
+    const ticks = rulerTicks(-5, 5, 'imperial');
+    expect(ticks).toHaveLength(33);
+    expect(ticks[0]!.meters).toBeCloseTo(-16 * 0.3048, 12);
+    expect(ticks.filter((tick) => tick.label).map((tick) => tick.label)).toEqual([
+      '15 ft',
+      '10 ft',
+      '5 ft',
+      '0',
+      '5 ft',
+      '10 ft',
+      '15 ft',
+    ]);
+  });
+  it('thins ticks on long spans', () => {
+    const ticks = rulerTicks(0, 200, 'metric');
+    expect(ticks[1]!.meters).toBe(10);
+    expect(ticks.filter((tick) => tick.label).map((tick) => tick.meters)).toEqual([0, 50, 100, 150, 200]);
   });
 });

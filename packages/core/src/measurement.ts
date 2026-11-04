@@ -78,3 +78,35 @@ export function illuminanceRampRgb(t: number): [number, number, number] {
   };
   return [f(0), f(8), f(4)];
 }
+
+/** A length such as "2.00 m" or "6.56 ft". */
+export const formatLength = (meters: number, units: MeasurementUnits, digits = 2) =>
+  `${lengthInUnits(meters, units).toFixed(digits)} ${lengthUnit(units)}`;
+
+export interface RulerTick {
+  /** Signed position along the ruler in metres. */
+  meters: number;
+  /** Distance label such as "2 m", "0" at the origin; absent on unlabelled ticks. */
+  label?: string;
+}
+/**
+ * Ruler ticks from `min` to `max` metres (min ≤ 0 ≤ max) every 1 m or 1 ft. Labels use the smallest
+ * 1-2-5 step that leaves at most `maxLabels` labels on the longer side; past 5 units, ticks thin to a fifth of it.
+ */
+export function rulerTicks(min: number, max: number, units: MeasurementUnits, maxLabels = 5): RulerTick[] {
+  const from = lengthInUnits(min, units);
+  const to = lengthInUnits(max, units);
+  const span = Math.max(-from, to);
+  let major = 1;
+  for (let i = 1; span / major > maxLabels; i++) major = [1, 2, 5][i % 3]! * 10 ** Math.floor(i / 3);
+  const minor = major <= 5 ? 1 : major / 5;
+  const ticks: RulerTick[] = [];
+  for (let i = Math.ceil(from / minor); i <= Math.floor(to / minor); i++) {
+    const value = i * minor;
+    ticks.push({
+      meters: lengthFromUnits(value, units),
+      label: value % major ? undefined : value ? `${Math.abs(value)} ${lengthUnit(units)}` : '0',
+    });
+  }
+  return ticks;
+}
