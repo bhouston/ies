@@ -98,17 +98,18 @@ export function createLightScene(settings: ViewerSettings) {
     fixtureGeometry(displayedShape(luminousShape({ width: 0, length: 0, height: 0 }))),
     new THREE.ShaderMaterial({
       uniforms: fixtureUniforms,
-      vertexShader: `varying vec3 worldPosition;
-      void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; gl_Position=projectionMatrix*viewMatrix*world; }`,
-      fragmentShader: `uniform sampler2D luminanceMap; uniform vec3 lightColor; uniform float exposure; varying vec3 worldPosition;
+      vertexShader: `varying vec3 worldPosition; varying vec3 worldNormal;
+      void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; worldNormal=mat3(modelMatrix)*normal; gl_Position=projectionMatrix*viewMatrix*world; }`,
+      fragmentShader: `uniform sampler2D luminanceMap; uniform vec3 lightColor; uniform float exposure; varying vec3 worldPosition; varying vec3 worldNormal;
       void main() { vec3 d=normalize(cameraPosition-worldPosition); float theta=acos(clamp(-d.y,-1.,1.));
         float phi=0.; if(length(d.xz)>0.000001) phi=atan(d.z,d.x); if(phi<0.) phi+=6.28318530718;
         vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
         gl_FragColor=vec4(lightColor*(texture2D(luminanceMap,uv).r*exposure),1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
-        // A dark-grey housing keeps the body visible where it emits nothing toward the camera.
-        gl_FragColor.rgb=max(gl_FragColor.rgb,vec3(${HOUSING_GREY}));
+        // A dark housing with lighter grazing edges keeps the body visible where it emits nothing toward the camera.
+        float facing=abs(dot(normalize(worldNormal),d));
+        gl_FragColor.rgb=max(gl_FragColor.rgb,vec3(mix(${HOUSING_EDGE},${HOUSING_FACE},facing)));
       }`,
     }),
   );
@@ -358,8 +359,9 @@ export function disposeLightScene(objects: LightScene): void {
   objects.material.dispose();
 }
 
-/** sRGB grey of the fixture housing where it emits nothing toward the camera. */
-const HOUSING_GREY = '0.1';
+/** sRGB greys of the fixture housing where it emits nothing toward the camera: grazing edges and faces seen head-on. */
+const HOUSING_EDGE = '0.35';
+const HOUSING_FACE = '0.06';
 /** Camera glare: radii in CSS pixels of the halo's narrow and wide lobes and of its quad. */
 export const GLARE_CORE = 3;
 export const GLARE_WIDE = 24;
