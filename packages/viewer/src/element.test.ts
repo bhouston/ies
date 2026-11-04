@@ -223,6 +223,8 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     expect(overlay.textContent).toContain('Failed to load photometry: HTTP 404');
     expect(overlay.textContent).toContain('Source: /missing.ies');
     expect(errors[0]!.detail.message).toContain('HTTP 404');
+    expect([errors[0]!.bubbles, errors[0]!.composed, errors[0]!.cancelable]).toEqual([true, true, false]);
+    expect(errors[0]!.detail.error).toBeInstanceOf(Error);
     const copy = overlay.querySelector<HTMLButtonElement>('.error-log-copy')!;
     copy.click();
     await flush();

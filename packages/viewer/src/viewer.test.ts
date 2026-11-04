@@ -4,6 +4,7 @@ import { WebGLRenderer } from 'three';
 import type { Mesh, Scene, ShaderMaterial, LineSegments, DataTexture } from 'three';
 import {
   autoExposureValue,
+  getPhotometricTypeSupport,
   parsePhotometry,
   parseIES,
   parseLDT,
@@ -246,6 +247,27 @@ it('orbits at a comfortable speed: a full-height drag turns about 126 degrees', 
   const viewer = createLightViewer(document.createElement('div'));
   try {
     expect(orbit.controls!.rotateSpeed).toBe(0.35);
+  } finally {
+    viewer.dispose();
+  }
+});
+
+it('rejects Type A/B documents with the core capability message and keeps the current document', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn(function () {
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }),
+  );
+  const viewer = createLightViewer(document.createElement('div'));
+  try {
+    const typeC = parsePhotometry(iesSource());
+    viewer.setDocument(typeC);
+    const typeB = parsePhotometry(iesSource({ type: 2, vertical: [-90, 0, 90] }));
+    const support = getPhotometricTypeSupport(typeB.profile);
+    expect(support.supported).toBe(false);
+    expect(() => viewer.setDocument(typeB)).toThrow(support.supported ? '' : support.message);
+    expect(viewer.document).toBe(typeC);
   } finally {
     viewer.dispose();
   }

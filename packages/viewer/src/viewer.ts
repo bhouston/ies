@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
+  getPhotometricTypeSupport,
   illuminanceLegend,
   parsePhotometry,
   autoExposureValue,
@@ -219,10 +220,8 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   const setDocument = (next: PhotometricDocument) => {
     if (disposed) throw new Error('Viewer has been disposed');
     const profile = next.profile;
-    if (profile.photometricType !== 1)
-      throw new Error(
-        'The 3D viewer supports Type C photometry only. This file uses Type A or B coordinates; inspect or validate it with ies inspect / ies validate or the VS Code information panel. Use a Type C file for 3D previews and charts.',
-      );
+    const support = getPhotometricTypeSupport(profile);
+    if (!support.supported) throw new Error(support.message);
     uniforms.lightColor.value.copy(temperatureColor(documentColorTemperature(next)));
     setLightSceneProfile(objects, profile, settings);
     document = next;

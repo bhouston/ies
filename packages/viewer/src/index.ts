@@ -1,4 +1,6 @@
 export { createLightViewer } from './viewer.js';
+export { getPhotometricTypeSupport, SUPPORTED_PHOTOMETRIC_TYPES } from '@ies-tools/core';
+export type { PhotometricTypeSupport } from '@ies-tools/core';
 export type { LightViewerCaptureOptions, LightViewerController, LightViewerOptions } from './viewer.js';
 export { directionAngles, illuminance, intensitySamples } from './photometry.js';
 export { IESLoader } from 'three/addons/loaders/IESLoader.js';

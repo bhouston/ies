@@ -2,6 +2,7 @@ import { StrictMode, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   detectPhotometricFormat,
+  getPhotometricTypeSupport,
   parseLDT,
   parsePhotometry,
   type IESProfile,
@@ -40,8 +41,8 @@ function App() {
       );
       setSelectedLampSet(undefined);
       const next = sets.length > 1 ? undefined : parsePhotometry(text, format);
-      if (next && next.profile.photometricType !== 1)
-        throw new Error('The viewer and intensity graphs support Type C photometry only');
+      const support = next && getPhotometricTypeSupport(next.profile);
+      if (support && !support.supported) throw new Error(support.message);
       setPhotometry(next);
       setProfile(next?.profile);
       setName(file.name);

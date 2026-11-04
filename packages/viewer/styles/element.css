@@ -2,8 +2,9 @@
 @import './viewer.css';
 @source '../src/react';
 
-/* Shared utilities inherit host tokens. Do not redefine --popover/--foreground
-   on :host: that would mask values inherited from VS Code or the embedding app. */
+/* Utilities read only inherited --ies-viewer-* tokens, so generic host tokens such as --foreground
+   (often HSL channels) cannot leak in (#144). Do not define them on :host: that would mask values
+   set by VS Code or the embedding app. */
 :host {
   display: block;
   height: 480px;
@@ -41,7 +42,7 @@
   position: absolute;
   bottom: 8px;
   left: 12px;
-  color: var(--foreground, #e5e7eb);
+  color: var(--ies-viewer-foreground, #e5e7eb);
   font: 13px var(--viewer-font-family, var(--vscode-font-family, system-ui, sans-serif));
   pointer-events: none;
 }
