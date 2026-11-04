@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
 import { chartPhotometry } from './chart.js';
-import { imageDimensions, requireHardwareGPU } from './render.js';
+import { imageDimensions, renderPhotometry, requireHardwareGPU } from './render.js';
 import yargs from 'yargs';
 import { command as chart } from './commands/chart.js';
 import { command as render } from './commands/render.js';
@@ -184,6 +184,9 @@ describe('image command arguments', () => {
     expect(imageDimensions()).toEqual({ width: 1024, height: 768 });
     expect(() => imageDimensions(8193, 10)).toThrow();
   });
+  it.each([21, -7, NaN])('rejects manual exposure %d outside EV100 -6 to 20 before launching a browser', (exposure) =>
+    expect(renderPhotometry('', { exposure })).rejects.toThrow('EV100'),
+  );
 });
 
 describe('exclusive image outputs', () => {
