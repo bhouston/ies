@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  luminousShape,
   parseIES,
   sampleIntensity,
   parseLDT,
@@ -223,7 +224,24 @@ describe('IES/EULUMDAT conversion', () => {
     const native = parseLDT(serializeLDT(ies({ dimensions: '-0.4 0 0' })).value);
     expect(native.luminousArea.width).toBe(0);
     expect(native.luminousArea.length).toBe(400);
-    expect(toPhotometricDocument(native).profile.dimensions).toEqual({ width: -0.4, length: 0, height: 0 });
+    expect(toPhotometricDocument(native).profile.dimensions).toEqual({ width: -0.4, length: -0.4, height: 0 });
+  });
+  it('writes round LDT openings in the LM-63-2002 encoding and round-trips them', () => {
+    const source = parseLDT(serializeLDT(ies({ dimensions: '-0.25 -0.25 0.08' })).value);
+    expect(source.luminousArea).toMatchObject({ width: 0, length: 250, heights: [80, 80, 80, 80] });
+    const text = serializeIES(source).value;
+    expect(text).toContain('IESNA:LM-63-2002');
+    expect(text).toMatch(/ -0\.25 -0\.25 0\.08$/m);
+    const back = parsePhotometry(text).profile;
+    expect(luminousShape(back.dimensions, back.units, back.version)).toMatchObject({
+      kind: 'vertical-cylinder',
+      width: 0.25,
+      height: 0.08,
+    });
+    expect(parseLDT(serializeLDT(back).value).luminousArea).toEqual(source.luminousArea);
+    // A 2002 vertical circle (-D, 0, -D) is not a horizontal round opening.
+    const disk = parseLDT(serializeLDT(ies({ dimensions: '-0.4 0 -0.4' })).value);
+    expect(disk.luminousArea.width).toBe(400);
   });
   it('preserves irregular grids and directional asymmetry', () => {
     const profile = ies({

@@ -457,6 +457,10 @@ describe('Glare-angle luminance table', () => {
     expect(circular.opening.shape).toBe('circular');
     expect(circular.bottomArea).toBeCloseTo((Math.PI * diameter ** 2) / 4, 12);
     expect(circular.luminance![0]![0]).toBeCloseTo(100 / (circular.bottomArea * 0.5), 9);
+    const legacy = buildLuminanceTable({ ...isotropic, dimensions: { width: 0, length: -0.2, height: 0.1 } });
+    expect(legacy.opening).toEqual({ shape: 'circular', width: 0.2, length: 0.2, height: 0.1 });
+    const tube = buildLuminanceTable({ ...isotropic, dimensions: { width: -0.1, length: 1.2, height: -0.1 } });
+    expect(tube.opening).toEqual({ shape: 'rectangular', width: 0.1, length: 1.2, height: 0.1 });
     const none = buildLuminanceTable({ ...isotropic, dimensions: { width: 0, length: 0, height: 0 } });
     expect(none.luminance).toBeNull();
     expect(none.intensity).toHaveLength(9);

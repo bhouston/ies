@@ -9,6 +9,7 @@ import {
   type LDTProfile,
 } from './ldt.js';
 import { calculateLuminousFlux } from './metrics.js';
+import { luminousShape } from './shape.js';
 
 export interface ConversionWarning {
   code: string;
@@ -195,8 +196,9 @@ function ldtToProfile(data: LDTProfile, lampSetIndex: number): IESProfile {
     photometricType: 1,
     units: 'meters',
     dimensions: {
-      width: data.luminousArea.width === 0 ? -data.luminousArea.length / 1000 : data.luminousArea.width / 1000,
-      length: data.luminousArea.width === 0 ? 0 : data.luminousArea.length / 1000,
+      // EULUMDAT width 0 is a circle of diameter `length`; LM-63-2002 Table 1 writes it as (-D, -D, h).
+      width: (data.luminousArea.width === 0 ? -data.luminousArea.length : data.luminousArea.width) / 1000,
+      length: (data.luminousArea.width === 0 ? -1 : 1) * (data.luminousArea.length / 1000),
       height: maximumHeight / 1000,
     },
     ballastFactor: 1,
@@ -554,7 +556,8 @@ export function serializeLDT(input: PhotometricInput, options: SerializeLDTOptio
     ),
   );
   const dimensions = document.geometry.luminousOpening;
-  const circular = dimensions.width < 0 && dimensions.length === 0 && dimensions.height >= 0;
+  const round = luminousShape(dimensions, 'meters', profile.version);
+  const circular = round.kind === 'circular' || round.kind === 'vertical-cylinder';
   const shape = !circular && Object.values(dimensions).some((value) => value < 0);
   if (shape)
     warnings.push(
@@ -601,7 +604,7 @@ export function serializeLDT(input: PhotometricInput, options: SerializeLDTOptio
     luminaire: scaledDimensions(body, 1000),
     luminousArea: {
       width: circular ? 0 : Math.abs(dimensions.width) * 1000,
-      length: Math.abs(circular ? dimensions.width : dimensions.length) * 1000,
+      length: (circular ? round.width : Math.abs(dimensions.length)) * 1000,
       heights: [
         Math.abs(dimensions.height) * 1000,
         Math.abs(dimensions.height) * 1000,
