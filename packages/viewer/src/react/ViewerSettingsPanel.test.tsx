@@ -32,6 +32,7 @@ describe('shared React viewer controls', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispose: vi.fn(),
+        renderer: { domElement: document.createElement('canvas') },
       };
       mocks.createLightViewer.mockReturnValue(viewer);
       const parsed = profile();
@@ -112,6 +113,7 @@ describe('shared React viewer controls', () => {
       setDocument: vi.fn(),
       getSettings: () => ({ ...settings }),
       dispose: vi.fn(),
+      renderer: { domElement: document.createElement('canvas') },
       addEventListener: events.addEventListener.bind(events),
       removeEventListener: events.removeEventListener.bind(events),
       setSettings: vi.fn((patch: Partial<ViewerSettings>) => {

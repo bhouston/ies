@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from 'react';
 import { type IESProfile, type PhotometricDocument } from '@ies-tools/core';
 import { createPhotometrySourceLoader, type PhotometryFormat, type PhotometryLoadInfo } from '../source.js';
-import { createLightViewer } from '../viewer.js';
+import { createLightViewer, type LightViewerCaptureOptions } from '../viewer.js';
+import { ViewerReadiness } from '../readiness.js';
 import {
   DEFAULT_VIEWER_SETTINGS,
   resolveViewerSettings,
@@ -9,6 +10,21 @@ import {
   type ViewerSettingsChangeDetail,
 } from '../settings.js';
 import { ViewerSettingsPanel, type SettingsPanelMode } from './ViewerSettingsPanel.js';
+
+/** Imperative handle for {@link LightViewer}, received through its `ref`. */
+export interface LightViewerHandle {
+  /**
+   * Resolve once the current source is loaded and its frame rendered (immediately with no source). If the source
+   * changes first, it waits for the new source instead. Rejects with the load's error (network, parse, unsupported
+   * type), if the WebGL context is lost or failed to start, or if the component unmounts.
+   */
+  whenReady(): Promise<void>;
+  /**
+   * Wait for {@link whenReady}, then render the current settings and encode the opaque 3D scene only: no legend,
+   * ruler labels, settings panel or error message. Without `width`/`height` the image matches the canvas's pixels.
+   */
+  toBlob(options?: LightViewerCaptureOptions): Promise<Blob>;
+}
 
 /** Props for {@link LightViewer}. Viewer settings such as `exposure` and `showWall` may be passed directly. */
 export interface LightViewerProps extends Partial<ViewerSettings> {
@@ -40,6 +56,8 @@ export interface LightViewerProps extends Partial<ViewerSettings> {
   onError?: (error: Error) => void;
   /** Called when the user changes a setting in the options panel. */
   onSettingsChange?: (detail: ViewerSettingsChangeDetail) => void;
+  /** Receives a {@link LightViewerHandle} for readiness and image capture. */
+  ref?: Ref<LightViewerHandle>;
 }
 function providedSettings(settings: Partial<ViewerSettings>): Partial<ViewerSettings> {
   return Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined));
@@ -81,9 +99,16 @@ export function LightViewer({
   onLoad,
   onError,
   onSettingsChange,
+  ref,
 }: LightViewerProps) {
   const container = useRef<HTMLDivElement>(null);
   const controller = useRef<ReturnType<typeof createLightViewer> | undefined>(undefined);
+  const [readiness] = useState(() => new ViewerReadiness());
+  useImperativeHandle(
+    ref,
+    () => ({ whenReady: () => readiness.whenReady(), toBlob: (options) => readiness.toBlob(options) }),
+    [readiness],
+  );
   const callbacks = useRef({ onLoad, onError, onSettingsChange });
   useEffect(() => {
     callbacks.current = { onLoad, onError, onSettingsChange };
@@ -126,9 +151,11 @@ export function LightViewer({
   useEffect(() => {
     if (!container.current) return;
     let active = true;
+    readiness.pending();
     try {
       const viewer = createLightViewer(container.current);
       controller.current = viewer;
+      readiness.attach(viewer);
       const changed = (event: CustomEvent<ViewerSettingsChangeDetail>) => {
         setPanelSettings(event.detail.settings);
         callbacks.current.onSettingsChange?.(event.detail);
@@ -137,11 +164,13 @@ export function LightViewer({
       return () => {
         active = false;
         viewer.removeEventListener('settingschange', changed);
+        readiness.disconnect();
         viewer.dispose();
         controller.current = undefined;
       };
     } catch (reason) {
       const failure = reason instanceof Error ? reason : new Error(String(reason));
+      readiness.finish(failure);
       queueMicrotask(() => {
         if (active) {
           setError(failure.message);
@@ -150,28 +179,33 @@ export function LightViewer({
       });
       return () => {
         active = false;
+        readiness.disconnect();
       };
     }
-  }, []);
+  }, [readiness]);
   useEffect(() => {
     const loader = createPhotometrySourceLoader();
     let active = true;
+    if (controller.current && !readiness.loading) readiness.pending();
     void loader
       .load({ document: photometry, profile, text, iesText, src, format, lampSetIndex })
       .then((next) => {
         if (!active || !controller.current) return;
         if (!next) {
           controller.current.clear();
+          readiness.finish();
           setError('');
           return;
         }
         controller.current.setDocument(next);
+        readiness.finish();
         setError('');
         callbacks.current.onLoad?.(next.profile, { document: next, sourceFormat: next.sourceFormat });
       })
       .catch((reason) => {
         if (!active) return;
         const failure = reason instanceof Error ? reason : new Error(String(reason));
+        readiness.finish(failure);
         setError(failure.message);
         callbacks.current.onError?.(failure);
       });
@@ -179,7 +213,7 @@ export function LightViewer({
       active = false;
       loader.cancel();
     };
-  }, [photometry, profile, text, iesText, src, format, lampSetIndex]);
+  }, [readiness, photometry, profile, text, iesText, src, format, lampSetIndex]);
   useEffect(() => {
     let active = true;
     try {
@@ -252,6 +286,7 @@ export function LightViewer({
 }
 
 export { ViewerSettingsPanel } from './ViewerSettingsPanel.js';
+export type { LightViewerCaptureOptions } from '../viewer.js';
 export type { ViewerSettingsPanelProps, SettingsPanelMode } from './ViewerSettingsPanel.js';
 export { IntensityGraph } from './IntensityGraph.js';
 export type { IntensityGraphProps } from './IntensityGraph.js';
