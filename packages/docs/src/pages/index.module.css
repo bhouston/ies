@@ -255,7 +255,7 @@
   .callout,
   .library,
   .editor {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
   }
   .heroInner {
