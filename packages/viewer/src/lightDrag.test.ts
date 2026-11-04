@@ -109,6 +109,27 @@ it('nudges the selected light with arrow keys and deselects with Escape', () => 
   expect(settings().lightOffset).toBe(0.1);
 });
 
+it('nudges imperial positions in whole half-feet without millimetre drift', () => {
+  const { canvas, objects, screen, pointer, settings, move } = setup();
+  move({ units: 'imperial', lightOffset: 0 });
+  pointer('pointerdown', screen(lightPosition(objects, settings())));
+  pointer('pointerup', screen(lightPosition(objects, settings())));
+  const key = (name: string, count: number) => {
+    for (let i = 0; i < count; i++) canvas.dispatchEvent(new KeyboardEvent('keydown', { key: name, cancelable: true }));
+  };
+  for (const n of [1, 4, 25]) {
+    key('ArrowRight', n);
+    expect(settings().lightOffset).toBeCloseTo(n * 0.5 * 0.3048, 12);
+    key('ArrowLeft', n);
+    expect(settings().lightOffset).toBe(0);
+  }
+  // Off-grid starts snap onto the half-foot grid; untouched axes keep their values.
+  const wall = settings().wallDistance;
+  canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', shiftKey: true, cancelable: true }));
+  expect(settings().floorDistance / 0.3048).toBeCloseTo(7, 12); // 2 m ≈ 6.56 ft → 6.5 ft + 0.5 ft
+  expect(settings().wallDistance).toBe(wall);
+});
+
 it('clamps dragged positions to the valid ranges and keeps the light in front of the wall', () => {
   expect(lightSettingsAt(new THREE.Vector3(150, -1, -3), -2)).toEqual({
     lightOffset: 100,
@@ -120,6 +141,8 @@ it('clamps dragged positions to the valid ranges and keeps the light in front of
     floorDistance: 2,
     wallDistance: 3,
   });
+  // Imperial drags round to the hundredth of a foot the panel shows.
+  expect(lightSettingsAt(new THREE.Vector3(0.6, 2, 1), -2, 'imperial').lightOffset).toBeCloseTo(1.97 * 0.3048, 12);
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 5, 0);
   // Looking straight down, a height drag falls back to a plane facing +Z.

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { lengthFromUnits } from '@ies-tools/core';
+import { lengthFromUnits, lengthInUnits, type MeasurementUnits } from '@ies-tools/core';
 import { lightPosition, type LightScene } from './scene.js';
 import type { ViewerSettings } from './settings.js';
 
@@ -8,18 +8,35 @@ const ACCENT = '#22d3ee';
 const PICK_RADIUS = 16;
 /** Pointer travel in pixels that turns a press into an orbit rather than a click. */
 const CLICK_SLOP = 4;
-const round = (meters: number) => Math.round(meters * 1000) / 1000;
-const clamp = (value: number, min: number, max: number) => round(Math.min(max, Math.max(min, value)));
+type LightKey = 'lightOffset' | 'floorDistance' | 'wallDistance';
+const RANGES: Record<LightKey, [number, number]> = {
+  lightOffset: [-100, 100],
+  floorDistance: [0.1, 100],
+  wallDistance: [0.1, 100],
+};
+/**
+ * `meters` snapped to the nearest 1/`perUnit` of the display unit (metres or feet), moved `steps` of those, and
+ * clamped to `key`'s range. Snapping in the display unit keeps feet exact: millimetre rounding would drift.
+ */
+function snapLength(key: LightKey, meters: number, units: MeasurementUnits, perUnit: number, steps = 0) {
+  const snapped = lengthFromUnits((Math.round(lengthInUnits(meters, units) * perUnit) + steps) / perUnit, units);
+  return Math.min(RANGES[key][1], Math.max(RANGES[key][0], snapped));
+}
 
-/** Settings that put the light at `position` with the wall at `wallZ`, clamped to the valid ranges and rounded to millimetres. */
+/**
+ * Settings that put the light at `position` with the wall at `wallZ`, clamped to the valid ranges and rounded
+ * to millimetres or, in imperial units, hundredths of a foot (the precision the panel inputs show).
+ */
 export function lightSettingsAt(
   position: THREE.Vector3,
   wallZ: number,
-): Pick<ViewerSettings, 'lightOffset' | 'floorDistance' | 'wallDistance'> {
+  units: MeasurementUnits = 'metric',
+): Pick<ViewerSettings, LightKey> {
+  const perUnit = units === 'imperial' ? 100 : 1000;
   return {
-    lightOffset: clamp(position.x, -100, 100),
-    floorDistance: clamp(position.y, 0.1, 100),
-    wallDistance: clamp(position.z - wallZ, 0.1, 100),
+    lightOffset: snapLength('lightOffset', position.x, units, perUnit),
+    floorDistance: snapLength('floorDistance', position.y, units, perUnit),
+    wallDistance: snapLength('wallDistance', position.z - wallZ, units, perUnit),
   };
 }
 
@@ -150,7 +167,7 @@ export function attachLightDrag({
     if (event.shiftKey !== drag.vertical) begin(event);
     if (!ray(event).ray.intersectPlane(drag.plane, point)) return;
     const target = drag.light.clone().add(point.sub(drag.start));
-    const settings = lightSettingsAt(target, objects.wallZ);
+    const settings = lightSettingsAt(target, objects.wallZ, getSettings().units);
     move(
       drag.vertical
         ? { floorDistance: settings.floorDistance }
@@ -177,16 +194,17 @@ export function attachLightDrag({
     if (!direction) return;
     event.preventDefault();
     const settings = getSettings();
-    const step = settings.units === 'imperial' ? lengthFromUnits(0.5, 'imperial') : 0.1;
-    const light = lightPosition(objects, settings);
+    // Whole steps of 0.5 ft or 0.1 m on that unit's grid, so repeated nudges never accumulate rounding.
+    const nudge = (key: LightKey, steps: number) =>
+      snapLength(key, settings[key], settings.units, settings.units === 'imperial' ? 2 : 10, steps);
+    const [x, z] = direction;
     // Arrows move across the floor (up is toward the wall); with Shift, up and down change the height.
-    if (event.shiftKey) light.y -= direction[1]! * step;
-    else light.add(new THREE.Vector3(direction[0]! * step, 0, direction[1]! * step));
-    const next = lightSettingsAt(light, objects.wallZ);
     move(
       event.shiftKey
-        ? { floorDistance: next.floorDistance }
-        : { lightOffset: next.lightOffset, wallDistance: next.wallDistance },
+        ? { floorDistance: nudge('floorDistance', -z!) }
+        : x
+          ? { lightOffset: nudge('lightOffset', x) }
+          : { wallDistance: nudge('wallDistance', z!) },
     );
   };
   canvas.addEventListener('pointerdown', pointerdown);
