@@ -71,7 +71,7 @@ Report vulnerabilities privately through GitHub's private vulnerability reportin
 
 Use the root and published-package READMEs to help developers evaluate and install the tools. Keep Docusaurus guides focused on user tasks; generate API and CLI reference from source comments and command definitions. Put contributor setup here and registry administration in RELEASING.md.
 
-Run `pnpm docs:build` to generate reference pages and check documentation links. The Documentation workflow deploys the site on pushes to `main`. Representative fixtures and their licenses are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Run `pnpm docs:build` to generate reference pages and check documentation links. The Documentation workflow deploys the site on pushes to `main`. Its live viewer demos use the standalone viewer built from the same commit, copied into the documentation static assets during generation. Run `pnpm build` before starting or building the docs. This deployment does not publish npm packages; those still require the Release workflow. Representative fixtures and their licenses are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Regenerate chart screenshots with `pnpm build && pnpm docs:charts`; this is not run in CI. To try the extension from source, run `pnpm --filter ies-vscode-extension package` after building, then install the resulting VSIX from `packages/vscode-extension/` using VS Code's **Install from VSIX** action.
 

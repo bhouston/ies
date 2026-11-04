@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "generate": "node ../cli/bin/cli.js docgen -o ies.opencli.json && typedoc --options typedoc.json --tsconfig ../core/tsconfig.json --entryPoints ../core/src/index.ts --name @ies-tools/core --out docs/api/core && typedoc --options typedoc.json --tsconfig ../viewer/tsconfig.json --entryPoints ../viewer/src/react/index.tsx --name @ies-tools/viewer/react --out docs/api/react",
+    "generate": "node scripts/copy-viewer.mjs && node ../cli/bin/cli.js docgen -o ies.opencli.json && typedoc --options typedoc.json --tsconfig ../core/tsconfig.json --entryPoints ../core/src/index.ts --name @ies-tools/core --out docs/api/core && typedoc --options typedoc.json --tsconfig ../viewer/tsconfig.json --entryPoints ../viewer/src/react/index.tsx --name @ies-tools/viewer/react --out docs/api/react",
     "build": "pnpm generate && docusaurus build",
     "start": "pnpm generate && docusaurus start"
   },
