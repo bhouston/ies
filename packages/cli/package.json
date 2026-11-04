@@ -1,7 +1,23 @@
 {
   "name": "@ies-tools/cli",
   "version": "0.1.0",
-  "description": "Validate, inspect, convert and preview IES photometric files.",
+  "description": "Validate, inspect and convert IES/EULUMDAT files; export charts and preview lighting from the terminal.",
+  "keywords": [
+    "charts",
+    "cli",
+    "conversion",
+    "eulumdat",
+    "ies",
+    "ldt",
+    "lighting",
+    "lm-63",
+    "photometry",
+    "typescript"
+  ],
+  "homepage": "https://ies-tools.ben3d.ca/docs/cli",
+  "bugs": {
+    "url": "https://github.com/bhouston/ies-tools/issues"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

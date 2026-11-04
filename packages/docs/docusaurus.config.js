@@ -4,7 +4,7 @@ const clidocPlugin = require('@clidoc/docusaurus');
 
 module.exports = {
   title: 'ies-tools',
-  tagline: 'See how a luminaire really lights a room.',
+  tagline: 'Preview measured light. Build with photometric data.',
   url: process.env.SITE_URL ?? 'https://ies-tools.ben3d.ca',
   baseUrl: process.env.BASE_URL ?? '/',
   favicon: 'img/icon.png',
@@ -22,13 +22,15 @@ module.exports = {
       },
     ],
   ],
+  themes: [[require.resolve('@easyops-cn/docusaurus-search-local'), { hashed: true, indexBlog: false }]],
   plugins: [[clidocPlugin, { input: 'ies.opencli.json', outputDir: 'docs/cli-reference', basePath: '/cli/reference' }]],
   themeConfig: {
     navbar: {
       title: 'ies-tools',
       logo: { alt: 'ies-tools polar candela chart', src: 'img/icon.png' },
       items: [
-        { to: '/docs/cli/reference', label: 'CLI', position: 'left' },
+        { to: '/docs/quick-start', label: 'Get started', position: 'left' },
+        { to: '/docs/cli', label: 'CLI', position: 'left' },
         { to: '/docs/react', label: 'React', position: 'left' },
         { to: '/docs/light-viewer', label: '<light-viewer>', position: 'left' },
         {

@@ -22,7 +22,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - run: pnpm test --coverage
+      - run: pnpm coverage:report
       - run: pnpm docs:build
+      - name: Include coverage reports and badges
+        run: cp -R coverage packages/docs/build/coverage
       - uses: actions/upload-pages-artifact@v4
         with:
           path: packages/docs/build

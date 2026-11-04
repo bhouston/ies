@@ -1,5 +1,11 @@
 # @ies-tools/viewer
 
+[![npm version](https://img.shields.io/npm/v/@ies-tools/viewer)](https://www.npmjs.com/package/@ies-tools/viewer)
+[![npm downloads per month](https://img.shields.io/npm/dm/@ies-tools/viewer)](https://www.npmjs.com/package/@ies-tools/viewer)
+[![Statement coverage](https://ies-tools.ben3d.ca/coverage/packages/viewer.svg)](https://ies-tools.ben3d.ca/coverage/)
+
+[Documentation](https://ies-tools.ben3d.ca/docs/react) · [npm](https://www.npmjs.com/package/@ies-tools/viewer) · [Issues](https://github.com/bhouston/ies-tools/issues)
+
 Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres; exposure maps 100 lux to linear display value 1 before ACES tone mapping. This is a direct diffuse light preview without indirect light or occlusion simulation.
 
 ![The light viewer: a floodlight lighting the floor and wall, with the beam gizmo, chart tabs and settings button](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/light-viewer.png)
@@ -17,6 +23,7 @@ viewer.load(iesText);
 ```
 
 ```tsx
+import '@ies-tools/viewer/styles.css';
 import { LightViewer, IntensityGraph, IsoluxGraph } from '@ies-tools/viewer/react';
 <LightViewer src="/fixture.ies" exposure={1} onLoad={setProfile} />;
 <IntensityGraph profile={profile} axis="vertical" angle={90} projection="polar" />;
@@ -49,3 +56,7 @@ Set the custom element's `photometryText` (`data`/`iesText` aliases) for raw tex
 The custom element includes a gear-button options panel for back-wall visibility, the beam helper lines, wall/floor distance in meters, tone mapping and exposure. Use `settings-panel="open|closed|hidden"` (default `closed`). The attributes `show-wall="false"`, `helper="false"`, `wall-distance`, `floor-distance`, `tone-mapping` and `exposure` reflect the typed `settings` property. `settingschange` events contain `{ settings, previousSettings }`. Imperative controllers expose `getSettings()` / `setSettings(patch)` and the same event; React exposes corresponding scene props and `onSettingsChange`. Source changes and custom-element reconnections preserve scene settings. See the custom-element documentation for ranges and tone-mapping choices. Add `charts="true"` for tabs with the 3D view followed by polar, Cartesian, topology and isolux charts.
 
 The custom element and React viewer share `ViewerSettingsPanel`, built with React and Tailwind v4. React hosts import `@ies-tools/viewer/styles.css` (compiled CSS), or import `@ies-tools/viewer/styles/viewer.css` from a Tailwind entry. The custom-element bundle inlines the same stylesheet and its bundler entry uses an SSR-safe stylesheet string, with no runtime CSS loader. Theme custom properties inherit across the shadow boundary; the extension maps them to VS Code colors. Standalone controls use dark fallback colors while the Three.js background stays black. `settingsPanel` controls the React overlay (`closed`, `open`, or `hidden`).
+
+## Requirements and help
+
+Use React 19 and Three.js 0.186.x with the bundler entry points. The standalone CDN bundle includes its dependencies. See [a complete React example](https://ies-tools.ben3d.ca/docs/quick-start#show-the-sample-in-react) and [compatibility and troubleshooting](https://ies-tools.ben3d.ca/docs/troubleshooting) for hardware WebGL2, CORS and server rendering guidance.

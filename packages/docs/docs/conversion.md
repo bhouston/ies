@@ -106,3 +106,22 @@ Every configuration stays in `document.source`, and converting LDT to LDT or JSO
 `parseLDT` checks numbers, counts, table sizes, angle order, symmetry layouts and lamp configurations. Problems throw an `LDTParseError` with `code: 'LDT_PARSE_ERROR'` and a source location. Real-world files whose measurements start above 0° are accepted. C-planes must start at 0° and must not repeat 360°.
 
 LDT support follows [DIAL's EULUMDAT format description](https://evo.support-en.dial.de/support/solutions/articles/9000074164-description-of-the-eulumdat-format) and the [DIAL/Lighting Analysts absolute-photometry interpretation](https://www.agi32.com/Downloads/PressReleases/EULUMDAT_Absolute_Photometry.pdf).
+
+## Convert a file and review loss warnings
+
+With Node.js 22+ and `npm install @ies-tools/core`, save this as `convert.mjs` next to the [quick-start sample](./quick-start.md):
+
+```js
+import { readFile, writeFile } from 'node:fs/promises';
+import { parsePhotometry, serializeLDT } from '@ies-tools/core';
+
+const document = parsePhotometry(await readFile('track-light.ies', 'utf8'));
+const result = serializeLDT(document);
+for (const warning of result.warnings) {
+  console.warn(warning.category, warning.code, warning.message);
+}
+// Your application may reject particular warning codes here before saving.
+await writeFile('track-light.ldt', result.value, { flag: 'wx' });
+```
+
+Run `node convert.mjs`. It writes an EULUMDAT file and lists any conversion losses in the terminal. Inspect the result with `ies inspect track-light.ldt`. The exclusive write refuses to overwrite an existing file. For LDT input with multiple lamp sets, first choose the zero-based `lampSetIndex` described above.

@@ -1,4 +1,14 @@
-# ies
+# @ies-tools/cli
+
+[![npm version](https://img.shields.io/npm/v/@ies-tools/cli)](https://www.npmjs.com/package/@ies-tools/cli)
+[![npm downloads per month](https://img.shields.io/npm/dm/@ies-tools/cli)](https://www.npmjs.com/package/@ies-tools/cli)
+[![Statement coverage](https://ies-tools.ben3d.ca/coverage/packages/cli.svg)](https://ies-tools.ben3d.ca/coverage/)
+
+[Documentation](https://ies-tools.ben3d.ca/docs/cli) · [npm](https://www.npmjs.com/package/@ies-tools/cli) · [Issues](https://github.com/bhouston/ies-tools/issues)
+
+Inspect, validate and convert IES/EULUMDAT photometry, export charts, and preview measured light from your terminal. Requires Node.js 22+.
+
+Try the [sample-file quick start](https://ies-tools.ben3d.ca/docs/quick-start#inspect-and-chart-a-file), or follow the [CI validation guide](https://ies-tools.ben3d.ca/docs/automation).
 
 ```sh
 npm install -g @ies-tools/cli
@@ -12,7 +22,7 @@ ies view luminaire.ies --open
 
 `view` bundles the shared `<light-viewer>` locally, serves the chosen file from `127.0.0.1` on a free port and prints the URL. Set `--port 8080` for a fixed port. `--open` launches the system browser. Press Ctrl+C to stop. The local server does not upload files or load scripts from a CDN. Preview requires hardware WebGL2 and Type C photometry.
 
-Run `ies --help` for all commands. No MCP, authentication or cloud download services are included.
+Run `ies --help` for all commands. Files are processed locally, with no account or upload required.
 
 Use `ies validate file.ies --strict --json` to fail on validation warnings. Structured JSON diagnostics include stable codes and severity for parse errors and metadata omissions. `ies inspect` reports declared lamp ratings separately from angularly integrated luminaire flux, efficacy and principal-plane beam/field estimates, followed by downward/upward flux, DFF, LOR (DLOR/ULOR), the CIE flux code, tilt-applied peak and nadir intensity, and a zonal-lumens table. `--json` includes the same fields. Type A/B metrics are explicitly unavailable. LM-63-2019 generation codes are preserved as provenance and never change intensity.
 

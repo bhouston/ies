@@ -12,12 +12,14 @@ This page covers common tasks. The [CLI reference](./cli-reference/ies.md) lists
 
 ## Install
 
-The CLI needs Node.js. Install it globally with npm:
+The CLI needs Node.js 22 or later. Install it globally with npm:
 
 ```sh
 npm install -g @ies-tools/cli
 ies --help
 ```
+
+Try the [sample-file quick start](./quick-start.md#inspect-and-chart-a-file) before using your own files.
 
 Every command takes an `.ies` or `.ldt` file. The format is detected from the extension and content; add `--format ies` or `--format ldt` to override it.
 
@@ -60,7 +62,9 @@ ies validate luminaire.ies --strict --json
 To check a folder of files in a shell:
 
 ```sh
-for f in lights/*.ies; do ies validate "$f" --strict || echo "FAILED: $f"; done
+failed=0
+for f in lights/*.ies; do ies validate "$f" --strict || failed=1; done
+exit "$failed"
 ```
 
 ## Convert a file
@@ -102,7 +106,7 @@ ies render luminaire.ies -o preview.png --width 1600 --height 1000 --exposure 1.
 
 `render` saves a PNG of the light on the floor and wall. It uses Chrome, Edge or a Playwright Chromium already installed on your computer, and doesn't download a browser. To pick one, set `--browser` or the `IES_BROWSER` environment variable to its executable.
 
-`render` only runs on a hardware GPU: software renderers such as SwiftShader are rejected so the image is accurate. Add `--json` to see which GPU was used.
+`render` only runs on a hardware GPU: software renderers such as SwiftShader are rejected. This check establishes the rendering backend; it does not certify photometric accuracy. Add `--json` to see which GPU was used.
 
 ## Export charts
 

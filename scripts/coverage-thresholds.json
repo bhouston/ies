@@ -1,0 +1,7 @@
+{
+  "core": { "statements": 96, "branches": 94, "functions": 97, "lines": 97 },
+  "cli": { "statements": 59, "branches": 69, "functions": 60, "lines": 62 },
+  "viewer": { "statements": 79, "branches": 80, "functions": 85, "lines": 80 },
+  "vscode-extension": { "statements": 96, "branches": 90, "functions": 98, "lines": 97 },
+  "website": { "statements": 0, "branches": 0, "functions": 0, "lines": 0 }
+}
