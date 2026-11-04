@@ -19,13 +19,13 @@ export interface BeamAngles {
   fieldAngleDegrees: number | null;
   beamAngleStatus: BeamAngleStatus;
   fieldAngleStatus: BeamAngleStatus;
-  /** Signed vertical angle of the 50% crossing below the peak (negative = opposite C-plane). Absent when not bracketed. */
+  /** Unwrapped signed cut angle of the 50% crossing below the peak; may pass ±180° at zenith. Absent when not bracketed. */
   beamLeftDegrees?: number;
-  /** Signed vertical angle of the 50% crossing above the peak. Absent when not bracketed. */
+  /** Unwrapped signed cut angle of the 50% crossing above the peak. Absent when not bracketed. */
   beamRightDegrees?: number;
-  /** Signed vertical angle of the 10% crossing below the peak. Absent when not bracketed. */
+  /** Unwrapped signed cut angle of the 10% crossing below the peak. Absent when not bracketed. */
   fieldLeftDegrees?: number;
-  /** Signed vertical angle of the 10% crossing above the peak. Absent when not bracketed. */
+  /** Unwrapped signed cut angle of the 10% crossing above the peak. Absent when not bracketed. */
   fieldRightDegrees?: number;
 }
 
@@ -208,29 +208,44 @@ export function getBeamAngles(profile: IESProfile, horizontalDegrees = 0, tiltDe
   let peakIndex = 0;
   for (let i = 1; i < intensities.length; i++) if (intensities[i]! > intensities[peakIndex]!) peakIndex = i;
   const peak = intensities[peakIndex] ?? 0;
+  // ±180° meet at zenith only when it is measured and the duplicate pole samples agree.
+  const closed = profile.verticalAngles.at(-1) === 180 && intensities[0] === intensities.at(-1);
   const width = (
     fraction: number,
   ): { angle: number | null; status: BeamAngleStatus; left?: number; right?: number } => {
     if (peak <= 0) return { angle: null, status: 'no-light' };
     const threshold = peak * fraction;
     const crossing = (direction: -1 | 1): number | null => {
-      for (let i = peakIndex + direction; i >= 0 && i < intensities.length; i += direction) {
-        const previous = i - direction;
+      let previous = peakIndex;
+      let previousAngle = directions[previous]!;
+      let offset = 0;
+      for (let step = 1; step < intensities.length; step++) {
+        let i = previous + direction;
+        const wrapped = i < 0 || i >= intensities.length;
+        if (wrapped) {
+          if (!closed) return null;
+          // Skip the duplicate zenith and continue in an unwrapped angular domain.
+          i = direction === 1 ? 1 : intensities.length - 2;
+          offset += direction * 360;
+        }
+        const angle = directions[i]! + offset;
         // Positive and negative sides have a gap if the measured range excludes nadir.
-        if (directions[previous]! * directions[i]! < 0 && profile.verticalAngles[0] !== 0) return null;
+        if (!wrapped && directions[previous]! * directions[i]! < 0 && profile.verticalAngles[0] !== 0) return null;
         if (intensities[i]! <= threshold) {
           const t = (threshold - intensities[previous]!) / (intensities[i]! - intensities[previous]!);
-          return directions[previous]! + t * (directions[i]! - directions[previous]!);
+          return previousAngle + t * (angle - previousAngle);
         }
+        previous = i;
+        previousAngle = angle;
       }
       return null;
     };
     const left = crossing(-1);
     const right = crossing(1);
     if (left === null || right === null) return { angle: null, status: 'no-crossing' };
-    if (
-      intensities.some((value, index) => value > threshold && (directions[index]! < left || directions[index]! > right))
-    ) {
+    const outside = (angle: number) =>
+      closed ? (((angle - left) % 360) + 360) % 360 > right - left : angle < left || angle > right;
+    if (intensities.some((value, index) => value > threshold && outside(directions[index]!))) {
       return { angle: null, status: 'multiple-lobes', left, right };
     }
     return { angle: right - left, status: 'ok', left, right };

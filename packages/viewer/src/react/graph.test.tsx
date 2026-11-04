@@ -189,6 +189,17 @@ ${vertical.map((v) => 1000 * Math.cos((v * Math.PI) / 180) ** 2).join(' ')}
       expect(partial).not.toContain('data-marker="field"');
     }
   });
+  it('keeps wrapped uplight crossing markers inside the Cartesian plot', () => {
+    const uplight = parseIES(
+      'IESNA:LM-63-2002\nTILT=NONE\n1 1000 1 5 1 1 2 0 0 0\n1 1 10\n0 90 120 150 180\n0\n0 0 10 50 100\n',
+    );
+    const markup = renderToStaticMarkup(createElement(IntensityGraph, { profile: uplight, projection: 'cartesian' }));
+    const angles = [...markup.matchAll(/data-marker="beam" data-angle="([^"]+)"/g)].map((match) => Number(match[1]));
+    expect(angles).toEqual([150, -150]);
+    const paths = [...markup.matchAll(/data-marker="beam"[^>]*d="M([\d.]+) /g)].map((match) => Number(match[1]));
+    expect(paths).toHaveLength(2);
+    expect(paths.every((x) => x >= 72 && x <= 472)).toBe(true);
+  });
   it('puts log Cartesian ticks on 1-2-5 values and keeps dark profiles finite', () => {
     const cartesian = renderToStaticMarkup(
       createElement(IntensityGraph, { profile, projection: 'cartesian', logScale: true }),
