@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { IESParseError, parseIES, sampleIntensity, summarizeIES } from './index.js';
+import { getPhotometricTypeSupport, IESParseError, parseIES, sampleIntensity, summarizeIES } from './index.js';
 
 function source(
   options: {
@@ -137,6 +137,22 @@ describe('sampleIntensity', () => {
   it('parses Type B metadata but rejects sampling unsupported coordinate systems', () => {
     const profile = parseIES(source({ type: 2, vertical: [-90, 0, 90] }));
     expect(() => sampleIntensity(profile, 0, 0)).toThrow('Type C');
+  });
+  it('reports photometric type support for hosts deciding whether to preview', () => {
+    expect(getPhotometricTypeSupport(parseIES(source()))).toEqual({ supported: true });
+    for (const [type, name] of [
+      [2, 'Type B'],
+      [3, 'Type A'],
+    ] as const) {
+      const profile = parseIES(source({ type, vertical: [-90, 0, 90] }));
+      expect(getPhotometricTypeSupport(profile)).toEqual({
+        supported: false,
+        code: 'IES_UNSUPPORTED_COORDINATES',
+        photometricType: type,
+        message: expect.stringContaining(`${name} coordinates`),
+      });
+      expect(summarizeIES(profile).photometricType).toBe(type);
+    }
   });
   it('rejects non-finite sample angles', () =>
     expect(() => sampleIntensity(parseIES(source()), NaN, 0)).toThrow(RangeError));

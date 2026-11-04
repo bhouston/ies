@@ -4,8 +4,11 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "composite": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
+  "references": [{ "path": "../core" }],
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "dist", "node_modules"]
 }
