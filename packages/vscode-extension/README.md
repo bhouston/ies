@@ -1,7 +1,5 @@
 # IES and LDT Light Viewer for VS Code
 
-Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension) or [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension), or run `code --install-extension benhouston3d.ies-vscode-extension`. Requires VS Code 1.85+; the 3D preview requires hardware WebGL2.
-
 **An IES & EULUMDAT Viewer, Inspector, and Syntax Highlighter.**
 
 See how a luminaire distributes light without leaving VS Code. Open an IES or EULUMDAT file to preview its measured light on a floor and back wall, inspect its photometric properties, and check for data issues.
@@ -15,6 +13,8 @@ Install **IES and LDT Light Viewer** from the [Visual Studio Marketplace](https:
 ```sh
 code --install-extension benhouston3d.ies-vscode-extension
 ```
+
+Requires VS Code 1.85 or later. The 3D preview needs hardware WebGL2.
 
 ## Features
 
