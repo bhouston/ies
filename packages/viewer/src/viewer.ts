@@ -38,6 +38,16 @@ export interface LightViewerOptions extends Partial<ViewerSettings> {
   /** Legacy alias for floorDistance. The explicit floorDistance setting takes precedence. */
   height?: number;
 }
+export interface LightViewerCaptureOptions {
+  /** Image MIME type: `image/png` (default), `image/jpeg` or `image/webp`. */
+  type?: string;
+  /** JPEG/WebP quality from 0 to 1; the browser's default when omitted. */
+  quality?: number;
+  /** Output width in pixels; defaults to the canvas's current drawing-buffer width. */
+  width?: number;
+  /** Output height in pixels; defaults to the canvas's current drawing-buffer height. */
+  height?: number;
+}
 export interface LightViewerController {
   /** Remove loaded photometry while preserving the camera and viewer settings. */
   clear(): void;
@@ -52,6 +62,12 @@ export interface LightViewerController {
   setSettings(patch: Partial<ViewerSettings>): void;
   addEventListener(type: 'settingschange', listener: ViewerSettingsListener): void;
   removeEventListener(type: 'settingschange', listener: ViewerSettingsListener): void;
+  /**
+   * Render the current scene and settings and encode it. The image holds only the opaque 3D scene: no legend,
+   * ruler labels, controls or charts. Rejects if the viewer is disposed, the WebGL context is lost, the options
+   * are invalid or encoding fails. `blob.type` is the format the browser actually produced (PNG if unsupported).
+   */
+  capture(options?: LightViewerCaptureOptions): Promise<Blob>;
   dispose(): void;
   readonly renderer: THREE.WebGLRenderer;
 }
@@ -289,6 +305,49 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     },
     setExposure(exposure) {
       this.setSettings({ autoExposure: false, exposure });
+    },
+    capture({ type = 'image/png', quality, width, height } = {}) {
+      if (disposed) return Promise.reject(new Error('Viewer has been disposed'));
+      if (renderer.getContext().isContextLost()) return Promise.reject(new Error('The WebGL context was lost'));
+      const max = renderer.capabilities.maxTextureSize;
+      const sized = width !== undefined || height !== undefined;
+      const canvas = renderer.domElement;
+      const w = width ?? canvas.width;
+      const h = height ?? canvas.height;
+      if (![w, h].every((value) => Number.isInteger(value) && value >= 1 && value <= max))
+        return Promise.reject(new RangeError(`Capture width and height must be integers from 1 to ${max}`));
+      if (quality !== undefined && !(quality >= 0 && quality <= 1))
+        return Promise.reject(new RangeError('Capture quality must be from 0 to 1'));
+      const pixelRatio = renderer.getPixelRatio();
+      if (sized) {
+        renderer.setPixelRatio(1);
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        for (const line of rulerSegments(objects)) line.material.resolution.set(w, h);
+        objects.glare.material.uniforms.resolution!.value.set(w, h);
+      }
+      // The browser may silently allocate a smaller drawing buffer than requested when memory is short.
+      const gl = renderer.getContext();
+      if (sized && (gl.drawingBufferWidth !== w || gl.drawingBufferHeight !== h)) {
+        renderer.setPixelRatio(pixelRatio);
+        resize();
+        return Promise.reject(new RangeError(`The GPU could not allocate a ${w}×${h} capture`));
+      }
+      // toBlob snapshots the drawing buffer synchronously, so it must run in the same task as the render.
+      renderer.render(scene, camera);
+      const blob = new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (result) => (result ? resolve(result) : reject(new Error('The browser could not encode the capture'))),
+          type,
+          quality,
+        ),
+      );
+      if (sized) {
+        renderer.setPixelRatio(pixelRatio);
+        resize();
+      }
+      return blob;
     },
     dispose() {
       if (disposed) return;

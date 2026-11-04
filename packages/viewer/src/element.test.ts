@@ -15,6 +15,8 @@ const controllers: {
   setDocument: ReturnType<typeof vi.fn>;
   setSettings: ReturnType<typeof vi.fn>;
   dispose: ReturnType<typeof vi.fn>;
+  capture: ReturnType<typeof vi.fn>;
+  renderer: { domElement: HTMLCanvasElement };
   /** Simulate a viewer-originated change, such as dragging the light. */
   drag: (patch: Partial<ViewerSettings>) => void;
 }[] = [];
@@ -23,7 +25,9 @@ const flush = async () => {
     for (let i = 0; i < 12; i++) await Promise.resolve();
   });
 };
+let lost = false;
 beforeEach(() => {
+  lost = false;
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   controllers.length = 0;
   mocks.createLightViewer.mockImplementation((_host: HTMLElement, options: Partial<ViewerSettings>) => {
@@ -37,6 +41,8 @@ beforeEach(() => {
       }),
       getSettings: () => ({ ...settings }),
       dispose: vi.fn(),
+      renderer: { domElement: document.createElement('canvas'), getContext: () => ({ isContextLost: () => lost }) },
+      capture: vi.fn(async () => new Blob(['png'], { type: 'image/png' })),
       addEventListener: (type: string, listener: EventListener) => events.addEventListener(type, listener),
       drag: (patch: Partial<ViewerSettings>) => {
         const previousSettings = settings;
@@ -76,6 +82,85 @@ function changeNumber(viewer: LightViewerElement, name: string, value: string) {
     target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
   });
 }
+
+describe('light-viewer readiness and capture', () => {
+  it('rejects before connection and on disconnection', async () => {
+    const viewer = element();
+    await expect(viewer.whenReady()).rejects.toThrow('not connected');
+    let complete!: (value: unknown) => void;
+    vi.stubGlobal('fetch', () => new Promise((resolve) => (complete = resolve)));
+    viewer.setAttribute('src', '/slow.ies');
+    mount(viewer);
+    const ready = viewer.whenReady();
+    await flush();
+    act(() => viewer.remove());
+    await expect(ready).rejects.toThrow('disconnected');
+    complete({ ok: true, text: async () => iesSource() });
+  });
+  it('follows source changes and resolves after the latest one renders', async () => {
+    const resolvers: ((value: unknown) => void)[] = [];
+    vi.stubGlobal('fetch', () => new Promise((resolve) => resolvers.push(resolve)));
+    const viewer = mount(element());
+    viewer.setAttribute('src', '/a.ies');
+    const ready = viewer.whenReady();
+    await flush();
+    expect(resolvers).toHaveLength(1);
+    viewer.setAttribute('src', '/b.ies');
+    let done = false;
+    void ready.then(() => (done = true));
+    await flush();
+    resolvers[0]!({ ok: true, text: async () => iesSource() });
+    await flush();
+    expect(done).toBe(false);
+    resolvers[1]!({ ok: true, text: async () => iesSource() });
+    await ready;
+    expect(controllers[0]!.setDocument).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ['network', () => vi.stubGlobal('fetch', async () => ({ ok: false, status: 500 })), 'HTTP 500'],
+    ['parse', () => vi.stubGlobal('fetch', async () => ({ ok: true, text: async () => 'not photometry' })), ''],
+  ])('rejects %s failures and capture with them', async (_name, setup, message) => {
+    setup();
+    const viewer = element();
+    viewer.setAttribute('errors', 'silent');
+    viewer.setAttribute('src', '/x.ies');
+    mount(viewer);
+    await expect(viewer.whenReady()).rejects.toThrow(message);
+    await expect(viewer.toBlob()).rejects.toThrow(message);
+    expect(controllers[0]!.capture).not.toHaveBeenCalled();
+  });
+  it('rejects unsupported types, context loss, and passes capture options through', async () => {
+    const viewer = element();
+    viewer.setAttribute('errors', 'silent');
+    viewer.photometryText = iesSource();
+    mount(viewer);
+    controllers[0]!.setDocument.mockImplementationOnce(() => {
+      throw new Error('Type C photometry only');
+    });
+    viewer.photometryText = iesSource();
+    await expect(viewer.whenReady()).rejects.toThrow('Type C');
+    viewer.photometryText = iesSource();
+    const blob = await viewer.toBlob({ type: 'image/webp', width: 64, height: 32 });
+    expect(blob.type).toBe('image/png');
+    expect(controllers[0]!.capture).toHaveBeenCalledWith({ type: 'image/webp', width: 64, height: 32 });
+    lost = true;
+    await expect(viewer.whenReady()).rejects.toThrow('context was lost');
+    lost = false;
+    viewer.photometryText = iesSource();
+    const pending = viewer.whenReady();
+    controllers[0]!.renderer.domElement.dispatchEvent(new Event('webglcontextlost'));
+    await expect(pending).rejects.toThrow('context was lost');
+  });
+  it('resolves an empty viewer immediately and rejects a failed GPU start', async () => {
+    await mount(element()).whenReady();
+    mocks.createLightViewer.mockImplementationOnce(() => {
+      throw new Error('no WebGL2');
+    });
+    const viewer = element();
+    viewer.setAttribute('errors', 'silent');
+    await expect(mount(viewer).whenReady()).rejects.toThrow('no WebGL2');
+  });
+});
 
 describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () => {
   it.each(['document', 'src'] as const)('clears the scene and chart when its %s source is removed', async (source) => {
