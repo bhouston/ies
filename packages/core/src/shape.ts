@@ -47,12 +47,15 @@ const same = (a: number, b: number) => Math.abs(Math.abs(a) - Math.abs(b)) <= 1e
 
 /**
  * Classify signed IES luminous-opening dimensions (negative values describe round shapes).
- * `units` is the IES units type of the dimensions; the result is always in metres. Sign combinations
- * outside Table 1 fall back to a rectangle (or box) of their absolute extents.
+ * `units` is the IES units type of the dimensions; the result is always in metres. `version` is the
+ * profile's `version` (for example `LM-63-1995`); LM-63-1986/1991/1995 files use the older sign
+ * encodings that Radiance ies2rad decodes, and anything else uses Table 1. Sign combinations outside
+ * the encodings fall back to a rectangle (or box) of their absolute extents.
  */
 export function luminousShape(
   dimensions: { width: number; length: number; height: number },
   units: 'feet' | 'meters' = 'meters',
+  version?: string,
 ): LuminousShape {
   const scale = units === 'feet' ? 0.3048 : 1;
   const { width: w, length: l, height: h } = dimensions;
@@ -63,7 +66,33 @@ export function luminousShape(
     axis,
     ...size,
   });
-  switch (sign(w) + sign(l) + sign(h)) {
+  const key = sign(w) + sign(l) + sign(h);
+  // Pre-2002 encodings, per ies2rad makeiesshape (signs below are width, length, height).
+  if (version === 'LM-63-1995')
+    switch (key) {
+      case '-0-': // Sphere of diameter |width|.
+        return same(w, h)
+          ? { ...shape('sphere', 'ellipsoid'), length: size.width }
+          : { ...shape('ellipsoidal-spheroid', 'ellipsoid'), length: size.width };
+      case '0+-': // Horizontal cylinder along length, diameter |height|.
+        return { ...shape('horizontal-cylinder-along-length', 'cylinder', 'x'), width: size.height };
+      case '+0-': // Horizontal cylinder along width, diameter |height|.
+        return { ...shape('horizontal-cylinder-along-width', 'cylinder', 'z'), length: size.height };
+      case '-++':
+      case '+-+':
+        return shape('vertical-ellipsoidal-cylinder', 'cylinder');
+      case '-+-':
+      case '+--':
+        return shape('ellipsoidal-spheroid', 'ellipsoid');
+    }
+  if (version === 'LM-63-1986' || version === 'LM-63-1991')
+    switch (key) {
+      case '-+0':
+        return shape('ellipse', 'cylinder');
+      case '-++':
+        return shape('ellipsoidal-spheroid', 'ellipsoid');
+    }
+  switch (key) {
     case '000':
       return shape('point', 'ellipsoid');
     case '++0':
@@ -92,9 +121,8 @@ export function luminousShape(
       return shape(same(w, h) ? 'vertical-circle-facing-length' : 'vertical-ellipse-facing-length', 'cylinder', 'x');
     case '0--':
       return shape(same(l, h) ? 'vertical-circle-facing-width' : 'vertical-ellipse-facing-width', 'cylinder', 'z');
-    // LM-63-1986/1991/1995 (and this package's LDT conversion) write a circle as one negative diameter
-    // with the other side zero. ponytail: the version is not passed in, so a 1995 sphere (-D, 0, -D per ies2rad) reads
-    // as the 2002+ vertical circle; pass the file version if pre-2002 spheres ever show up.
+    // LM-63-1986/1991/1995 write a circle as one negative diameter with the other side zero; accepted
+    // in any version, since such 2002+ files exist (ies2rad does the same).
     case '-00':
     case '-0+':
     case '0-0':

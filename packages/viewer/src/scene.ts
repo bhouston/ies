@@ -453,7 +453,7 @@ export function fixtureGeometry({ solid, axis, width, length, height }: Luminous
 export function setLightSceneProfile(objects: LightScene, profile: IESProfile | undefined, settings: ViewerSettings) {
   const distribution = profile ? createCandelaTexture(profile) : blankTexture();
   const shape = displayedShape(
-    luminousShape(profile?.dimensions ?? { width: 0, length: 0, height: 0 }, profile?.units),
+    luminousShape(profile?.dimensions ?? { width: 0, length: 0, height: 0 }, profile?.units, profile?.version),
   );
   objects.uniforms.distribution.value.dispose();
   objects.uniforms.distribution.value = distribution;
