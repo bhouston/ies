@@ -76,6 +76,35 @@ describe('shared React viewer controls', () => {
     expect(html).toContain('name="toneMapping"');
     expect(html).not.toContain('background:#');
   });
+  it('disables exposure and tone mapping in measurement view, where false colours bypass them', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    const panel = (viewMode: ViewerSettings['viewMode']) =>
+      act(async () =>
+        root!.render(
+          <ViewerSettingsPanel
+            settings={{ ...DEFAULT_VIEWER_SETTINGS, autoExposure: false, viewMode }}
+            mode="open"
+            onChange={() => {}}
+            onModeChange={() => {}}
+          />,
+        ),
+      );
+    const controls = () =>
+      ['autoExposure', 'exposure', 'toneMapping'].map((name) => container.querySelector(`[name="${name}"]`)!);
+    await panel('measurement');
+    for (const control of controls()) {
+      expect(control.hasAttribute('disabled')).toBe(true);
+      // The title is the accessible description: none of these is labelled by it.
+      expect(control.getAttribute('title')).toBe('Not used in measurement view');
+    }
+    await panel('realistic');
+    for (const control of controls()) {
+      expect(control.hasAttribute('disabled')).toBe(false);
+      expect(control.getAttribute('title')).not.toBe('Not used in measurement view');
+    }
+  });
   it('uses one GPU controller and preserves panel settings while changing source data', async () => {
     let settings: ViewerSettings = { ...DEFAULT_VIEWER_SETTINGS };
     const events = new EventTarget();

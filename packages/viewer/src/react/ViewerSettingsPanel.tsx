@@ -71,6 +71,9 @@ export function ViewerSettingsPanel({
   // Distances are stored in metres; imperial inputs show feet rounded to hundredths.
   const shownLength = (meters: number) =>
     settings.units === 'imperial' ? Number(lengthInUnits(meters, 'imperial').toFixed(2)) : meters;
+  // False colours bypass exposure and tone mapping, so those controls stay visible but inert while measuring.
+  const measuring = settings.viewMode === 'measurement';
+  const unused = measuring ? 'Not used in measurement view' : undefined;
   const toggles = [
     ['viewMode', 'View mode', VIEW_MODE_OPTIONS],
     ['units', 'Units', UNITS_OPTIONS],
@@ -194,7 +197,9 @@ export function ViewerSettingsPanel({
               name="autoExposure"
               type="checkbox"
               checked={settings.autoExposure}
-              className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={measuring}
+              title={unused}
+              className="size-4 accent-primary disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-ring"
               onChange={(event) => change({ autoExposure: event.currentTarget.checked })}
             />
             Auto exposure
@@ -207,8 +212,8 @@ export function ViewerSettingsPanel({
               min={-6}
               max={20}
               step="0.1"
-              disabled={settings.autoExposure}
-              title="Camera exposure value at ISO 100 (EV100)"
+              disabled={settings.autoExposure || measuring}
+              title={unused ?? 'Camera exposure value at ISO 100 (EV100)'}
               value={Number(settings.exposure.toFixed(1))}
               className={`w-20 disabled:opacity-60 ${control}`}
               onChange={(event) => change({ exposure: event.currentTarget.valueAsNumber })}
@@ -237,7 +242,9 @@ export function ViewerSettingsPanel({
           <select
             name="toneMapping"
             value={settings.toneMapping}
-            className={`w-36 ${control}`}
+            disabled={measuring}
+            title={unused}
+            className={`w-36 disabled:opacity-60 ${control}`}
             onChange={(event) => change({ toneMapping: event.currentTarget.value as ViewerSettings['toneMapping'] })}
           >
             {TONE_MAPPING_OPTIONS.map((option) => (

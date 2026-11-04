@@ -55,7 +55,7 @@ export function ChartTabs({ tab, onTabChange, profile, mountingHeight }: ChartTa
       {tab !== '3d' && (
         <div
           role="tabpanel"
-          className="pointer-events-auto absolute inset-x-0 top-10 bottom-0 grid place-items-center overflow-auto bg-background p-3"
+          className="pointer-events-auto absolute inset-x-0 top-10 bottom-0 grid place-items-center overflow-auto bg-background p-3 text-foreground"
         >
           {!profile ? (
             <p className="text-muted-foreground">Loading photometry…</p>
