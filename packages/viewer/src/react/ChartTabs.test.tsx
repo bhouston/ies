@@ -44,10 +44,12 @@ describe('ChartTabs log-scale toggle', () => {
     await act(async () => checkbox()!.click());
     expect(title()).not.toContain('log scale');
   });
-  it('draws the toggle label in the viewer foreground colour, not the host page text colour', async () => {
+  it('draws the toggle on its own themed surface, readable over the fixed dark chart in any theme', async () => {
     await show('cartesian');
-    // The label sets no colour of its own; the panel must, or it inherits e.g. black text on the dark chart.
-    expect(document.querySelector('[role="tabpanel"]')!.className).toMatch(/\btext-foreground\b/);
+    // Theme foreground alone is dark in light themes, i.e. dark on the dark chart; pair it with the card surface.
+    const label = checkbox()!.closest('label')!.className;
+    expect(label).toMatch(/\bbg-card\b/);
+    expect(label).toMatch(/\btext-card-foreground\b/);
   });
   it('hides the toggle where it does not apply', async () => {
     await show('topology');
