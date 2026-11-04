@@ -473,7 +473,11 @@ export {
   lengthInUnits,
   lengthUnit,
   peakReceiverIlluminance,
+  peakReceiverLuminance,
   rulerTicks,
+  saturationLuminance,
+  autoExposureValue,
+  AUTO_EXPOSURE_PEAK,
 } from './measurement.js';
 export type { IlluminanceLegend, MeasurementUnits, RulerTick } from './measurement.js';
 export { luminousShape, projectedLuminousArea } from './shape.js';

@@ -22,7 +22,6 @@ function App() {
   const loadRevision = useRef(0);
   const [name, setName] = useState('No file selected');
   const [error, setError] = useState('');
-  const [exposure, setExposure] = useState(1);
   const load = async (file?: File) => {
     if (!file) return;
     const revision = ++loadRevision.current;
@@ -93,24 +92,12 @@ function App() {
             </select>
           </label>
         )}
-        <label>
-          Exposure{' '}
-          <input
-            type="range"
-            min="0.1"
-            max="10"
-            step="0.1"
-            value={exposure}
-            onChange={(event) => setExposure(Number(event.target.value))}
-          />
-        </label>
       </section>
       {error && <p role="alert">{error}</p>}
       <div className="workspace">
         <section className="scene">
           <LightViewer
             document={photometry}
-            exposure={exposure}
             style={{ height: '100%', minHeight: 520 }}
             onError={(reason) => setError(reason.message)}
           />

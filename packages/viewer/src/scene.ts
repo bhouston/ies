@@ -7,6 +7,7 @@ import {
   formatLength,
   luminousShape,
   rulerTicks,
+  saturationLuminance,
   type IESProfile,
   type IlluminanceLegend,
   type LuminousShape,
@@ -39,7 +40,8 @@ export function createLightScene(settings: ViewerSettings) {
     distribution: { value: blankTexture() },
     lightColor: { value: temperatureColor(DEFAULT_COLOR_TEMPERATURE) },
     lightPosition: { value: new THREE.Vector3(0, settings.floorDistance, 0) },
-    exposure: { value: settings.exposure },
+    /** 1 / saturation luminance of the EV100 exposure: displayed value per cd/m². */
+    exposure: { value: 1 / saturationLuminance(settings.exposure) },
     // Measurement mode: log ramp from rampPeak / 10^rampDecades to rampPeak lux, with isolux lines.
     rampPeak: { value: 1 },
     rampDecades: { value: 3 },
@@ -72,9 +74,9 @@ export function createLightScene(settings: ViewerSettings) {
           // False colours are already sRGB: no tone mapping or colour-space conversion.
           gl_FragColor=vec4(mix(color,vec3(1.),line*.8),1.);
         #else
-          // Diffuse luminance L = reflectance * E / pi; exposure 1 displays 10 cd/m2 as 1.
+          // Diffuse luminance L = reflectance * E / pi, displayed as L / L_max of the EV100 exposure.
           float reflectance=n.y>.5?${FLOOR_REFLECTANCE.toFixed(2)}:${WALL_REFLECTANCE.toFixed(2)};
-          gl_FragColor=vec4(lightColor*(reflectance*lux/3.14159265359*exposure/10.),1.);
+          gl_FragColor=vec4(lightColor*(reflectance*lux/3.14159265359*exposure),1.);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
         #endif
@@ -91,7 +93,7 @@ export function createLightScene(settings: ViewerSettings) {
     lightColor: uniforms.lightColor,
     exposure: uniforms.exposure,
   };
-  // The opening's average luminance toward the camera, scaled like a white Lambertian receiver (L = E/π).
+  // The opening's average luminance toward the camera, at the same camera exposure as the receivers.
   const fixture = new THREE.Mesh(
     fixtureGeometry(displayedShape(luminousShape({ width: 0, length: 0, height: 0 }))),
     new THREE.ShaderMaterial({
@@ -102,7 +104,7 @@ export function createLightScene(settings: ViewerSettings) {
       void main() { vec3 d=normalize(cameraPosition-worldPosition); float theta=acos(clamp(-d.y,-1.,1.));
         float phi=0.; if(length(d.xz)>0.000001) phi=atan(d.z,d.x); if(phi<0.) phi+=6.28318530718;
         vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
-        gl_FragColor=vec4(lightColor*(texture2D(luminanceMap,uv).r*3.14159265359*exposure/100.),1.);
+        gl_FragColor=vec4(lightColor*(texture2D(luminanceMap,uv).r*exposure),1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
@@ -186,7 +188,7 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   objects.solid.scale.setScalar(settings.floorDistance / 2);
   objects.solid.visible = settings.photometricSolid && objects.cutoff !== undefined;
   objects.uniforms.lightPosition.value.copy(light);
-  objects.uniforms.exposure.value = settings.exposure;
+  objects.uniforms.exposure.value = 1 / saturationLuminance(settings.exposure);
   const measurement = settings.viewMode === 'measurement';
   if (measurement !== 'MEASUREMENT' in objects.material.defines) {
     if (measurement) objects.material.defines.MEASUREMENT = '';

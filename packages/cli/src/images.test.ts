@@ -142,7 +142,7 @@ describe('image command arguments', () => {
     ['chart', [fixture, '-o', 'x.jpg']],
     ['render', [fixture, '-o', 'x.png', '--width', '1.5']],
     ['render', [fixture, '-o', 'x.png', '--height', '0']],
-    ['render', [fixture, '-o', 'x.png', '--exposure', '-1']],
+    ['render', [fixture, '-o', 'x.png', '--exposure', '21']],
     ['render', [fixture, '-o', 'x.png', '--timeout', '0']],
     ['render', [fixture, '-o', 'x.png', '--width', 'NaN']],
     ['chart', [fixture, '-o', 'x.svg', '--type', 'unknown']],
@@ -175,7 +175,7 @@ describe('image command arguments', () => {
     [{ upAxis: 'w' }, 'Up axis'],
     [{ colorScale: 'cubic' }, 'Colour scale'],
     [{ timeout: 601 }, 'Timeout'],
-    [{ exposure: -1 }, 'Exposure'],
+    [{ exposure: -7 }, 'Exposure'],
     [{ angle: Infinity }, 'finite number'],
   ])('validates %j without relying on yargs choices', (extra, message) =>
     expect(() => imageOptions('chart', { file: fixture, output: 'x.svg', ...extra })).toThrow(message),

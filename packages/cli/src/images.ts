@@ -54,7 +54,8 @@ export function imageOptions(command: 'render' | 'chart', argv: ImageArguments):
     options.width ?? (command === 'chart' ? 900 : 1024),
     options.height ?? (command === 'chart' ? 700 : 768),
   );
-  if (options.exposure !== undefined && options.exposure < 0) throw new Error('Exposure must be nonnegative');
+  if (options.exposure !== undefined && (options.exposure < -6 || options.exposure > 20))
+    throw new Error('Exposure must be an EV100 from -6 to 20');
   if (options.timeout !== undefined && (options.timeout <= 0 || options.timeout > 600))
     throw new Error('Timeout must be between 0 and 600 seconds');
   if (options.type !== undefined && !(CHART_TYPES as readonly string[]).includes(options.type))

@@ -45,7 +45,7 @@ export function Photometry() {
         }}
       />
       {error && <p role="alert">{error}</p>}
-      {document && <LightViewer document={document} exposure={1} onError={console.error} />}
+      {document && <LightViewer document={document} onError={console.error} />}
       {profile && <IntensityGraph profile={profile} projection="topology" upAxis="y" />}
     </>
   );
@@ -88,7 +88,8 @@ These props set the scene. They update the view without reloading the file.
 | `floorDistance`    | Height of the light above the floor in metres                                | `2`         |
 | `lightOffset`      | Sideways position of the light along the wall in metres, −100 to 100         | `0`         |
 | `toneMapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`           | `aces`      |
-| `exposure`         | Display brightness, 0 or above                                               | `1`         |
+| `autoExposure`     | Meter the exposure from the brightest floor or wall point                    | `true`      |
+| `exposure`         | Camera exposure in EV100, −6 to 20, when `autoExposure` is `false`           | `6`         |
 | `helper`           | Blue lines showing the beam's extent                                         | `true`      |
 | `photometricSolid` | Amber 3D shape of the candela distribution                                   | `false`     |
 | `rulers`           | Floor distance rulers and the mounting height                                | `true`      |

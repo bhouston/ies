@@ -101,10 +101,10 @@ The preview has the same 3D view, settings and chart tabs as [`<light-viewer>`](
 ## Render an image
 
 ```sh
-ies render luminaire.ies -o preview.png --width 1600 --height 1000 --exposure 1.5
+ies render luminaire.ies -o preview.png --width 1600 --height 1000
 ```
 
-`render` saves a PNG of the light on the floor and wall. It uses Chrome, Edge or a Playwright Chromium already installed on your computer, and doesn't download a browser. To pick one, set `--browser` or the `IES_BROWSER` environment variable to its executable.
+`render` saves a PNG of the light on the floor and wall, auto-exposed like the [viewer](./light-viewer.mdx#exposure). Add `--exposure 7` for a fixed camera exposure in EV100 (−6 to 20; +1 halves the brightness). It uses Chrome, Edge or a Playwright Chromium already installed on your computer, and doesn't download a browser. To pick one, set `--browser` or the `IES_BROWSER` environment variable to its executable.
 
 `render` only runs on a hardware GPU: software renderers such as SwiftShader are rejected. This check establishes the rendering backend; it does not certify photometric accuracy. Add `--json` to see which GPU was used.
 

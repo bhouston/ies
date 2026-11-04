@@ -9,7 +9,11 @@ import {
   lengthFromUnits,
   lengthInUnits,
   peakReceiverIlluminance,
+  peakReceiverLuminance,
   rulerTicks,
+  saturationLuminance,
+  autoExposureValue,
+  AUTO_EXPOSURE_PEAK,
 } from './measurement.js';
 
 describe('measurement units', () => {
@@ -57,6 +61,26 @@ describe('peak receiver illuminance', () => {
     const sideways = parseIES(iesSource({ vertical: [0, 89, 90, 180], values: [[0, 0, 100, 0]] }));
     expect(peakReceiverIlluminance(sideways, 2)).toBeCloseTo(0, 9);
     expect(peakReceiverIlluminance(sideways, 2, 1)).toBeCloseTo(100, 9);
+  });
+  it('weights each surface by its reflectance for peak luminance', () => {
+    const profile = parseIES(iesSource());
+    // Floor 25 lx at ρ 0.3 versus wall 100/16 lx at ρ 0.6 (wall 4 m away): the floor wins.
+    expect(peakReceiverLuminance(profile, 2, 4, 0.3, 0.6)).toBeCloseTo((0.3 * 25) / Math.PI, 9);
+    // Wall 1 m away: 100 lx at ρ 0.6.
+    expect(peakReceiverLuminance(profile, 2, 1, 0.3, 0.6)).toBeCloseTo((0.6 * 100) / Math.PI, 9);
+  });
+});
+
+describe('exposure', () => {
+  it('uses the saturation-based EV100 mapping, halving brightness per stop', () => {
+    expect(saturationLuminance(0)).toBeCloseTo(78 / 65, 12);
+    expect(saturationLuminance(7) / saturationLuminance(6)).toBe(2);
+  });
+  it('meters the peak luminance onto the tone curve shoulder, to 0.1 EV', () => {
+    const ev = autoExposureValue(1000);
+    expect(ev * 10).toBe(Math.round(ev * 10));
+    expect(1000 / saturationLuminance(ev)).toBeCloseTo(AUTO_EXPOSURE_PEAK, 0);
+    expect(autoExposureValue(2000) - ev).toBeCloseTo(1, 1);
   });
 });
 

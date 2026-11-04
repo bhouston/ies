@@ -3,7 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   illuminanceLegend,
   parsePhotometry,
+  autoExposureValue,
   peakReceiverIlluminance,
+  peakReceiverLuminance,
   toPhotometricDocument,
   type IESProfile,
   type PhotometricDocument,
@@ -18,6 +20,8 @@ import {
   disposeLightScene,
   fitDistanceChange,
   applyIlluminanceLegend,
+  FLOOR_REFLECTANCE,
+  WALL_REFLECTANCE,
   rulerSegments,
   setLightSceneProfile,
   TONE_MAPPING,
@@ -42,6 +46,7 @@ export interface LightViewerController {
   load(text: string, format?: PhotometryFormat, options?: { lampSetIndex?: number }): IESProfile;
   loadDocument(text: string, format?: PhotometryFormat, options?: { lampSetIndex?: number }): PhotometricDocument;
   readonly document: PhotometricDocument | undefined;
+  /** Set a manual EV100 exposure, turning auto exposure off. */
   setExposure(exposure: number): void;
   getSettings(): ViewerSettings;
   setSettings(patch: Partial<ViewerSettings>): void;
@@ -110,15 +115,17 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   let disposed = false;
   let document: PhotometricDocument | undefined;
   let peak: number | undefined;
-  const updatePeak = () => {
-    peak =
+  let peakLuminance: number | undefined;
+  const updatePeak = (next: ViewerSettings) => {
+    const wall = next.showWall ? next.wallDistance : undefined;
+    peak = document && peakReceiverIlluminance(document.profile, next.floorDistance, wall);
+    peakLuminance =
       document &&
-      peakReceiverIlluminance(
-        document.profile,
-        settings.floorDistance,
-        settings.showWall ? settings.wallDistance : undefined,
-      );
+      peakReceiverLuminance(document.profile, next.floorDistance, wall, FLOOR_REFLECTANCE, WALL_REFLECTANCE);
   };
+  // Auto exposure is a camera meter: it sets EV100 from the brightest receiver, never relative values.
+  const metered = (next: ViewerSettings): ViewerSettings =>
+    next.autoExposure && peakLuminance ? { ...next, exposure: autoExposureValue(peakLuminance) } : next;
   const updateLegend = () => {
     const scale = peak === undefined ? undefined : illuminanceLegend(peak, settings.units);
     applyIlluminanceLegend(objects, scale);
@@ -198,13 +205,21 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     uniforms.lightColor.value.copy(temperatureColor(documentColorTemperature(next)));
     setLightSceneProfile(objects, profile, settings);
     document = next;
-    updatePeak();
+    updatePeak(settings);
     updateLegend();
+    update({}, false);
     render();
   };
   /** Apply settings; `fit` reframes the camera for new distances, which drags skip. */
   const update = (patch: Partial<ViewerSettings>, fit: boolean) => {
-    const next = resolveViewerSettings(patch, settings);
+    let next = resolveViewerSettings(patch, settings);
+    if (
+      next.floorDistance !== settings.floorDistance ||
+      next.wallDistance !== settings.wallDistance ||
+      next.showWall !== settings.showWall
+    )
+      updatePeak(next);
+    next = metered(next);
     if (settingsEqual(settings, next)) return;
     const previousSettings = { ...settings };
     // Typed wall distances keep the light in place and move the wall; drags keep the wall in place.
@@ -220,12 +235,6 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       controls.update();
     }
     settings = next;
-    if (
-      next.floorDistance !== previousSettings.floorDistance ||
-      next.wallDistance !== previousSettings.wallDistance ||
-      next.showWall !== previousSettings.showWall
-    )
-      updatePeak();
     updateLegend();
     render();
     events.dispatchEvent(
@@ -242,7 +251,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       uniforms.lightColor.value.copy(temperatureColor(DEFAULT_COLOR_TEMPERATURE));
       setLightSceneProfile(objects, undefined, settings);
       document = undefined;
-      updatePeak();
+      updatePeak(settings);
       updateLegend();
       render();
     },
@@ -274,7 +283,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       events.removeEventListener(type, listener as EventListener);
     },
     setExposure(exposure) {
-      this.setSettings({ exposure });
+      this.setSettings({ autoExposure: false, exposure });
     },
     dispose() {
       if (disposed) return;

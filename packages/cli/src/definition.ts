@@ -57,7 +57,7 @@ export function cliDocument(): OpenCliDocument {
       },
       'ies render': {
         exitCodes: [...badInput],
-        examples: [{ title: 'PNG', content: 'ies render luminaire.ies -o luminaire.png --exposure 1.5' }],
+        examples: [{ title: 'PNG', content: 'ies render luminaire.ies -o luminaire.png --exposure 7' }],
         flags: [{ name: 'browser', alternativeSources: [{ type: '$ENV', property: 'IES_BROWSER' }] }],
       },
       'ies chart': {

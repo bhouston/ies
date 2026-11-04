@@ -33,7 +33,7 @@ Use `ies convert file.ldt --to ies -o file.ies` or `ies convert file.ies --to ld
 ## Export images
 
 ```sh
-ies render luminaire.ies -o preview.png --width 1024 --height 768 --exposure 1 --json
+ies render luminaire.ies -o preview.png --width 1024 --height 768 --json
 ies chart luminaire.ies -o polar.svg
 ies chart luminaire.ies -o topology.png --type topology --up-axis z
 ies chart luminaire.ies -o floor.png --type isolux --mounting-height 2 --extent 10 --resolution 61

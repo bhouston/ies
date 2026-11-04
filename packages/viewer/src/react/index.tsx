@@ -26,7 +26,7 @@ export interface LightViewerProps extends Partial<ViewerSettings> {
   iesText?: string;
   /** URL to fetch; the request is cancelled when the component unmounts or the source changes. */
   src?: string;
-  /** Nonnegative display exposure. Defaults to 1. */
+  /** Manual camera exposure as EV100, -6 to 20, used when `autoExposure` is false. Defaults to 6. */
   exposure?: number;
   /** Initial state of the built-in options panel. Defaults to `closed`. */
   settingsPanel?: SettingsPanelMode;
@@ -52,7 +52,7 @@ function providedSettings(settings: Partial<ViewerSettings>): Partial<ViewerSett
  *
  * @example
  * ```tsx
- * <LightViewer src="/lights/luminaire.ldt" lampSetIndex={0} exposure={1.5} onError={console.error} />
+ * <LightViewer src="/lights/luminaire.ldt" lampSetIndex={0} autoExposure={false} exposure={7} onError={console.error} />
  * ```
  */
 export function LightViewer({
@@ -63,6 +63,7 @@ export function LightViewer({
   profile,
   iesText,
   src,
+  autoExposure,
   exposure,
   showWall,
   wallDistance,
@@ -99,6 +100,7 @@ export function LightViewer({
     try {
       return resolveViewerSettings(
         providedSettings({
+          autoExposure,
           exposure,
           showWall,
           wallDistance,
@@ -182,6 +184,7 @@ export function LightViewer({
     let active = true;
     try {
       const patch = providedSettings({
+        autoExposure,
         exposure,
         showWall,
         wallDistance,
@@ -208,6 +211,7 @@ export function LightViewer({
       active = false;
     };
   }, [
+    autoExposure,
     exposure,
     showWall,
     wallDistance,
