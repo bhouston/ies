@@ -56,6 +56,9 @@ export interface LightViewerController {
   readonly renderer: THREE.WebGLRenderer;
 }
 
+/** OrbitControls turns 2π · rotateSpeed per canvas height dragged: about 200° across a 16:10 canvas's width. */
+const ORBIT_ROTATE_SPEED = 0.35;
+
 /** Physical diffuse receiver: candela * cosine / distance², sampled from the IES distribution. */
 export function createLightViewer(container: HTMLElement, options: LightViewerOptions = {}): LightViewerController {
   const { height: legacyHeight, ...initialSettings } = options;
@@ -107,6 +110,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     render: () => render(),
   });
   const controls = new OrbitControls(camera, renderer.domElement);
+  controls.rotateSpeed = ORBIT_ROTATE_SPEED;
   controls.target.set(0, 1, 0);
   if (settings.floorDistance !== 2 || settings.wallDistance !== 2)
     fitDistanceChange(camera, controls.target, { ...DEFAULT_VIEWER_SETTINGS }, settings);

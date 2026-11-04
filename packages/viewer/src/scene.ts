@@ -68,8 +68,9 @@ export function createLightScene(settings: ViewerSettings) {
         #ifdef MEASUREMENT
           float logLux=log(max(lux,1e-30)), width=max(fwidth(logLux),1e-6), line=0.;
           for(int i=0;i<${MAX_CONTOUR_LEVELS};i++) if(i<levelCount) line=max(line,1.-smoothstep(.25,1.25,abs(logLux-logLevels[i])/width));
-          // A cutoff jumps decades within a pixel; it is an edge, not a contour.
-          line*=step(width,1.);
+          // Fade lines out where neighbouring 1-2-5 levels (ln 2 apart) come within about two pixels: they cannot be
+          // resolved there, and near a cutoff log illuminance jumps decades within a pixel, which is an edge, not a contour.
+          line*=1.-smoothstep(.15,.35,width);
           vec3 color=ramp(clamp((logLux-log(rampPeak))/(rampDecades*2.30258509)+1.,0.,1.));
           // False colours are already sRGB: no tone mapping or colour-space conversion.
           gl_FragColor=vec4(mix(color,vec3(1.),line*.8),1.);
@@ -153,7 +154,6 @@ export function createLightScene(settings: ViewerSettings) {
   scene.add(rulers);
   const glare = createGlare({
     distribution: uniforms.distribution,
-    luminanceMap: fixtureUniforms.luminanceMap,
     lightColor: uniforms.lightColor,
     exposure: uniforms.exposure,
   });
@@ -362,25 +362,21 @@ export function disposeLightScene(objects: LightScene): void {
 /** sRGB greys of the fixture housing where it emits nothing toward the camera: grazing edges and faces seen head-on. */
 const HOUSING_EDGE = '0.35';
 const HOUSING_FACE = '0.06';
-/** Camera glare: radii in CSS pixels of the halo's narrow and wide lobes and of its quad. */
-export const GLARE_CORE = 3;
-export const GLARE_WIDE = 24;
+/** Camera glare: radii in CSS pixels of the halo's scatter lobe and of its quad. */
+export const GLARE_SPREAD = 24;
 export const GLARE_RADIUS = 160;
-/** Share of the fixture's exposed image energy that the lens scatters into the halo, and the wide lobe's part of it. */
+/** Share of the fixture's exposed image energy that the lens scatters into the halo. */
 export const GLARE_FRACTION = 0.1;
-const GLARE_WIDE_SHARE = 0.25;
-/** The smallest fixture image, in CSS pixels² (a 4 px radius disc), whose energy feeds the halo. */
-export const GLARE_MIN_AREA = 50;
 
 /**
  * Camera-facing additive halo at the light, like lens glare from a bright source. Its energy is GLARE_FRACTION of
- * the fixture's exposed image: luminance toward the camera (the emissive fixture's lookup) times its image area,
- * which is I · (pixels per metre)², floored at GLARE_MIN_AREA so small sources still read. A downlight seen from
- * above has no glare. Shares the scene exposure and tone mapping; not pickable (dragging hit-tests the fixture).
+ * the fixture's exposed image: luminance toward the camera times its image area, which is I · (pixels per metre)².
+ * The fixture draws its own unscattered image, so the halo is only the wide scatter lobe and the body occludes its
+ * centre: a small source reads as a bright fixture in a soft glow rather than a large white disc. A downlight seen
+ * from above has no glare. Shares the scene exposure and tone mapping; not pickable (dragging hit-tests the fixture).
  */
 function createGlare(uniforms: {
   distribution: { value: THREE.Texture };
-  luminanceMap: { value: THREE.Texture };
   lightColor: { value: THREE.Color };
   exposure: { value: number };
 }) {
@@ -388,17 +384,17 @@ function createGlare(uniforms: {
     new THREE.PlaneGeometry(2, 2),
     new THREE.ShaderMaterial({
       uniforms: { ...uniforms, resolution: { value: new THREE.Vector2(1, 1) } },
-      vertexShader: `uniform sampler2D distribution; uniform sampler2D luminanceMap; uniform float exposure; uniform vec2 resolution;
+      vertexShader: `uniform sampler2D distribution; uniform float exposure; uniform vec2 resolution;
       varying vec2 offset; varying float energy;
       void main() { vec3 center=(modelMatrix*vec4(0.,0.,0.,1.)).xyz; vec3 toCamera=cameraPosition-center;
         float d=max(length(toCamera),1e-3); vec3 dir=toCamera/d; float theta=acos(clamp(-dir.y,-1.,1.));
         float phi=0.; if(length(dir.xz)>0.000001) phi=atan(dir.z,dir.x); if(phi<0.) phi+=6.28318530718;
         vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
         float pixelsPerMetre=.5*resolution.y*projectionMatrix[1][1]/d;
-        float image=max(texture2D(distribution,uv).r*pixelsPerMetre*pixelsPerMetre,texture2D(luminanceMap,uv).r*${GLARE_MIN_AREA.toFixed(1)});
-        energy=${GLARE_FRACTION.toFixed(3)}*image*exposure;
-        // Drawn just in front of the fixture body so it overlays it, while nearer surfaces still occlude it.
-        vec4 clip=projectionMatrix*viewMatrix*vec4(center+dir*min(.25,.5*d),1.);
+        energy=${GLARE_FRACTION.toFixed(3)}*texture2D(distribution,uv).r*pixelsPerMetre*pixelsPerMetre*exposure;
+        // Drawn at the fixture's centre: the body's near side occludes the halo, so the housing silhouette and the
+        // emitting face (at its own luminance) stay visible over it, and nearer surfaces still occlude it.
+        vec4 clip=projectionMatrix*viewMatrix*vec4(center,1.);
         offset=position.xy*${GLARE_RADIUS.toFixed(1)};
         clip.xy+=offset*2./resolution*clip.w;
         gl_Position=clip; }`,
@@ -406,8 +402,7 @@ function createGlare(uniforms: {
       // Unit-energy profile (1 + r²/a²)⁻² / πa².
       float lobe(float r2, float a) { float f=1./(1.+r2/(a*a)); return f*f/(3.14159265359*a*a); }
       void main() { float r2=dot(offset,offset); float window=max(1.-r2/${(GLARE_RADIUS * GLARE_RADIUS).toFixed(1)},0.);
-        float psf=mix(lobe(r2,${GLARE_CORE.toFixed(1)}),lobe(r2,${GLARE_WIDE.toFixed(1)}),${GLARE_WIDE_SHARE.toFixed(2)});
-        gl_FragColor=vec4(lightColor*energy*psf*window*window,1.);
+        gl_FragColor=vec4(lightColor*energy*lobe(r2,${GLARE_SPREAD.toFixed(1)})*window*window,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,

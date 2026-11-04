@@ -464,6 +464,7 @@ export type {
 export {
   LUX_PER_FOOTCANDLE,
   METERS_PER_FOOT,
+  formatIlluminance,
   formatLength,
   illuminanceInUnits,
   illuminanceLegend,

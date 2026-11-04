@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { groundIlluminance, parseIES } from './index.js';
 import { iesSource } from '../test/iesSource.js';
 import {
+  formatIlluminance,
   formatLength,
   illuminanceInUnits,
   illuminanceLegend,
@@ -39,6 +40,25 @@ describe('illuminance legend', () => {
     expect(imperial.levels.at(-1)!.lux).toBeCloseTo(215.278, 2);
     expect(imperial.peakValue).toBeCloseTo(23.226, 3);
     expect(illuminanceLegend(0, 'metric').levels).toEqual([]);
+  });
+  it('formats every decade the legend can reach in lx and fc as plain decimals', () => {
+    expect([0.002, 0.005, 0.05, 0.5, 2, 18.83, 215.28, 12345.6].map(formatIlluminance)).toEqual([
+      '0.002',
+      '0.005',
+      '0.05',
+      '0.5',
+      '2',
+      '18.8',
+      '215',
+      '12346',
+    ]);
+    for (let power = -9; power <= 9; power++)
+      for (const units of ['metric', 'imperial'] as const)
+        for (const { value } of [...illuminanceLegend(10 ** power, units).levels, { value: 10 ** power }])
+          expect(formatIlluminance(value)).toMatch(/^\d+(\.\d+)?$/);
+    expect(
+      illuminanceLegend(1.75 * 10.7639, 'imperial').levels.map((level) => formatIlluminance(level.value)),
+    ).toContain('0.005');
   });
   it('matches the isolux chart colour ramp at its ends and midpoint', () => {
     expect(illuminanceRampRgb(0)).toEqual([8, 13, 69]);
