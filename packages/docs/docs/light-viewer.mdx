@@ -97,7 +97,7 @@ Attach listeners before setting a source.
 
 The `error` event is a `CustomEvent` (not an `ErrorEvent`) with `detail.message`, a string, and `detail.error`, the original thrown value (usually an `Error`). It bubbles, crosses shadow roots (`composed`), and can't be cancelled, so `preventDefault()` does nothing. The viewer still shows its own overlay unless `errors="silent"`.
 
-Because the event bubbles, it also reaches `error` listeners on `document` and `window`. Those include error-reporting tools and development overlays such as Vite's, which then report a failure you have already handled. To keep the error local, call `event.stopPropagation()` in a listener on the element:
+Because the event bubbles, it also reaches `error` listeners on `document` and `window`, such as error-reporting tools, which then report a failure you have already handled. Vite's error overlay isn't one of them: it shows only build errors, so a viewer error never opens it. When Vite forwards browser errors to its terminal ([`server.forwardConsole`](https://vite.dev/config/server-options#server-forwardconsole)), an unhandled viewer error is logged there as `[Unhandled error] Unknown Error: [object CustomEvent]`. To keep the error local, call `event.stopPropagation()` in a listener on the element:
 
 ```js
 viewer.addEventListener('error', (event) => {
@@ -108,7 +108,7 @@ viewer.addEventListener('error', (event) => {
 
 Listeners on the element itself still run; only listeners further up the page miss the event.
 
-In a React app that renders `<light-viewer>` directly, attach the listener in an effect and remove it on cleanup. This one shows a malformed file's message in the page and rejects a readiness promise, without triggering Vite's overlay:
+In a React app that renders `<light-viewer>` directly, attach the listener in an effect and remove it on cleanup. This one shows a malformed file's message in the page and rejects a readiness promise, without reaching `window`:
 
 ```tsx
 import { useEffect, useRef, useState } from 'react';
@@ -141,7 +141,7 @@ export function Fixture({ text, onReady }: { text: string; onReady: (ready: Prom
       viewer.addEventListener(
         'error',
         (event: Event) => {
-          event.stopPropagation(); // keep it away from window and Vite's overlay
+          event.stopPropagation(); // keep it away from window listeners
           const { message } = (event as CustomEvent<{ message: string }>).detail;
           setMessage(message);
           reject(new Error(message));
