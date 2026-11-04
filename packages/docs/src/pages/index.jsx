@@ -116,9 +116,9 @@ export default function Home() {
           <figure className={styles.shot}>
             <img
               src={useBaseUrl('/img/vscode-extension.gif')}
-              alt="The IES light viewer in VS Code cycling through the 3D view and the polar, Cartesian, topology and isolux chart tabs, with validation and photometric statistics in a side panel"
-              width="1280"
-              height="800"
+              alt="The light viewer orbiting a lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs"
+              width="840"
+              height="525"
               loading="lazy"
             />
           </figure>
