@@ -320,7 +320,7 @@ export function PhotometryInfoPanel({
                       ['Count', set.lampCount],
                       ['Reference flux', value(set.totalLumens, 'lm')],
                       ['Power', value(set.watts, 'W')],
-                      ['Color temperature', set.colorTemperature || 'Not specified'],
+                      ['Color', set.colorTemperature || 'Not specified'],
                       ['Color rendering', set.colorRendering || 'Not specified'],
                     ]}
                   />
