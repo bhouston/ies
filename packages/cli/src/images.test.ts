@@ -2,10 +2,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
 import { chartPhotometry } from './chart.js';
-import { imageDimensions, requireHardwareGPU } from './render.js';
+import { imageDimensions, renderPhotometry, requireHardwareGPU } from './render.js';
 import yargs from 'yargs';
 import { command as chart } from './commands/chart.js';
 import { command as render } from './commands/render.js';
@@ -184,6 +184,9 @@ describe('image command arguments', () => {
     expect(imageDimensions()).toEqual({ width: 1024, height: 768 });
     expect(() => imageDimensions(8193, 10)).toThrow();
   });
+  it.each([21, -7, NaN])('rejects manual exposure %d outside EV100 -6 to 20 before launching a browser', (exposure) =>
+    expect(renderPhotometry('', { exposure })).rejects.toThrow('EV100'),
+  );
 });
 
 describe('exclusive image outputs', () => {
@@ -214,6 +217,12 @@ describe('exclusive image outputs', () => {
 const runChart = (...args: string[]) =>
   JSON.parse(execFileSync(process.execPath, [bin, 'chart', fixture, ...args, '--json'], { encoding: 'utf8' }));
 describe('shared graph exports', () => {
+  // The first chart export pays one-time cold-start costs: importing the React graph bundle, loading sharp/libvips
+  // and the first librsvg/fontconfig text render. On CI runners that has taken 0.3-6.5 s and once over 40 s, which
+  // timed out whichever export test ran first. Pay it once here so each test's 20 s budget covers only its own work.
+  beforeAll(async () => {
+    await chartPhotometry(await readFile(fixture, 'utf8'), { format: 'png', width: 64, height: 64, resolution: 11 });
+  }, 120_000);
   it.each(['polar', 'cartesian', 'topology', 'isolux', 'cone', 'luminance', 'intensity-table'] as const)(
     'exports the shared %s graph as standalone SVG and sized PNG',
     async (type) => {
