@@ -25,7 +25,7 @@ export function cliDocument(): OpenCliDocument {
       description: 'Files stay on your computer. The command line has no authentication, telemetry or cloud service.',
       license: { name: 'MIT', spdxId: 'MIT' },
     },
-    install: [{ name: 'npm', command: 'npm install -g ies' }],
+    install: [{ name: 'npm', command: 'npm install -g @ies-tools/cli' }],
     global: {
       flags: [
         { name: 'help', type: 'boolean', aliases: ['h'], summary: 'Show help' },

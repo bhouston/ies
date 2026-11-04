@@ -6,6 +6,9 @@ import { cliDocument } from './definition.js';
 
 describe('OpenCLI document', () => {
   const document = cliDocument();
+  it('installs the scoped package that provides the ies binary', () => {
+    expect(document.install).toContainEqual({ name: 'npm', command: 'npm install -g @ies-tools/cli' });
+  });
   it('is schema-valid and generated from every yargs command', () => {
     expect(validate(document)).toEqual({ valid: true, errors: [] });
     expect(Object.keys(document.commands!).toSorted()).toEqual(
