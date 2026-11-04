@@ -83,7 +83,8 @@ export function ChartTabs({ tab, onTabChange, profile, mountingHeight }: ChartTa
                 style={{ maxHeight: '100%' }}
               />
               {tab !== 'topology' && (
-                <label className="absolute top-3 right-3 flex items-center gap-2 text-sm">
+                // Own themed surface: the chart is a fixed dark image (shared with CLI exports), not themed.
+                <label className="absolute top-3 right-3 flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-sm text-card-foreground shadow-sm">
                   <input
                     name="logScale"
                     type="checkbox"
