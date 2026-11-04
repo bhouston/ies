@@ -2,7 +2,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { WebGLRenderer } from 'three';
 import type { Mesh, Scene, ShaderMaterial, LineSegments, DataTexture } from 'three';
-import { parsePhotometry } from '@ies-tools/core';
+import { parsePhotometry, parseIES, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
+import { temperatureColor } from './lightColor.js';
 import { iesSource } from '../../core/test/iesSource.js';
 const gpu = vi.hoisted(() => ({ render: vi.fn(), dispose: vi.fn() }));
 // Preserve real scene objects and orbit controls; replace only WebGL rendering.
@@ -19,6 +20,12 @@ vi.mock('three', async (importOriginal) => ({
   }),
 }));
 import { createLightViewer } from './viewer.js';
+
+const renderedMaterial = () =>
+  ((gpu.render.mock.calls.at(-1)![0] as Scene).children[0] as Mesh).material as ShaderMaterial;
+
+const color = () => renderedMaterial().uniforms.lightColor!.value;
+const distribution = () => Array.from((renderedMaterial().uniforms.distribution!.value as DataTexture).image.data);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -78,4 +85,47 @@ it('explains WebGL initialization recovery and preserves the underlying error', 
   }
   expect(failure).toMatchObject({ cause, message: expect.stringContaining('Enable graphics acceleration') });
   expect((failure as Error).message).toContain('ies chart');
+});
+
+it('updates uniform color for IES profiles, selected LDT configurations, fallback and clear', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn(function () {
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }),
+  );
+  const viewer = createLightViewer(document.createElement('div'));
+  try {
+    expect(color()).toEqual(temperatureColor(6500));
+    viewer.load(iesSource({ metadata: '[_TEMPCOLOR] 3000K' }));
+    expect(color()).toEqual(temperatureColor(3000));
+    const intensities = distribution();
+    viewer.setProfile(parseIES(iesSource({ metadata: '[COLORTEMP] 5000' })));
+    expect(color()).toEqual(temperatureColor(5000));
+    expect(distribution()).toEqual(intensities);
+    viewer.setProfile(parseIES(iesSource()));
+    expect(color()).toEqual(temperatureColor(6500));
+
+    const native = parseLDT(serializeLDT(parseIES(iesSource())).value);
+    native.lampSets[0]!.lampCount = 1;
+    native.lampSets[0]!.colorTemperature = '2700K';
+    native.lampSets.push({ ...native.lampSets[0]!, colorTemperature: '4000 K' });
+    const ldtText = writeLDT(native);
+    viewer.loadDocument(ldtText, 'ldt', { lampSetIndex: 0 });
+    expect(color()).toEqual(temperatureColor(2700));
+    const first = distribution();
+    const selected = parsePhotometry(ldtText, 'ldt', { lampSetIndex: 1 });
+    viewer.setDocument(selected);
+    expect(viewer.document).toBe(selected);
+    expect(color()).toEqual(temperatureColor(4000));
+    expect(distribution()).toEqual(first);
+    viewer.setSettings({ exposure: 2 });
+    expect(color()).toEqual(temperatureColor(4000));
+    viewer.clear();
+    expect(color()).toEqual(temperatureColor(6500));
+    viewer.setDocument(selected);
+    expect(color()).toEqual(temperatureColor(4000));
+  } finally {
+    viewer.dispose();
+  }
 });

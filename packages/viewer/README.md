@@ -6,7 +6,9 @@
 
 [Documentation](https://ies-tools.ben3d.ca/docs/react) · [npm](https://www.npmjs.com/package/@ies-tools/viewer) · [Issues](https://github.com/bhouston/ies-tools/issues)
 
-Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres; exposure maps 100 lux to linear display value 1 before ACES tone mapping. This is a direct diffuse light preview without indirect light or occlusion simulation.
+Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres; exposure maps 100 lux to linear display luminance 1 before ACES tone mapping. This is a direct diffuse light preview without indirect light or occlusion simulation.
+
+The preview uses one uniform color temperature from IES metadata or the selected native LDT lamp configuration, falling back to **6500 K** when missing, invalid, or ambiguous. A linear RGB tint preserves photometric luminance; candela, lux, and charts are unchanged. This approximates warm/cool white appearance without spectral or CRI simulation. See [light color](https://ies-tools.ben3d.ca/docs/light-viewer#light-color) for recognized fields and limits.
 
 ![The light viewer: a floodlight lighting the floor and wall, with the beam gizmo, chart tabs and settings button](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/light-viewer.png)
 

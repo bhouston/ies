@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { type IESProfile } from '@ies-tools/core';
 import { type ViewerSettings } from './settings.js';
+import { DEFAULT_COLOR_TEMPERATURE, temperatureColor } from './lightColor.js';
 
 export const TONE_MAPPING = {
   none: THREE.NoToneMapping,
@@ -20,6 +21,7 @@ export function createLightScene(settings: ViewerSettings) {
   initial.needsUpdate = true;
   const uniforms = {
     distribution: { value: initial },
+    lightColor: { value: temperatureColor(DEFAULT_COLOR_TEMPERATURE) },
     lightHeight: { value: settings.floorDistance },
     exposure: { value: settings.exposure },
   };
@@ -27,7 +29,7 @@ export function createLightScene(settings: ViewerSettings) {
     uniforms,
     vertexShader: `varying vec3 worldPosition; varying vec3 worldNormal;
       void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; worldNormal=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*world; }`,
-    fragmentShader: `uniform sampler2D distribution; uniform float lightHeight; uniform float exposure;
+    fragmentShader: `uniform sampler2D distribution; uniform vec3 lightColor; uniform float lightHeight; uniform float exposure;
       varying vec3 worldPosition; varying vec3 worldNormal;
       void main() { vec3 delta=worldPosition-vec3(0.,lightHeight,0.); float r=max(length(delta),0.001);
         vec3 d=delta/r; float theta=acos(clamp(-d.y,-1.,1.)); float phi=0.; if(length(d.xz)>0.000001) phi=atan(d.z,d.x); if(phi<0.) phi+=6.28318530718;
@@ -35,7 +37,7 @@ export function createLightScene(settings: ViewerSettings) {
         vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
         float cd=texture2D(distribution,uv).r;
         float lux=cd*max(dot(normalize(worldNormal),-d),0.)/(r*r);
-        gl_FragColor=vec4(vec3(lux*exposure/100.),1.);
+        gl_FragColor=vec4(lightColor*(lux*exposure/100.),1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
