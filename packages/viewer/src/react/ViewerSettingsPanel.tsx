@@ -169,9 +169,8 @@ export function ViewerSettingsPanel({
         ))}
         {(
           [
-            ['wallDistance', 'Wall distance', true],
-            ['floorDistance', 'Floor distance', true],
-            ['lightOffset', 'Light offset'],
+            ['wallDistance', 'Wall distance'],
+            ['floorDistance', 'Floor distance'],
           ] as const
         ).map(([key, label]) => (
           <label key={key} className="my-3 flex items-center justify-between gap-3">
@@ -179,7 +178,7 @@ export function ViewerSettingsPanel({
             <input
               name={key}
               type="number"
-              min={shownLength(key === 'lightOffset' ? -100 : 0.1)}
+              min={shownLength(0.1)}
               max={shownLength(100)}
               step="0.1"
               value={shownLength(settings[key])}

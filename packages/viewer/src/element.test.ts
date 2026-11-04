@@ -362,12 +362,19 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     const viewer = mount(element()),
       events: CustomEvent[] = [];
     viewer.addEventListener('settingschange', (event) => events.push(event as CustomEvent));
-    act(() => controllers[0]!.drag({ lightOffset: 1.5, wallDistance: 1.25 }));
-    expect(viewer.settings).toMatchObject({ lightOffset: 1.5, wallDistance: 1.25 });
-    expect(viewer.getAttribute('light-offset')).toBe('1.5');
+    act(() => controllers[0]!.drag({ floorDistance: 2.5, wallDistance: 1.25 }));
+    expect(viewer.settings).toMatchObject({ floorDistance: 2.5, wallDistance: 1.25 });
+    expect(viewer.getAttribute('floor-distance')).toBe('2.5');
     expect(viewer.getAttribute('wall-distance')).toBe('1.25');
-    expect(input(viewer, 'lightOffset').value).toBe('1.5');
+    expect(input(viewer, 'wallDistance').value).toBe('1.25');
     expect(events).toHaveLength(1);
+  });
+  it('keeps the deprecated light-offset attribute working without a panel field', () => {
+    const viewer = mount(element());
+    act(() => viewer.setAttribute('light-offset', '1.5'));
+    expect(viewer.settings.lightOffset).toBe(1.5);
+    expect(controllers[0]!.setSettings).toHaveBeenLastCalledWith(expect.objectContaining({ lightOffset: 1.5 }));
+    expect(viewer.shadowRoot!.querySelector('[name="lightOffset"]')).toBeNull();
   });
   it('applies every setting attribute present when parsed markup creates the element', () => {
     const host = document.createElement('div');

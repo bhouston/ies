@@ -9,7 +9,7 @@ import LiveLightViewer from '@site/src/components/LiveLightViewer';
 
 <LiveLightViewer charts="true" style={{ marginBottom: '1rem' }} />
 
-This is a live `<light-viewer>` showing a track light's IES file. Drag to orbit, scroll to zoom, drag the light to move it, use the gear for viewer settings, and switch tabs for charts. The live demo uses the viewer built with this documentation and may include changes that have not yet been published to npm.
+This is a live `<light-viewer>` showing a track light's IES file. Drag to orbit, scroll to zoom, drag the light to change its height and wall distance, use the gear for viewer settings, and switch tabs for charts. The live demo uses the viewer built with this documentation and may include changes that have not yet been published to npm.
 
 `<light-viewer>` is a web component: it works in plain HTML and in any framework, with no build step.
 
@@ -128,7 +128,6 @@ The gear button opens a settings panel. Set the same options with attributes:
   show-wall="true"
   wall-distance="2"
   floor-distance="2"
-  light-offset="0"
   tone-mapping="aces"
   auto-exposure="true"
   exposure="6"
@@ -145,7 +144,7 @@ The gear button opens a settings panel. Set the same options with attributes:
 | `show-wall`         | `true` or `false`: show the back wall                                                                                  | `true`      |
 | `wall-distance`     | Distance from the light to the wall, 0.1–100 metres                                                                    | `2`         |
 | `floor-distance`    | Height of the light above the floor, 0.1–100 metres                                                                    | `2`         |
-| `light-offset`      | Sideways position of the light along the wall, −100 to 100 metres                                                      | `0`         |
+| `light-offset`      | Deprecated; will be removed in the next major version. Sideways position along the wall, −100 to 100 metres            | `0`         |
 | `tone-mapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`                                                     | `aces`      |
 | `auto-exposure`     | `true` or `false`: meter the exposure from the brightest floor or wall point; `exposure` then reports the metered EV   | `true`      |
 | `exposure`          | Camera exposure in EV100, −6 to 20; used when `auto-exposure` is `false`. +1 halves the brightness                     | `6`         |
@@ -162,7 +161,7 @@ The photometric solid draws the candela distribution around the light: its dista
 
 ### Moving the light
 
-Click the light to select it; a cyan ring marks it, and the pointer shows a grab hand over it. Drag it to move it across the room at its current height, or hold Shift while dragging to raise or lower it. The wall stays where it is, so moving toward or away from it changes `wall-distance`, moving along it changes `light-offset`, and a height change sets `floor-distance`. Distances stay within their 0.1–100 metre ranges. With the light selected, the arrow keys move it 0.1 m (0.5 ft in imperial units), Shift+Up and Shift+Down change its height, and Escape or a click on empty space deselects it. Touch screens drag the same way. Each move updates the attributes, the settings panel and a `settingschange` event; the camera stays put. The settings panel's distance fields remain available for exact values.
+Click the light to select it; a cyan ring marks it, and the pointer shows a grab hand over it. Drag it to raise or lower it and to move it toward or away from the wall; it never moves sideways along the wall. The wall stays where it is, so height changes set `floor-distance` and moves toward or away from the wall set `wall-distance`. Distances stay within their 0.1–100 metre ranges. With the light selected, Up and Down change its height and Right and Left move it toward and away from the wall (matching the default view, where the wall lies back and to the right), in steps of 0.1 m (0.5 ft in imperial units); Escape or a click on empty space deselects it. Touch screens drag the same way. Each move updates the attributes, the settings panel and a `settingschange` event; the camera stays put. The settings panel's distance fields remain available for exact values.
 
 The rulers run along the floor's two main axes (C0–C180 and C90–C270) through the point directly below the light, with a tick every metre or foot and labels such as `2 m` or `6 ft`, counted from `0` below the light. A vertical ruler on the wall in front of the light shows the mounting height, for example `2.00 m`; with the wall hidden it rises from the floor to the light. Switching units relabels them. The rulers appear in both view modes and in image exports.
 
