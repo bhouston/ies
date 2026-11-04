@@ -129,3 +129,38 @@ it('updates uniform color for IES profiles, selected LDT configurations, fallbac
     viewer.dispose();
   }
 });
+
+it('shows an auto-ranged illuminance legend and contour uniforms only in measurement mode', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn(function () {
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }),
+  );
+  const host = document.createElement('div');
+  const viewer = createLightViewer(host, { viewMode: 'measurement' });
+  try {
+    const legend = host.querySelector<HTMLElement>('.viewer-overlay .illuminance-legend')!;
+    expect(legend.hidden).toBe(true);
+    // Isotropic 100 cd: the wall 2 m away and the floor 2 m below both peak at 25 lx.
+    viewer.load(iesSource());
+    expect(legend.hidden).toBe(false);
+    expect(legend.textContent).toContain('Illuminance (lx)');
+    expect(legend.textContent).toContain('peak 25');
+    const material = renderedMaterial();
+    expect('MEASUREMENT' in material.defines).toBe(true);
+    expect(material.uniforms.rampPeak!.value).toBeCloseTo(25, 9);
+    expect(material.uniforms.levelCount!.value).toBe(9);
+    expect(material.uniforms.logLevels!.value[8]).toBeCloseTo(Math.log(20), 9);
+    viewer.setSettings({ units: 'imperial', wallDistance: 1 });
+    expect(legend.textContent).toContain('Illuminance (fc)');
+    expect(legend.textContent).toContain('peak 9.29');
+    expect(material.uniforms.rampPeak!.value).toBeCloseTo(100, 9);
+    viewer.setSettings({ viewMode: 'realistic' });
+    expect(legend.hidden).toBe(true);
+    expect('MEASUREMENT' in renderedMaterial().defines).toBe(false);
+  } finally {
+    viewer.dispose();
+  }
+  expect(host.querySelector('.viewer-overlay')).toBeNull();
+});

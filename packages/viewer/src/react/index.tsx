@@ -69,6 +69,8 @@ export function LightViewer({
   floorDistance,
   toneMapping,
   helper,
+  viewMode,
+  units,
   settingsPanel = 'closed',
   className,
   style,
@@ -93,7 +95,7 @@ export function LightViewer({
   const [panelSettings, setPanelSettings] = useState<ViewerSettings>(() => {
     try {
       return resolveViewerSettings(
-        providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping, helper }),
+        providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping, helper, viewMode, units }),
       );
     } catch {
       return { ...DEFAULT_VIEWER_SETTINGS };
@@ -164,7 +166,16 @@ export function LightViewer({
   useEffect(() => {
     let active = true;
     try {
-      const patch = providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping, helper });
+      const patch = providedSettings({
+        exposure,
+        showWall,
+        wallDistance,
+        floorDistance,
+        toneMapping,
+        helper,
+        viewMode,
+        units,
+      });
       controller.current?.setSettings(patch);
     } catch (reason) {
       const failure = reason instanceof Error ? reason : new Error(String(reason));
@@ -178,7 +189,7 @@ export function LightViewer({
     return () => {
       active = false;
     };
-  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper]);
+  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper, viewMode, units]);
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     const next = resolveViewerSettings(patch, controller.current?.getSettings() ?? panelSettings);
     controller.current?.setSettings(next);
@@ -219,7 +230,7 @@ export type { PhotometryInfoPanelProps, PhotometryValidation } from './Photometr
 // Types referenced by the component props, re-exported so React users need only this entry point.
 export type { GraphAxis, UpAxis, Point2 } from '../graphs.js';
 export { DEFAULT_VIEWER_SETTINGS, TONE_MAPPING_OPTIONS } from '../settings.js';
-export type { ViewerSettings, ViewerSettingsChangeDetail, ToneMappingName } from '../settings.js';
+export type { ViewerSettings, ViewerSettingsChangeDetail, ToneMappingName, ViewMode, Units } from '../settings.js';
 export type { PhotometryFormat, PhotometryLoadInfo } from '../source.js';
 export { ConeDiagramGraph, IntensityTableGraph, LuminanceTableGraph } from './TableCharts.js';
 export type { ConeDiagramGraphProps, IntensityTableGraphProps, LuminanceTableGraphProps } from './TableCharts.js';

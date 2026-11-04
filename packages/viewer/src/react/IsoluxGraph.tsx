@@ -3,6 +3,7 @@ import {
   type IESProfile,
   buildIsoluxGrid,
   extractContours,
+  illuminanceRampRgb,
   formatGraphValue,
   isoluxContourLevels,
   type IsoluxOptions,
@@ -82,18 +83,6 @@ export function pngDataUri(width: number, height: number, raw: Uint8Array): stri
     for (const byte of part) binary += String.fromCharCode(byte);
   return `data:image/png;base64,${btoa(binary)}`;
 }
-/** The graph's perceptual blue-to-yellow ramp, hsl(235 − 195t, 80%, 15 + 50t%), as RGB bytes. */
-/** @internal Exported for tests. */
-export function rampRgb(t: number): [number, number, number] {
-  const h = 235 - t * 195,
-    l = (15 + t * 50) / 100,
-    a = 0.8 * Math.min(l, 1 - l);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
-  };
-  return [f(0), f(8), f(4)];
-}
 
 /**
  * SVG ground-plane illuminance heatmap with lux contours, for a fixture at a mounting height and aim.
@@ -152,7 +141,7 @@ export function IsoluxGraph({
     for (let row = 0; row < rows; row++)
       for (let column = 0; column < columns; column++)
         raw.set(
-          rampRgb(Math.min(1, shade(grid.values[rows - 1 - row]![column]!))),
+          illuminanceRampRgb(Math.min(1, shade(grid.values[rows - 1 - row]![column]!))),
           row * (1 + columns * 3) + 1 + column * 3,
         );
     image = pngDataUri(columns, rows, raw);

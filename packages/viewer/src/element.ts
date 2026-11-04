@@ -47,15 +47,20 @@ export class LightViewerElement extends ElementBase {
     this.#settings = next;
     this.#reflecting = true;
     try {
-      for (const [name, value] of [
-        ['show-wall', String(next.showWall)],
-        ['wall-distance', String(next.wallDistance)],
-        ['floor-distance', String(next.floorDistance)],
-        ['tone-mapping', next.toneMapping],
-        ['exposure', String(next.exposure)],
-        ['helper', String(next.helper)],
-      ])
-        this.setAttribute(name!, value!);
+      // Reflect only changed settings, and never rewrite an attribute that already matches: setAttribute
+      // flushes queued callbacks, which would be ignored here, for attributes not yet applied during upgrade.
+      for (const [name, key] of [
+        ['show-wall', 'showWall'],
+        ['wall-distance', 'wallDistance'],
+        ['floor-distance', 'floorDistance'],
+        ['tone-mapping', 'toneMapping'],
+        ['exposure', 'exposure'],
+        ['helper', 'helper'],
+        ['view-mode', 'viewMode'],
+        ['units', 'units'],
+      ] as const)
+        if (next[key] !== previousSettings[key] && this.getAttribute(name) !== String(next[key]))
+          this.setAttribute(name, String(next[key]));
     } finally {
       this.#reflecting = false;
     }

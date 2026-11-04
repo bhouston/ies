@@ -8,6 +8,16 @@ export const TONE_MAPPING_OPTIONS = [
   { value: 'none', label: 'None' },
 ] as const;
 export type ToneMappingName = (typeof TONE_MAPPING_OPTIONS)[number]['value'];
+export const VIEW_MODE_OPTIONS = [
+  { value: 'realistic', label: 'Realistic' },
+  { value: 'measurement', label: 'Measurement' },
+] as const;
+export type ViewMode = (typeof VIEW_MODE_OPTIONS)[number]['value'];
+export const UNITS_OPTIONS = [
+  { value: 'metric', label: 'Metric' },
+  { value: 'imperial', label: 'Imperial' },
+] as const;
+export type Units = (typeof UNITS_OPTIONS)[number]['value'];
 /** Scene and display settings shared by the React viewer and `<light-viewer>`. */
 export interface ViewerSettings {
   /** Show the back wall. Defaults to true. */
@@ -22,6 +32,10 @@ export interface ViewerSettings {
   exposure: number;
   /** Show the blue beam-extent helper lines (cone or spheres). Defaults to true. */
   helper: boolean;
+  /** `realistic` shades diffuse surfaces; `measurement` shows false-colour illuminance with isolux contours. Defaults to `realistic`. */
+  viewMode: ViewMode;
+  /** Display units: lux and metres, or footcandles and feet. Stored distances stay in metres. Defaults to `metric`. */
+  units: Units;
 }
 export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   showWall: true,
@@ -30,6 +44,8 @@ export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   toneMapping: 'aces',
   exposure: 1,
   helper: true,
+  viewMode: 'realistic',
+  units: 'metric',
 });
 export const VIEWER_SETTINGS_ATTRIBUTES = [
   'show-wall',
@@ -38,6 +54,8 @@ export const VIEWER_SETTINGS_ATTRIBUTES = [
   'tone-mapping',
   'exposure',
   'helper',
+  'view-mode',
+  'units',
 ] as const;
 export interface ViewerSettingsChangeDetail {
   settings: ViewerSettings;
@@ -57,6 +75,10 @@ export function resolveViewerSettings(
   if (typeof next.helper !== 'boolean') throw new TypeError('helper must be a boolean');
   if (!TONE_MAPPING_OPTIONS.some((option) => option.value === next.toneMapping))
     throw new RangeError('Unsupported toneMapping function');
+  if (!VIEW_MODE_OPTIONS.some((option) => option.value === next.viewMode))
+    throw new RangeError('viewMode must be realistic or measurement');
+  if (!UNITS_OPTIONS.some((option) => option.value === next.units))
+    throw new RangeError('units must be metric or imperial');
   for (const [key, min, max] of [
     ['wallDistance', 0.1, 100],
     ['floorDistance', 0.1, 100],
@@ -86,5 +108,7 @@ export function viewerSettingFromAttribute(name: string, value: string | null): 
   if (name === 'exposure') return number('exposure');
   if (name === 'tone-mapping')
     return { toneMapping: (value ?? DEFAULT_VIEWER_SETTINGS.toneMapping) as ToneMappingName };
+  if (name === 'view-mode') return { viewMode: (value ?? DEFAULT_VIEWER_SETTINGS.viewMode) as ViewMode };
+  if (name === 'units') return { units: (value ?? DEFAULT_VIEWER_SETTINGS.units) as Units };
   return {};
 }

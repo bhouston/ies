@@ -81,16 +81,18 @@ Give it one source. If you pass more than one, the first in this order wins: `do
 
 These props set the scene. They update the view without reloading the file.
 
-| Prop               | Meaning                                                                      | Default  |
-| ------------------ | ---------------------------------------------------------------------------- | -------- |
-| `showWall`         | Show the back wall                                                           | `true`   |
-| `wallDistance`     | Distance from the light to the wall in metres                                | `2`      |
-| `floorDistance`    | Height of the light above the floor in metres                                | `2`      |
-| `toneMapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`           | `aces`   |
-| `exposure`         | Display brightness, 0 or above                                               | `1`      |
-| `helper`           | Blue lines showing the beam's extent                                         | `true`   |
-| `settingsPanel`    | Gear panel: `closed`, `open` or `hidden`                                     | `closed` |
-| `onSettingsChange` | Called with `{ settings, previousSettings }` when the user changes a setting |          |
+| Prop               | Meaning                                                                      | Default     |
+| ------------------ | ---------------------------------------------------------------------------- | ----------- |
+| `showWall`         | Show the back wall                                                           | `true`      |
+| `wallDistance`     | Distance from the light to the wall in metres                                | `2`         |
+| `floorDistance`    | Height of the light above the floor in metres                                | `2`         |
+| `toneMapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`           | `aces`      |
+| `exposure`         | Display brightness, 0 or above                                               | `1`         |
+| `helper`           | Blue lines showing the beam's extent                                         | `true`      |
+| `viewMode`         | `realistic`, or `measurement` for false-color illuminance with isolux lines  | `realistic` |
+| `units`            | `metric` (lux, metres) or `imperial` (footcandles, feet) for display only    | `metric`    |
+| `settingsPanel`    | Gear panel: `closed`, `open` or `hidden`                                     | `closed`    |
+| `onSettingsChange` | Called with `{ settings, previousSettings }` when the user changes a setting |             |
 
 If you leave a setting prop out, the user controls it from the gear panel.
 

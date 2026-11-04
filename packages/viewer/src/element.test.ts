@@ -290,15 +290,37 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       input(viewer, 'helper').click();
     });
     expect(viewer.getAttribute('helper')).toBe('false');
+    const toggle = (group: string, label: string) =>
+      [...viewer.shadowRoot!.querySelectorAll<HTMLButtonElement>(`[aria-label="${group}"] button`)].find(
+        (button) => button.textContent === label,
+      )!;
+    act(() => toggle('View mode', 'Measurement').click());
+    act(() => toggle('Units', 'Imperial').click());
+    expect(toggle('Units', 'Imperial').getAttribute('aria-pressed')).toBe('true');
+    expect(viewer.getAttribute('view-mode')).toBe('measurement');
+    expect(viewer.getAttribute('units')).toBe('imperial');
+    // Imperial shows feet but stores metres.
+    expect(input(viewer, 'floorDistance').value).toBe('13.12');
+    expect(input(viewer, 'floorDistance').parentElement!.textContent).toContain('Floor distance (ft)');
+    changeNumber(viewer, 'floorDistance', '10');
     expect(viewer.settings).toEqual({
       showWall: false,
       wallDistance: 3.5,
-      floorDistance: 4,
+      floorDistance: 3.048,
       toneMapping: 'neutral',
       exposure: 0,
       helper: false,
+      viewMode: 'measurement',
+      units: 'imperial',
     });
-    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(6);
+    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(9);
+  });
+  it('applies every setting attribute present when parsed markup creates the element', () => {
+    const host = document.createElement('div');
+    host.innerHTML = '<light-viewer view-mode="measurement" units="imperial" exposure="2"></light-viewer>';
+    const viewer = host.firstElementChild as LightViewerElement;
+    expect(viewer.settings).toMatchObject({ viewMode: 'measurement', units: 'imperial', exposure: 2 });
+    expect(viewer.getAttribute('units')).toBe('imperial');
   });
   it('updates controls from attributes without reloading its source', async () => {
     const viewer = element();
