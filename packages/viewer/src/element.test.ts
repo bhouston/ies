@@ -3,6 +3,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { iesSource } from '../../core/test/iesSource.js';
 import { ldtSource } from '../test/photometryFixtures.js';
+import { parsePhotometry } from '@ies-tools/core';
 import { DEFAULT_VIEWER_SETTINGS, resolveViewerSettings, type ViewerSettings } from './settings.js';
 const mocks = vi.hoisted(() => ({ createLightViewer: vi.fn() }));
 // Only the GPU boundary is replaced: actual custom-element DOM, controls and source parser run.
@@ -10,6 +11,7 @@ vi.mock('./viewer.js', () => ({ createLightViewer: mocks.createLightViewer }));
 import './element.js';
 import type { LightViewerElement } from './element.js';
 const controllers: {
+  clear: ReturnType<typeof vi.fn>;
   setDocument: ReturnType<typeof vi.fn>;
   setSettings: ReturnType<typeof vi.fn>;
   dispose: ReturnType<typeof vi.fn>;
@@ -25,6 +27,7 @@ beforeEach(() => {
   mocks.createLightViewer.mockImplementation((_host: HTMLElement, options: Partial<ViewerSettings>) => {
     let settings = resolveViewerSettings(options);
     const controller = {
+      clear: vi.fn(),
       setDocument: vi.fn(),
       setSettings: vi.fn((patch: Partial<ViewerSettings>) => {
         settings = resolveViewerSettings(patch, settings);
@@ -66,6 +69,31 @@ function changeNumber(viewer: LightViewerElement, name: string, value: string) {
 }
 
 describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () => {
+  it.each(['document', 'src'] as const)('clears the scene and chart when its %s source is removed', async (source) => {
+    const viewer = element();
+    if (source === 'document') viewer.photometry = parsePhotometry(iesSource());
+    else {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => iesSource() }));
+      viewer.setAttribute('src', '/fixture.ies');
+    }
+    viewer.setAttribute('charts', 'true');
+    mount(viewer);
+    await flush();
+    act(() => {
+      viewer.shadowRoot!.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1]!.click();
+    });
+    expect(viewer.shadowRoot!.querySelector('[role="tabpanel"] svg')).not.toBeNull();
+    if (source === 'document') viewer.photometry = undefined;
+    else viewer.removeAttribute('src');
+    await flush();
+    expect(controllers[0]!.clear).toHaveBeenCalledOnce();
+    expect(viewer.shadowRoot!.querySelector('[role="tabpanel"] svg')).toBeNull();
+    expect(viewer.shadowRoot!.querySelector('.status')!.textContent).toBe('');
+    viewer.data = iesSource();
+    await flush();
+    expect(controllers[0]!.setDocument).toHaveBeenCalledTimes(2);
+    expect(viewer.shadowRoot!.querySelector('[role="tabpanel"] svg')).not.toBeNull();
+  });
   it('loads LDT and retains legacy profile and source document event fields', async () => {
     const viewer = element(),
       loads: unknown[] = [];

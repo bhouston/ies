@@ -24,6 +24,8 @@ export interface LightViewerOptions extends Partial<ViewerSettings> {
   height?: number;
 }
 export interface LightViewerController {
+  /** Remove loaded photometry while preserving the camera and viewer settings. */
+  clear(): void;
   setProfile(profile: IESProfile): void;
   setDocument(document: PhotometricDocument): void;
   load(text: string, format?: PhotometryFormat, options?: { lampSetIndex?: number }): IESProfile;
@@ -83,6 +85,17 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     renderer,
     get document() {
       return document;
+    },
+    clear() {
+      if (disposed) throw new Error('Viewer has been disposed');
+      const texture = new THREE.DataTexture(new Float32Array(4), 2, 2, THREE.RedFormat, THREE.FloatType);
+      texture.needsUpdate = true;
+      uniforms.distribution.value.dispose();
+      uniforms.distribution.value = texture;
+      objects.cutoff = undefined;
+      applyLightSceneSettings(objects, settings);
+      document = undefined;
+      render();
     },
     setProfile(profile) {
       if (disposed) throw new Error('Viewer has been disposed');

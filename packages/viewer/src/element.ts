@@ -201,6 +201,9 @@ export class LightViewerElement extends ElementBase {
       });
       if (revision !== this.#revision || !this.isConnected || !this.#viewer) return;
       if (!next) {
+        this.#viewer.clear();
+        this.#profile = undefined;
+        this.#updatePanel();
         this.#status!.textContent = '';
         return;
       }
