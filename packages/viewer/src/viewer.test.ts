@@ -27,6 +27,19 @@ vi.mock('three', async (importOriginal) => ({
     };
   }),
 }));
+const orbit = vi.hoisted(() => ({ controls: undefined as { rotateSpeed: number } | undefined }));
+// Real orbit controls, recorded so tests can read their configuration.
+vi.mock('three/addons/controls/OrbitControls.js', async (importOriginal) => {
+  const { OrbitControls } = await importOriginal<typeof import('three/addons/controls/OrbitControls.js')>();
+  return {
+    OrbitControls: class extends OrbitControls {
+      constructor(...args: ConstructorParameters<typeof OrbitControls>) {
+        super(...args);
+        orbit.controls = this;
+      }
+    },
+  };
+});
 import { createLightViewer } from './viewer.js';
 
 const renderedMaterial = () =>
@@ -212,4 +225,19 @@ it('shows an auto-ranged illuminance legend and contour uniforms only in measure
     viewer.dispose();
   }
   expect(host.querySelector('.viewer-overlay')).toBeNull();
+});
+
+it('orbits at a comfortable speed: a full-height drag turns about 126 degrees', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn(function () {
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }),
+  );
+  const viewer = createLightViewer(document.createElement('div'));
+  try {
+    expect(orbit.controls!.rotateSpeed).toBe(0.35);
+  } finally {
+    viewer.dispose();
+  }
 });

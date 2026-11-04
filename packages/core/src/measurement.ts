@@ -94,6 +94,15 @@ export function illuminanceLegend(peak: number, units: MeasurementUnits, decades
   };
 }
 
+const illuminanceFormat = new Intl.NumberFormat('en-US', {
+  maximumSignificantDigits: 3,
+  maximumFractionDigits: 0,
+  roundingPriority: 'morePrecision',
+  useGrouping: false,
+});
+/** An illuminance as a plain decimal: three significant digits (whole numbers from 100 up), never exponent notation. */
+export const formatIlluminance = (value: number) => illuminanceFormat.format(value);
+
 /** The isolux chart's perceptual blue-to-yellow ramp, hsl(235 − 195t, 80%, 15 + 50t%), as sRGB bytes. */
 export function illuminanceRampRgb(t: number): [number, number, number] {
   const h = 235 - t * 195,
