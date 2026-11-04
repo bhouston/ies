@@ -15,9 +15,13 @@
   width: 100%;
   height: 100%;
 }
+/* Positioned, not margin-offset: a top margin would collapse through :host and
+   push the whole element down in its container. */
 .viewport.with-tabs {
-  height: calc(100% - 2.5rem);
-  margin-top: 2.5rem;
+  position: absolute;
+  inset: 2.5rem 0 0;
+  width: auto;
+  height: auto;
 }
 .viewport canvas {
   display: block;
