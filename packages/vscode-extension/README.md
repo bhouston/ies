@@ -6,6 +6,14 @@ See how a luminaire distributes light without leaving VS Code. Open an IES or EU
 
 ![The light preview in VS Code cycling through the 3D view and the polar, Cartesian, topology and isolux chart tabs, beside the file information panel](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/vscode-extension.gif)
 
+## Install
+
+Install **IES and LDT Light Viewer** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension) or, for VSCodium, Cursor and other Open VSX editors, from [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension). From a terminal:
+
+```sh
+code --install-extension benhouston3d.ies-vscode-extension
+```
+
 ## Features
 
 - **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution.

@@ -2,14 +2,14 @@
 
 IES and EULUMDAT photometric lighting tools for JavaScript and TypeScript, modeled on [mtlx](https://github.com/bhouston/mtlx).
 
-| Package                | Purpose                                                            |
-| ---------------------- | ------------------------------------------------------------------ |
-| `@ies-tools/core`      | Parse IES/LDT, convert photometry and calculate statistics         |
-| `@ies-tools/cli`       | Inspect, validate, convert, preview and export render/chart images |
-| `@ies-tools/viewer`    | Three.js scene, `<light-viewer>` and React viewer/graphs           |
-| `ies-vscode-extension` | Live `.ies` and `.ldt` previews for VS Code                        |
-| `ies-website`          | React demo with local file input                                   |
-| `ies-docs`             | Docusaurus documentation built as a GitHub Pages artifact          |
+| Package                                                       | Purpose                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@ies-tools/core`](packages/core/README.md)                  | Parse IES/LDT, convert photometry and calculate statistics                                                                                                                                                                                                  |
+| [`@ies-tools/cli`](packages/cli/README.md)                    | Inspect, validate, convert, preview and export render/chart images                                                                                                                                                                                          |
+| [`@ies-tools/viewer`](packages/viewer/README.md)              | Three.js scene, `<light-viewer>` and React viewer/graphs                                                                                                                                                                                                    |
+| [`ies-vscode-extension`](packages/vscode-extension/README.md) | An IES & EULUMDAT viewer, inspector and syntax highlighter for VS Code ([Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension), [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension)) |
+| [`ies-website`](packages/website/README.md)                   | React demo with local file input                                                                                                                                                                                                                            |
+| [`ies-docs`](packages/docs/)                                  | Docusaurus documentation published at [ies-tools.ben3d.ca](https://ies-tools.ben3d.ca/)                                                                                                                                                                     |
 
 The shared components include polar, Cartesian, topology and isolux diagrams, a cone diagram, a glare-angle luminance table and an intensity table. `ies render` exports hardware-rendered PNGs; `ies chart` exports the same diagrams as SVG or PNG.
 
