@@ -12,6 +12,9 @@ describe('published viewer stylesheet', () => {
     expect(css).toContain('.pointer-events-auto');
     expect(css).toContain(':host');
     expect(css).not.toMatch(/:host\s*\{[^}]*--popover:/);
+    // A top margin on the tabbed viewport collapses through :host and shifts the element (#120).
+    expect(css).not.toMatch(/\.viewport\.with-tabs\s*\{[^}]*margin/);
+    expect(css).toMatch(/\.viewport\.with-tabs\s*\{[^}]*position:\s*absolute/);
   });
   it('imports the built custom element on Node without HTMLElement or a CSS loader', () => {
     const target = fileURLToPath(new URL('../dist/element.js', import.meta.url));
