@@ -89,6 +89,7 @@ These props set the scene. They update the view without reloading the file.
 | `toneMapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`           | `aces`      |
 | `exposure`         | Display brightness, 0 or above                                               | `1`         |
 | `helper`           | Blue lines showing the beam's extent                                         | `true`      |
+| `photometricSolid` | Amber 3D shape of the candela distribution                                   | `false`     |
 | `viewMode`         | `realistic`, or `measurement` for false-color illuminance with isolux lines  | `realistic` |
 | `units`            | `metric` (lux, metres) or `imperial` (footcandles, feet) for display only    | `metric`    |
 | `settingsPanel`    | Gear panel: `closed`, `open` or `hidden`                                     | `closed`    |

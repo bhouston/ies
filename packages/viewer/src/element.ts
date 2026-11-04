@@ -56,6 +56,7 @@ export class LightViewerElement extends ElementBase {
         ['tone-mapping', 'toneMapping'],
         ['exposure', 'exposure'],
         ['helper', 'helper'],
+        ['photometric-solid', 'photometricSolid'],
         ['view-mode', 'viewMode'],
         ['units', 'units'],
       ] as const)

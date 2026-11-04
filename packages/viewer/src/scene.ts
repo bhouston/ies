@@ -1,7 +1,14 @@
 import * as THREE from 'three';
-import { type IESProfile, type IlluminanceLegend } from '@ies-tools/core';
+import {
+  buildIntensityTopology,
+  luminousShape,
+  type IESProfile,
+  type IlluminanceLegend,
+  type LuminousShape,
+} from '@ies-tools/core';
 import { type ViewerSettings } from './settings.js';
 import { DEFAULT_COLOR_TEMPERATURE, temperatureColor } from './lightColor.js';
+import { createCandelaTexture, createLuminanceTexture } from './texture.js';
 
 export const TONE_MAPPING = {
   none: THREE.NoToneMapping,
@@ -23,10 +30,8 @@ export const MAX_CONTOUR_LEVELS = 10;
 export function createLightScene(settings: ViewerSettings) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0);
-  const initial = new THREE.DataTexture(new Float32Array(2 * 2), 2, 2, THREE.RedFormat, THREE.FloatType);
-  initial.needsUpdate = true;
   const uniforms = {
-    distribution: { value: initial },
+    distribution: { value: blankTexture() },
     lightColor: { value: temperatureColor(DEFAULT_COLOR_TEMPERATURE) },
     lightPosition: { value: new THREE.Vector3(0, settings.floorDistance, 0) },
     exposure: { value: settings.exposure },
@@ -76,9 +81,27 @@ export function createLightScene(settings: ViewerSettings) {
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 5), material);
   wall.position.set(0, 2.5, -2);
   scene.add(wall);
+  const fixtureUniforms = {
+    luminanceMap: { value: blankTexture() },
+    lightColor: uniforms.lightColor,
+    exposure: uniforms.exposure,
+  };
+  // The opening's average luminance toward the camera, scaled like a white Lambertian receiver (L = E/π).
   const fixture = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.11, 0.11, 0.14, 24),
-    new THREE.MeshBasicMaterial({ color: 0x666666 }),
+    fixtureGeometry(displayedShape(luminousShape({ width: 0, length: 0, height: 0 }))),
+    new THREE.ShaderMaterial({
+      uniforms: fixtureUniforms,
+      vertexShader: `varying vec3 worldPosition;
+      void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; gl_Position=projectionMatrix*viewMatrix*world; }`,
+      fragmentShader: `uniform sampler2D luminanceMap; uniform vec3 lightColor; uniform float exposure; varying vec3 worldPosition;
+      void main() { vec3 d=normalize(cameraPosition-worldPosition); float theta=acos(clamp(-d.y,-1.,1.));
+        float phi=0.; if(length(d.xz)>0.000001) phi=atan(d.z,d.x); if(phi<0.) phi+=6.28318530718;
+        vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
+        gl_FragColor=vec4(lightColor*(texture2D(luminanceMap,uv).r*3.14159265359*exposure/100.),1.);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    }),
   );
   fixture.position.copy(uniforms.lightPosition.value);
   scene.add(fixture);
@@ -87,8 +110,38 @@ export function createLightScene(settings: ViewerSettings) {
     new THREE.LineBasicMaterial({ color: 0x3b82f6, toneMapped: false }),
   );
   scene.add(helper);
+  const solidColor = 0xf59e0b;
+  const solid = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshBasicMaterial({
+      color: solidColor,
+      transparent: true,
+      opacity: 0.2,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  );
+  const solidLines = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: solidColor, transparent: true, opacity: 0.6, toneMapped: false }),
+  );
+  solid.add(solidLines);
+  scene.add(solid);
   // Set from the loaded profile; undefined until then, which hides the helper.
-  const objects = { scene, uniforms, material, floor, wall, fixture, helper, cutoff: undefined as number | undefined };
+  const objects = {
+    scene,
+    uniforms,
+    material,
+    floor,
+    wall,
+    fixture,
+    fixtureUniforms,
+    helper,
+    solid,
+    solidLines,
+    cutoff: undefined as number | undefined,
+  };
   applyLightSceneSettings(objects, settings);
   return objects;
 }
@@ -101,6 +154,9 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   objects.wall.position.set(0, wallHeight / 2, -settings.wallDistance);
   objects.wall.visible = settings.showWall;
   objects.fixture.position.y = settings.floorDistance;
+  objects.solid.position.y = settings.floorDistance;
+  objects.solid.scale.setScalar(settings.floorDistance / 2);
+  objects.solid.visible = settings.photometricSolid && objects.cutoff !== undefined;
   objects.uniforms.lightPosition.value.set(0, settings.floorDistance, 0);
   objects.uniforms.exposure.value = settings.exposure;
   const measurement = settings.viewMode === 'measurement';
@@ -192,8 +248,86 @@ export function disposeLightScene(objects: LightScene): void {
   objects.wall.geometry.dispose();
   objects.fixture.geometry.dispose();
   objects.fixture.material.dispose();
+  objects.fixtureUniforms.luminanceMap.value.dispose();
   objects.helper.geometry.dispose();
   objects.helper.material.dispose();
+  objects.solid.geometry.dispose();
+  objects.solid.material.dispose();
+  objects.solidLines.geometry.dispose();
+  objects.solidLines.material.dispose();
   objects.uniforms.distribution.value.dispose();
   objects.material.dispose();
+}
+
+function blankTexture(): THREE.DataTexture {
+  const texture = new THREE.DataTexture(new Float32Array(2 * 2), 2, 2, THREE.RedFormat, THREE.FloatType);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** Real-sized shape with a 1 cm floor per axis and a 5 cm floor on its largest extent; points become 5 cm spheres. */
+export function displayedShape(shape: LuminousShape): LuminousShape {
+  const largest = Math.max(shape.width, shape.length, shape.height);
+  const grow = largest > 0 ? Math.max(1, 0.05 / largest) : 0;
+  const size = (value: number) => (largest > 0 ? Math.max(value * grow, 0.01) : 0.05);
+  return { ...shape, width: size(shape.width), length: size(shape.length), height: size(shape.height) };
+}
+
+/** Unit primitive scaled to the shape: length along X, height along Y, width along Z. */
+export function fixtureGeometry({ solid, axis, width, length, height }: LuminousShape): THREE.BufferGeometry {
+  const geometry =
+    solid === 'box'
+      ? new THREE.BoxGeometry(1, 1, 1)
+      : solid === 'ellipsoid'
+        ? new THREE.SphereGeometry(0.5, 32, 16)
+        : new THREE.CylinderGeometry(0.5, 0.5, 1, 48);
+  if (solid === 'cylinder' && axis === 'x') geometry.rotateZ(Math.PI / 2);
+  if (solid === 'cylinder' && axis === 'z') geometry.rotateX(Math.PI / 2);
+  return geometry.scale(length, height, width);
+}
+
+/** Replace the distribution, fixture shape, luminance and photometric solid; `undefined` clears them. */
+export function setLightSceneProfile(objects: LightScene, profile: IESProfile | undefined, settings: ViewerSettings) {
+  const distribution = profile ? createCandelaTexture(profile) : blankTexture();
+  const shape = displayedShape(
+    luminousShape(profile?.dimensions ?? { width: 0, length: 0, height: 0 }, profile?.units),
+  );
+  objects.uniforms.distribution.value.dispose();
+  objects.uniforms.distribution.value = distribution;
+  objects.fixtureUniforms.luminanceMap.value.dispose();
+  objects.fixtureUniforms.luminanceMap.value = profile ? createLuminanceTexture(distribution, shape) : blankTexture();
+  objects.fixture.geometry.dispose();
+  objects.fixture.geometry = fixtureGeometry(shape);
+  objects.solid.geometry.dispose();
+  objects.solidLines.geometry.dispose();
+  [objects.solid.geometry, objects.solidLines.geometry] = profile
+    ? solidGeometry(profile)
+    : [new THREE.BufferGeometry(), new THREE.BufferGeometry()];
+  objects.cutoff = profile && cutoffAngle(profile);
+  applyLightSceneSettings(objects, settings);
+}
+
+const SOLID_SEGMENTS = 48;
+/** Candela surface normalized to a unit peak radius, plus its latitude/longitude grid lines. */
+export function solidGeometry(profile: IESProfile): [THREE.BufferGeometry, THREE.BufferGeometry] {
+  const topology = buildIntensityTopology(profile, {
+    horizontalSegments: SOLID_SEGMENTS,
+    verticalSegments: SOLID_SEGMENTS,
+  });
+  const positions = topology.vertices.flatMap(({ position }) => position.map((v) => v / (topology.maximum || 1)));
+  const surface = new THREE.BufferGeometry();
+  surface.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  surface.setIndex(topology.faces.flat());
+  const lines: number[] = [];
+  const row = SOLID_SEGMENTS + 1;
+  for (let v = 0; v <= SOLID_SEGMENTS; v++)
+    for (let h = 0; h <= SOLID_SEGMENTS; h++) {
+      const i = v * row + h;
+      if (h < SOLID_SEGMENTS && v > 0 && v < SOLID_SEGMENTS && v % 4 === 0) lines.push(i, i + 1);
+      if (v < SOLID_SEGMENTS && h % 4 === 0) lines.push(i, i + row);
+    }
+  const grid = new THREE.BufferGeometry();
+  grid.setAttribute('position', surface.getAttribute('position'));
+  grid.setIndex(lines);
+  return [surface, grid];
 }

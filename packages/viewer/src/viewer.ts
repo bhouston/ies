@@ -10,15 +10,14 @@ import {
 } from '@ies-tools/core';
 import { renderIlluminanceLegend } from './legend.js';
 import type { PhotometryFormat } from './source.js';
-import { createCandelaTexture } from './texture.js';
 import { DEFAULT_COLOR_TEMPERATURE, documentColorTemperature, temperatureColor } from './lightColor.js';
 import {
   createLightScene,
   applyLightSceneSettings,
   disposeLightScene,
   fitDistanceChange,
-  cutoffAngle,
   applyIlluminanceLegend,
+  setLightSceneProfile,
   TONE_MAPPING,
 } from './scene.js';
 import {
@@ -133,12 +132,8 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       throw new Error(
         'The 3D viewer supports Type C photometry only. This file uses Type A or B coordinates; inspect or validate it with ies inspect / ies validate or the VS Code information panel. Use a Type C file for 3D previews and charts.',
       );
-    const texture = createCandelaTexture(profile);
-    uniforms.distribution.value.dispose();
-    uniforms.distribution.value = texture;
     uniforms.lightColor.value.copy(temperatureColor(documentColorTemperature(next)));
-    objects.cutoff = cutoffAngle(profile);
-    applyLightSceneSettings(objects, settings);
+    setLightSceneProfile(objects, profile, settings);
     document = next;
     updatePeak();
     updateLegend();
@@ -151,13 +146,8 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     },
     clear() {
       if (disposed) throw new Error('Viewer has been disposed');
-      const texture = new THREE.DataTexture(new Float32Array(4), 2, 2, THREE.RedFormat, THREE.FloatType);
-      texture.needsUpdate = true;
-      uniforms.distribution.value.dispose();
-      uniforms.distribution.value = texture;
       uniforms.lightColor.value.copy(temperatureColor(DEFAULT_COLOR_TEMPERATURE));
-      objects.cutoff = undefined;
-      applyLightSceneSettings(objects, settings);
+      setLightSceneProfile(objects, undefined, settings);
       document = undefined;
       updatePeak();
       updateLegend();
@@ -187,6 +177,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       if (next.toneMapping !== settings.toneMapping) {
         renderer.toneMapping = TONE_MAPPING[next.toneMapping];
         material.needsUpdate = true;
+        objects.fixture.material.needsUpdate = true;
       }
       if (next.floorDistance !== settings.floorDistance || next.wallDistance !== settings.wallDistance) {
         fitDistanceChange(camera, controls.target, settings, next);

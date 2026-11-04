@@ -36,6 +36,8 @@ export interface ViewerSettings {
   viewMode: ViewMode;
   /** Display units: lux and metres, or footcandles and feet. Stored distances stay in metres. Defaults to `metric`. */
   units: Units;
+  /** Overlay the 3D candela distribution, its peak at half the floor distance. Defaults to false. */
+  photometricSolid: boolean;
 }
 export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   showWall: true,
@@ -46,6 +48,7 @@ export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   helper: true,
   viewMode: 'realistic',
   units: 'metric',
+  photometricSolid: false,
 });
 export const VIEWER_SETTINGS_ATTRIBUTES = [
   'show-wall',
@@ -56,6 +59,7 @@ export const VIEWER_SETTINGS_ATTRIBUTES = [
   'helper',
   'view-mode',
   'units',
+  'photometric-solid',
 ] as const;
 export interface ViewerSettingsChangeDetail {
   settings: ViewerSettings;
@@ -73,6 +77,7 @@ export function resolveViewerSettings(
   const next = { ...current, ...patch };
   if (typeof next.showWall !== 'boolean') throw new TypeError('showWall must be a boolean');
   if (typeof next.helper !== 'boolean') throw new TypeError('helper must be a boolean');
+  if (typeof next.photometricSolid !== 'boolean') throw new TypeError('photometricSolid must be a boolean');
   if (!TONE_MAPPING_OPTIONS.some((option) => option.value === next.toneMapping))
     throw new RangeError('Unsupported toneMapping function');
   if (!VIEW_MODE_OPTIONS.some((option) => option.value === next.viewMode))
@@ -97,9 +102,10 @@ export function viewerSettingFromAttribute(name: string, value: string | null): 
   const number = (key: 'wallDistance' | 'floorDistance' | 'exposure') => ({
     [key]: value === null ? DEFAULT_VIEWER_SETTINGS[key] : value.trim() ? Number(value) : NaN,
   });
-  if (name === 'show-wall' || name === 'helper') {
-    const key = name === 'helper' ? 'helper' : 'showWall';
-    if (value === null || value === '' || value === 'true') return { [key]: true };
+  if (name === 'show-wall' || name === 'helper' || name === 'photometric-solid') {
+    const key = name === 'helper' ? 'helper' : name === 'show-wall' ? 'showWall' : 'photometricSolid';
+    if (value === null) return { [key]: DEFAULT_VIEWER_SETTINGS[key] };
+    if (value === '' || value === 'true') return { [key]: true };
     if (value === 'false') return { [key]: false };
     throw new RangeError(`${name} must be empty, true, or false`);
   }

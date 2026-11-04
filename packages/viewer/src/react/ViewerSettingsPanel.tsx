@@ -149,6 +149,7 @@ export function ViewerSettingsPanel({
           [
             ['showWall', 'Back wall'],
             ['helper', 'Helper'],
+            ['photometricSolid', 'Photometric solid'],
           ] as const
         ).map(([key, label]) => (
           <label key={key} className="my-3 flex items-center justify-between gap-3">

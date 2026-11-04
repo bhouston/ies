@@ -10,8 +10,21 @@ import {
   fitDistanceChange,
   helperLines,
   cutoffAngle,
+  displayedShape,
+  fixtureGeometry,
+  setLightSceneProfile,
   TONE_MAPPING,
 } from './scene.js';
+import { luminousShape } from '@ies-tools/core';
+import { viewerSettingFromAttribute } from './settings.js';
+
+const size = (geometry: THREE.BufferGeometry) => {
+  geometry.computeBoundingBox();
+  return geometry
+    .boundingBox!.getSize(new THREE.Vector3())
+    .toArray()
+    .map((v) => +v.toFixed(3));
+};
 
 describe('physical scene settings', () => {
   it('computes cutoff for a valid half-degree grid without exceeding the argument limit', () => {
@@ -36,6 +49,7 @@ describe('physical scene settings', () => {
     { exposure: NaN },
     { showWall: 'false' },
     { helper: 'false' },
+    { photometricSolid: 1 },
     { toneMapping: 'unknown' },
     { viewMode: 'falsecolor' },
     { units: 'feet' },
@@ -92,5 +106,56 @@ describe('physical scene settings', () => {
     applyLightSceneSettings(objects, { ...DEFAULT_VIEWER_SETTINGS, helper: false });
     expect(objects.helper.visible).toBe(false);
     disposeLightScene(objects);
+  });
+  it('reads the photometric-solid attribute', () => {
+    expect(viewerSettingFromAttribute('photometric-solid', null)).toEqual({ photometricSolid: false });
+    expect(viewerSettingFromAttribute('photometric-solid', '')).toEqual({ photometricSolid: true });
+    expect(viewerSettingFromAttribute('helper', null)).toEqual({ helper: true });
+  });
+  it('sizes fixtures from the luminous opening with a visible minimum', () => {
+    expect(displayedShape(luminousShape({ width: 0, length: 0, height: 0 }))).toMatchObject({
+      solid: 'ellipsoid',
+      width: 0.05,
+      length: 0.05,
+      height: 0.05,
+    });
+    expect(displayedShape(luminousShape({ width: 0.3, length: 0.6, height: 0 }))).toMatchObject({
+      width: 0.3,
+      length: 0.6,
+      height: 0.01,
+    });
+    // A 1 cm LED grows to 5 cm across.
+    expect(displayedShape(luminousShape({ width: -0.01, length: -0.01, height: 0 })).width).toBeCloseTo(0.05);
+    const tube = displayedShape(luminousShape({ width: -0.1, length: 1.2, height: -0.1 }));
+    expect(size(fixtureGeometry(tube))).toEqual([1.2, 0.1, 0.1]);
+    const sideways = displayedShape(luminousShape({ width: 1.2, length: -0.1, height: -0.2 }));
+    expect(size(fixtureGeometry(sideways))).toEqual([0.1, 0.2, 1.2]);
+    expect(size(fixtureGeometry(displayedShape(luminousShape({ width: 0.2, length: 0.4, height: 0.1 }))))).toEqual([
+      0.4, 0.1, 0.2,
+    ]);
+  });
+  it('loads luminance, fixture and a peak-normalized photometric solid from a profile', () => {
+    const objects = createLightScene({ ...DEFAULT_VIEWER_SETTINGS });
+    try {
+      // Uniform 100 cd from a 0.1 m × 0.1 m downward opening.
+      const profile = parseIES(iesSource());
+      setLightSceneProfile(objects, profile, { ...DEFAULT_VIEWER_SETTINGS, photometricSolid: true });
+      expect(objects.solid.visible).toBe(true);
+      expect(objects.solid.scale.x).toBe(1);
+      const positions = objects.solid.geometry.getAttribute('position');
+      let peak = 0;
+      for (let i = 0; i < positions.count; i++)
+        peak = Math.max(peak, Math.hypot(positions.getX(i), positions.getY(i), positions.getZ(i)));
+      expect(peak).toBeCloseTo(1);
+      const luminance = objects.fixtureUniforms.luminanceMap.value.image.data as Float32Array;
+      const candela = objects.uniforms.distribution.value.image.data as Float32Array;
+      // Looking straight up at nadir: I / (0.1 × 0.1 m²).
+      expect(luminance[0]).toBeCloseTo(candela[0]! / 0.01);
+      setLightSceneProfile(objects, undefined, DEFAULT_VIEWER_SETTINGS);
+      expect(objects.solid.visible).toBe(false);
+      expect(objects.cutoff).toBeUndefined();
+    } finally {
+      disposeLightScene(objects);
+    }
   });
 });

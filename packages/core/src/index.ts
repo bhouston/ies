@@ -474,3 +474,5 @@ export {
   peakReceiverIlluminance,
 } from './measurement.js';
 export type { IlluminanceLegend, MeasurementUnits } from './measurement.js';
+export { luminousShape, projectedLuminousArea } from './shape.js';
+export type { LuminousShape, LuminousShapeKind } from './shape.js';

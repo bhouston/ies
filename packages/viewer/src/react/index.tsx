@@ -69,6 +69,7 @@ export function LightViewer({
   floorDistance,
   toneMapping,
   helper,
+  photometricSolid,
   viewMode,
   units,
   settingsPanel = 'closed',
@@ -95,7 +96,17 @@ export function LightViewer({
   const [panelSettings, setPanelSettings] = useState<ViewerSettings>(() => {
     try {
       return resolveViewerSettings(
-        providedSettings({ exposure, showWall, wallDistance, floorDistance, toneMapping, helper, viewMode, units }),
+        providedSettings({
+          exposure,
+          showWall,
+          wallDistance,
+          floorDistance,
+          toneMapping,
+          helper,
+          photometricSolid,
+          viewMode,
+          units,
+        }),
       );
     } catch {
       return { ...DEFAULT_VIEWER_SETTINGS };
@@ -173,6 +184,7 @@ export function LightViewer({
         floorDistance,
         toneMapping,
         helper,
+        photometricSolid,
         viewMode,
         units,
       });
@@ -189,7 +201,7 @@ export function LightViewer({
     return () => {
       active = false;
     };
-  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper, viewMode, units]);
+  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper, photometricSolid, viewMode, units]);
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     const next = resolveViewerSettings(patch, controller.current?.getSettings() ?? panelSettings);
     controller.current?.setSettings(next);

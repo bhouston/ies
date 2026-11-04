@@ -290,6 +290,10 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       input(viewer, 'helper').click();
     });
     expect(viewer.getAttribute('helper')).toBe('false');
+    act(() => {
+      input(viewer, 'photometricSolid').click();
+    });
+    expect(viewer.getAttribute('photometric-solid')).toBe('true');
     const toggle = (group: string, label: string) =>
       [...viewer.shadowRoot!.querySelectorAll<HTMLButtonElement>(`[aria-label="${group}"] button`)].find(
         (button) => button.textContent === label,
@@ -310,10 +314,11 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       toneMapping: 'neutral',
       exposure: 0,
       helper: false,
+      photometricSolid: true,
       viewMode: 'measurement',
       units: 'imperial',
     });
-    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(9);
+    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(10);
   });
   it('applies every setting attribute present when parsed markup creates the element', () => {
     const host = document.createElement('div');

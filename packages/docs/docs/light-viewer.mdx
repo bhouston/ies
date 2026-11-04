@@ -121,24 +121,30 @@ The gear button opens a settings panel. Set the same options with attributes:
   tone-mapping="aces"
   exposure="1"
   helper="true"
+  photometric-solid="false"
   view-mode="realistic"
   units="metric"
 ></light-viewer>
 ```
 
-| Attribute        | Values                                                                                                                 | Default     |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
-| `show-wall`      | `true` or `false`: show the back wall                                                                                  | `true`      |
-| `wall-distance`  | Distance from the light to the wall, 0.1–100 metres                                                                    | `2`         |
-| `floor-distance` | Height of the light above the floor, 0.1–100 metres                                                                    | `2`         |
-| `tone-mapping`   | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`                                                     | `aces`      |
-| `exposure`       | Display brightness, any number 0 or above                                                                              | `1`         |
-| `helper`         | `true` or `false`: blue lines showing the beam's extent                                                                | `true`      |
-| `view-mode`      | `realistic` or `measurement`: false-color illuminance with isolux lines                                                | `realistic` |
-| `units`          | `metric` (lux, metres) or `imperial` (footcandles, feet) for the legend and panel                                      | `metric`    |
-| `settings-panel` | `closed` (gear shown), `open`, or `hidden` (no buttons or panel, useful for screenshots; the measurement legend stays) | `closed`    |
+| Attribute           | Values                                                                                                                 | Default     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `show-wall`         | `true` or `false`: show the back wall                                                                                  | `true`      |
+| `wall-distance`     | Distance from the light to the wall, 0.1–100 metres                                                                    | `2`         |
+| `floor-distance`    | Height of the light above the floor, 0.1–100 metres                                                                    | `2`         |
+| `tone-mapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`                                                     | `aces`      |
+| `exposure`          | Display brightness, any number 0 or above                                                                              | `1`         |
+| `helper`            | `true` or `false`: blue lines showing the beam's extent                                                                | `true`      |
+| `photometric-solid` | `true` or `false`: amber 3D shape of the candela distribution                                                          | `false`     |
+| `view-mode`         | `realistic` or `measurement`: false-color illuminance with isolux lines                                                | `realistic` |
+| `units`             | `metric` (lux, metres) or `imperial` (footcandles, feet) for the legend and panel                                      | `metric`    |
+| `settings-panel`    | `closed` (gear shown), `open`, or `hidden` (no buttons or panel, useful for screenshots; the measurement legend stays) | `closed`    |
 
 The helper draws a downward beam's ground circle with four lines to the light. Wider distributions get three axis circles at half the mounting height.
+
+The photometric solid draws the candela distribution around the light: its distance from the light in each direction is proportional to the intensity in that direction, and its peak reaches half the mounting height.
+
+The light itself is drawn with the luminous-opening shape from the file (point, rectangle, box, disk, ellipse, cylinder or sphere) at its real size, with a 5 cm minimum so small sources stay visible. Its surface shows the average luminance toward the camera, so a downlight glows when seen from below and is dark from above. Bright sources usually appear white.
 
 Change settings from JavaScript with the `settings` property. It accepts a partial object and returns a copy:
 
