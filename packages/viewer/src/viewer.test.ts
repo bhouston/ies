@@ -14,15 +14,24 @@ import {
 } from '@ies-tools/core';
 import { temperatureColor } from './lightColor.js';
 import { iesSource } from '../../core/test/iesSource.js';
-const gpu = vi.hoisted(() => ({ render: vi.fn(), dispose: vi.fn() }));
+const gpu = vi.hoisted(() => ({
+  render: vi.fn(),
+  dispose: vi.fn(),
+  setSize: vi.fn(),
+  setPixelRatio: vi.fn(),
+  lost: false,
+}));
 // Preserve real scene objects and orbit controls; replace only WebGL rendering.
 vi.mock('three', async (importOriginal) => ({
   ...(await importOriginal<typeof import('three')>()),
   WebGLRenderer: vi.fn(function () {
     return {
       domElement: document.createElement('canvas'),
-      setPixelRatio: vi.fn(),
-      setSize: vi.fn(),
+      setPixelRatio: gpu.setPixelRatio,
+      getPixelRatio: () => 2,
+      setSize: gpu.setSize,
+      getContext: () => ({ isContextLost: () => gpu.lost, drawingBufferWidth: 320, drawingBufferHeight: 200 }),
+      capabilities: { maxTextureSize: 4096 },
       render: gpu.render,
       dispose: gpu.dispose,
     };
@@ -262,4 +271,41 @@ it('rejects Type A/B documents with the core capability message and keeps the cu
   } finally {
     viewer.dispose();
   }
+});
+
+it('captures the current scene at requested dimensions, restoring the canvas, and rejects bad input', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn(function () {
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }),
+  );
+  const toBlob = vi
+    .spyOn(HTMLCanvasElement.prototype, 'toBlob')
+    .mockImplementation((done, type) => done(new Blob(['x'], { type: type ?? 'image/png' })));
+  const viewer = createLightViewer(document.createElement('div'));
+  try {
+    gpu.render.mockClear();
+    gpu.setSize.mockClear();
+    const blob = await viewer.capture({ type: 'image/jpeg', quality: 0.8, width: 320, height: 200 });
+    expect(blob.type).toBe('image/jpeg');
+    expect(toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/jpeg', 0.8);
+    expect(gpu.setSize.mock.calls[0]).toEqual([320, 200, false]);
+    expect(gpu.setPixelRatio.mock.calls.slice(-2)).toEqual([[1], [2]]);
+    // One render for the capture, one restoring the on-screen frame.
+    expect(gpu.render).toHaveBeenCalledTimes(2);
+    await expect(viewer.capture({ width: 640, height: 400 })).rejects.toThrow('could not allocate');
+    await expect(viewer.capture({ width: 0, height: 10 })).rejects.toThrow('integers from 1 to 4096');
+    await expect(viewer.capture({ width: 5000 })).rejects.toThrow(RangeError);
+    await expect(viewer.capture({ quality: 2 })).rejects.toThrow('quality');
+    toBlob.mockImplementationOnce((done) => done(null));
+    await expect(viewer.capture()).rejects.toThrow('could not encode');
+    gpu.lost = true;
+    await expect(viewer.capture()).rejects.toThrow('context was lost');
+  } finally {
+    gpu.lost = false;
+    toBlob.mockRestore();
+    viewer.dispose();
+  }
+  await expect(viewer.capture()).rejects.toThrow('disposed');
 });

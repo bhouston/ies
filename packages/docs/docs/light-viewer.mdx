@@ -166,6 +166,32 @@ The `LightViewer` React component doesn't dispatch DOM events; it reports failur
 
 Changing the source cancels any earlier request. Removing the element stops loading and frees its GPU resources; adding it back recreates the viewer with the same source and settings.
 
+## Wait for rendering and save an image
+
+`whenReady()` resolves once the current source has loaded and its frame is drawn. `toBlob()` waits for the same thing, then renders the current settings and returns an image:
+
+```js
+const viewer = document.querySelector('light-viewer');
+await viewer.whenReady();
+const png = await viewer.toBlob();
+const thumbnail = await viewer.toBlob({ type: 'image/webp', quality: 0.85, width: 512, height: 384 });
+```
+
+| `toBlob` option   | What it does                                                                |
+| ----------------- | --------------------------------------------------------------------------- |
+| `type`            | `image/png` (default), `image/jpeg` or `image/webp`                         |
+| `quality`         | 0–1 for JPEG and WebP                                                       |
+| `width`, `height` | Output size in pixels. Without them the image matches the canvas pixel size |
+
+- The image contains only the 3D scene: the floor, wall, light and any helper lines you've turned on. The illuminance legend, ruler labels, settings panel and chart tabs aren't included. The image is always opaque, with the scene's black background.
+- A custom size doesn't change the viewer on the page; the camera keeps the same view at the new aspect ratio. The largest size depends on the GPU; a size it can't allocate rejects with an error.
+- If a browser can't encode the format you asked for, it returns a PNG. Check `blob.type`.
+- If the source changes before it finishes loading, `whenReady()` waits for the new source.
+- Both reject on the same failures as the `error` event (network errors, unreadable files, Type A/B files), if WebGL fails to start or the GPU context is lost, and if the element is removed from the page or was never added. Call them again after a new source or after adding the element back.
+- An element without a source resolves immediately and captures the empty scene.
+
+To capture the whole element, legend included, take a browser screenshot once `whenReady()` resolves.
+
 ## EULUMDAT files and lamp configurations
 
 ```html
@@ -290,4 +316,5 @@ viewer.dispose();
 - `load(text, format?, { lampSetIndex? })` loads IES or LDT text and returns the profile. `loadDocument` takes the same arguments and returns the full `PhotometricDocument`.
 - `setProfile(profile)` and `setDocument(document)` show data you've already parsed.
 - `getSettings()`, `setSettings(patch)` and `settingschange` listeners work like the element's `settings`.
+- `capture(options?)` returns a `Promise<Blob>` of the current scene, with the same options as the element's `toBlob()`.
 - `renderer` is the underlying Three.js `WebGLRenderer`.

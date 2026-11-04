@@ -11,7 +11,7 @@ import {
 import { SettingsPanel, type SettingsPanelMode, type ViewerTab } from './settingsPanel.js';
 import type { IESProfile } from '@ies-tools/core';
 import { ELEMENT_STYLES } from './elementStyles.js';
-import { createLightViewer, type LightViewerController } from './viewer.js';
+import { createLightViewer, type LightViewerCaptureOptions, type LightViewerController } from './viewer.js';
 import { createPhotometrySourceLoader, parseLampSetIndex, type PhotometryFormat } from './source.js';
 
 // Importing this module on an SSR server is safe; registration occurs only in a browser.
@@ -111,6 +111,45 @@ export class LightViewerElement extends ElementBase {
     const value = this.getAttribute('settings-panel');
     return value === 'open' || value === 'hidden' ? value : 'closed';
   }
+  /** Settles when the latest load settles; replaced by every load, so a superseded load never settles a waiter. */
+  #ready = settled(Promise.reject(new Error('The viewer is not connected to a document')));
+  /**
+   * Resolve once the current source is loaded and its frame rendered (immediately for an empty viewer).
+   * If the source changes first, it waits for the new source instead. Rejects with the load's error (network,
+   * parse, unsupported type), if the WebGL context is lost or failed to start, or if the element is disconnected.
+   */
+  async whenReady(): Promise<void> {
+    let ready: Promise<void>;
+    do {
+      ready = this.#ready;
+      await ready;
+    } while (ready !== this.#ready);
+    if (this.#viewer?.renderer.getContext().isContextLost()) throw new Error('The WebGL context was lost');
+  }
+  /**
+   * Wait for {@link whenReady}, then render the current settings and encode the opaque 3D scene only: no legend,
+   * ruler labels, settings panel or charts. Without `width`/`height` the image matches the canvas's pixels.
+   */
+  async toBlob(options?: LightViewerCaptureOptions): Promise<Blob> {
+    await this.whenReady();
+    if (!this.#viewer) throw new Error('The viewer is not connected to a document');
+    return this.#viewer.capture(options);
+  }
+  #settle?: (error?: unknown) => void;
+  #pending(): void {
+    let settle!: (error?: unknown) => void;
+    const next = new Promise<void>((resolve, reject) => {
+      settle = (error) => (error === undefined ? resolve() : reject(error));
+    });
+    // A superseded load resolves its promise so waiters move on to the new one.
+    this.#settle?.();
+    this.#settle = settle;
+    this.#ready = settled(next);
+  }
+  #finish(error?: unknown): void {
+    this.#settle?.(error);
+    this.#settle = undefined;
+  }
   #text?: string;
   #document?: PhotometricDocument;
   #loader = createPhotometrySourceLoader();
@@ -174,8 +213,12 @@ export class LightViewerElement extends ElementBase {
       );
       root.append(style, this.#host, this.#status, this.#panel.root, this.#errors.root);
     }
+    this.#pending();
     try {
       this.#viewer = createLightViewer(this.#host!, this.#settings);
+      this.#viewer.renderer.domElement.addEventListener('webglcontextlost', () =>
+        this.#finish(new Error('The WebGL context was lost')),
+      );
       // Dragging the light changes settings inside the viewer; reflect them like panel edits.
       this.#viewer.addEventListener('settingschange', ({ detail }) => {
         if (!this.#applying && !settingsEqual(detail.settings, this.#settings)) this.settings = detail.settings;
@@ -184,10 +227,13 @@ export class LightViewerElement extends ElementBase {
       this.#updatePanel();
       void this.#load();
     } catch (error) {
+      this.#finish(error);
       this.#error(error);
     }
   }
   disconnectedCallback(): void {
+    this.#finish(new Error('The viewer was disconnected'));
+    this.#ready = settled(Promise.reject(new Error('The viewer is not connected to a document')));
     ++this.#revision;
     this.#loader.cancel();
     this.#panel?.disconnect();
@@ -222,6 +268,7 @@ export class LightViewerElement extends ElementBase {
   async #load(): Promise<void> {
     if (!this.#viewer) return;
     const revision = ++this.#revision;
+    if (!this.#settle) this.#pending();
     try {
       this.#errors?.clear();
       this.#status!.textContent = 'Loading photometry…';
@@ -238,12 +285,14 @@ export class LightViewerElement extends ElementBase {
         this.#profile = undefined;
         this.#updatePanel();
         this.#status!.textContent = '';
+        this.#finish();
         return;
       }
       this.#viewer.setDocument(next);
       this.#profile = next.profile;
       this.#updatePanel();
       this.#status!.textContent = '';
+      this.#finish();
       this.dispatchEvent(
         new CustomEvent('load', {
           detail: { profile: next.profile, document: next, sourceFormat: next.sourceFormat },
@@ -252,7 +301,10 @@ export class LightViewerElement extends ElementBase {
         }),
       );
     } catch (error) {
-      if (revision === this.#revision && this.isConnected) this.#error(error, 'Unable to load photometry');
+      if (revision === this.#revision && this.isConnected) {
+        this.#finish(error);
+        this.#error(error, 'Unable to load photometry');
+      }
     }
   }
   #error(error: unknown, title = 'Viewer error'): void {
@@ -266,6 +318,11 @@ export class LightViewerElement extends ElementBase {
     this.#errors?.show(title, error, source);
     this.dispatchEvent(new CustomEvent('error', { detail: { message, error }, bubbles: true, composed: true }));
   }
+}
+/** Mark a stored promise handled, so an unawaited rejection is not reported; awaiting it still rejects. */
+function settled(promise: Promise<void>): Promise<void> {
+  promise.catch(() => {});
+  return promise;
 }
 if (typeof customElements !== 'undefined' && !customElements.get('light-viewer'))
   customElements.define('light-viewer', LightViewerElement);
