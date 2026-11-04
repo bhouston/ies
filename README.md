@@ -7,7 +7,7 @@ Parse, validate, convert and preview IES LM-63 and EULUMDAT lighting files in Ja
 
 [**Live demo and documentation**](https://ies-tools.ben3d.ca/) · [**Quick start**](https://ies-tools.ben3d.ca/docs/quick-start) · [**Report an issue**](https://github.com/bhouston/ies-tools/issues)
 
-![Measured light illuminating a floor and wall, with chart tabs and viewer settings](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/light-viewer.png)
+![The light viewer in Measurement mode: false-color isolux contours on the floor and wall, an illuminance legend, floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/light-viewer.png)
 
 ## Choose your tool
 
