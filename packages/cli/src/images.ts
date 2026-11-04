@@ -1,6 +1,6 @@
 import { open, readFile, unlink } from 'node:fs/promises';
 import { extname } from 'node:path';
-import { lampSetIndex } from './options.js';
+import { lampSetIndex, explainLampSetError } from './options.js';
 import { inputFormat } from './photometry.js';
 import { CHART_TYPES, chartPhotometry, type ChartOptions } from './chart.js';
 import { imageDimensions, renderPhotometry, type RenderOptions } from './render.js';
@@ -123,7 +123,7 @@ export async function runImageCommand(command: 'render' | 'chart', options: Imag
   options.inputFormat = inputFormat(text, options.input, options.inputFormat);
   if (command === 'render') {
     const image = await writeImageExclusively(options.output, async () => {
-      const rendered = await renderPhotometry(text, options);
+      const rendered = await renderPhotometry(text, options).catch(explainLampSetError);
       return { ...rendered, data: rendered.png };
     });
     const report = { output: options.output, width: image.width, height: image.height, gpu: image.gpu };
@@ -134,7 +134,10 @@ export async function runImageCommand(command: 'render' | 'chart', options: Imag
     );
   } else {
     const image = await writeImageExclusively(options.output, () =>
-      chartPhotometry(text, { ...options, format: extname(options.output).toLowerCase() === '.png' ? 'png' : 'svg' }),
+      chartPhotometry(text, {
+        ...options,
+        format: extname(options.output).toLowerCase() === '.png' ? 'png' : 'svg',
+      }).catch(explainLampSetError),
     );
     const report = {
       output: options.output,

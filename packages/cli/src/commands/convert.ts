@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { parseIES, parseLDT, serializeIES, serializeLDT } from '@ies-tools/core';
 import { defineCommand } from 'yargs-file-commands';
-import { inputOptions, readInput } from '../options.js';
+import { inputOptions, readInput, requireLampSetSelection } from '../options.js';
 
 export const command = defineCommand({
   command: 'convert <file>',
@@ -18,8 +18,7 @@ export const command = defineCommand({
   handler: async (argv) => {
     const { text, format, lampSetIndex } = await readInput(argv);
     const native = format === 'ies' ? parseIES(text) : parseLDT(text);
-    if ('lampSets' in native && native.lampSets.length > 1 && argv.to === 'ies' && lampSetIndex === undefined)
-      throw new Error('This file has alternative lamp configurations; select one with --lamp-set N');
+    if ('lampSets' in native && argv.to === 'ies') requireLampSetSelection(native.lampSets.length, lampSetIndex);
     const conversion =
       argv.to === 'json'
         ? { value: `${JSON.stringify(native, null, 2)}\n`, warnings: [] }

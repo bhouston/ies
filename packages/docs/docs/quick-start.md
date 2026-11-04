@@ -76,6 +76,6 @@ export default function App() {
 
 Start your app's development server. You should see a narrow beam illuminating the floor and wall; drag to orbit. The stylesheet supplies the settings UI. The 3D view requires hardware WebGL2 and a browser DOM; with server rendering, mount it on the client.
 
-Next: [React charts and local file input](./react.md), [plain HTML integration](./light-viewer.mdx), or [troubleshooting](./troubleshooting.md).
+Next: [React charts and local file input](./react.md), [plain HTML integration](./light-viewer.mdx), or [compatibility and limits](./troubleshooting.md).
 
 Prefer an editor? [Install the VS Code extension](./vscode.md#install) and open the sample file.

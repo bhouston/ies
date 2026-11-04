@@ -26,14 +26,19 @@ export interface RenderedPhotometry {
 
 /** A named vendor/adapter must identify actual hardware; software and generic masked strings are rejected. */
 export function requireHardwareGPU(info: HardwareGPUInfo): void {
+  const recovery =
+    'Enable graphics acceleration in an installed Chrome/Edge browser and run on a machine with a hardware GPU. Use --browser or IES_BROWSER to select a different installed browser. For Type C charts without a GPU, use ies chart <file> -o chart.svg.';
   const identification = `${info.vendor} ${info.renderer}`;
   if (
     /swiftshader|llvmpipe|lavapipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i.test(identification)
   )
-    throw new Error(`Hardware WebGL is required; software renderer rejected: ${info.renderer}`);
+    throw new Error(`Hardware WebGL is required; software renderer rejected: ${info.renderer}. ${recovery}`);
   if (!/apple|nvidia|geforce|quadro|amd|radeon|\bati\b|intel|adreno|mali|powervr|vivante|broadcom/i.test(info.renderer))
-    throw new Error(`Unable to confirm a hardware GPU from WebGL renderer: ${info.renderer || '(unavailable)'}`);
-  if (!/WebGL 2/i.test(info.version)) throw new Error(`The shared viewer requires WebGL 2: ${info.version}`);
+    throw new Error(
+      `Unable to confirm a hardware GPU from WebGL renderer: ${info.renderer || '(unavailable)'}. ${recovery}`,
+    );
+  if (!/WebGL 2/i.test(info.version))
+    throw new Error(`The shared viewer requires WebGL 2: ${info.version}. ${recovery}`);
 }
 export function imageDimensions(width = 1024, height = 768): { width: number; height: number } {
   if (![width, height].every((value) => Number.isInteger(value) && value >= 1 && value <= 8192))

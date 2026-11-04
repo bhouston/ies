@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { parseLDT } from '@ies-tools/core';
 import { defineCommand } from 'yargs-file-commands';
 import { servePreview } from '../preview.js';
-import { inputOptions, readInput } from '../options.js';
+import { inputOptions, readInput, requireLampSetSelection } from '../options.js';
 
 export const command = defineCommand({
   command: 'view <file>',
@@ -13,8 +13,7 @@ export const command = defineCommand({
       .option('open', { type: 'boolean', describe: 'Open the preview in the default browser' }),
   handler: async (argv) => {
     const { text, format, lampSetIndex } = await readInput(argv);
-    if (format === 'ldt' && lampSetIndex === undefined && parseLDT(text).lampSets.length > 1)
-      throw new Error('This file has alternative lamp configurations; select one with --lamp-set N');
+    if (format === 'ldt') requireLampSetSelection(parseLDT(text).lampSets.length, lampSetIndex);
     const preview = await servePreview(text, argv.port, { format, lampSetIndex });
     console.log(`Photometric preview: ${preview.url}\nPress Ctrl+C to stop.`);
     const stop = () => {

@@ -133,7 +133,7 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     copy.click();
     await flush();
     expect(writeText).toHaveBeenCalledWith(
-      'Unable to load photometry\n\nFailed to load photometry: HTTP 404\n\nError\nSource: /missing.ies',
+      'Unable to load photometry\n\nFailed to load photometry: HTTP 404. Check the source URL and deploy the .ies or .ldt file at that path.\n\nError\nSource: /missing.ies',
     );
     expect(overlay.querySelector('[role="status"]')!.textContent).toBe('Copied');
     writeText.mockRejectedValueOnce(new Error('Clipboard permission denied'));

@@ -130,6 +130,22 @@ describe('dual-format CLI entry points', () => {
     expect(selected.status).toBe(0);
     expect(sampleIntensity(parseIES(selected.stdout), 0, 0)).toBe(25);
   });
+  it('explains the actual one-based lamp range for conversion, preview, chart and render', async () => {
+    const file = await input(ldtSource({ alternatives: true }));
+    for (const args of [
+      ['convert', file, '--to', 'ies'],
+      ['view', file],
+      ['chart', file, '-o', join(directories[0]!, 'chart.svg')],
+      ['render', file, '-o', join(directories[0]!, 'render.png')],
+    ]) {
+      const result = cli(...args);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('--lamp-set N');
+      expect(result.stderr).toContain('integer from 1 to 2');
+      expect(result.stderr).toContain('ies inspect <file>');
+      expect(result.stderr).not.toContain('lampSetIndex');
+    }
+  });
   it('never overwrites outputs and supports explicit input hints or content detection', async () => {
     const file = await input(ldtSource(), 'data');
     expect(JSON.parse(cli('inspect', file, '--json').stdout).sourceFormat).toBe('ldt');

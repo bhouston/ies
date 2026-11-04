@@ -385,6 +385,7 @@ export type {
 export { LDTParseError, parseLDT, validateLDT, measuredCPlaneIndices, writeLDT } from './ldt.js';
 export type { LDTProfile, LDTLampSet, LDTDimensions } from './ldt.js';
 export {
+  LampSetSelectionError,
   detectPhotometricFormat,
   parsePhotometry,
   toPhotometricDocument,

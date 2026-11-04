@@ -45,6 +45,23 @@ export interface PhotometryOptions {
   /** Required for multiple LDT lamp configurations; alternatives are never implicitly summed. */
   lampSetIndex?: number;
 }
+/** A required or out-of-range selection among alternative EULUMDAT lamp configurations. */
+export class LampSetSelectionError extends RangeError {
+  readonly code: 'LDT_LAMP_SET_SELECTION_REQUIRED' | 'LDT_INVALID_LAMP_SET';
+  constructor(
+    readonly lampSetCount: number,
+    readonly lampSetIndex?: number,
+  ) {
+    super(
+      lampSetIndex === undefined
+        ? `Multiple EULUMDAT lamp sets require an explicit lampSetIndex from 0 to ${lampSetCount - 1}; configurations are not summed`
+        : `lampSetIndex is outside the available EULUMDAT lamp sets. Set it to an integer from 0 to ${lampSetCount - 1}.`,
+    );
+    this.name = 'LampSetSelectionError';
+    this.code = lampSetIndex === undefined ? 'LDT_LAMP_SET_SELECTION_REQUIRED' : 'LDT_INVALID_LAMP_SET';
+  }
+}
+
 export interface SerializeLDTOptions extends PhotometryOptions {
   /** Explicit normalization flux when the IES document does not supply usable lamp lumens. */
   luminousFlux?: number;
@@ -200,10 +217,10 @@ export function toPhotometricDocument(input: PhotometricInput, options: Photomet
   }
   if (isLDT(input)) {
     if (input.lampSets.length > 1 && options.lampSetIndex === undefined)
-      throw new Error('Multiple EULUMDAT lamp sets require an explicit lampSetIndex; configurations are not summed');
+      throw new LampSetSelectionError(input.lampSets.length);
     const index = options.lampSetIndex ?? 0;
     if (!Number.isSafeInteger(index) || index < 0 || index >= input.lampSets.length)
-      throw new RangeError('lampSetIndex is outside the available EULUMDAT lamp sets');
+      throw new LampSetSelectionError(input.lampSets.length, index);
     return {
       sourceFormat: 'ldt',
       selectedLampSetIndex: index,
