@@ -1,3 +1,4 @@
+import { LampSetSelectionError } from '@ies-tools/core';
 import { readFile } from 'node:fs/promises';
 import type { Argv } from 'yargs';
 import { inputFormat, type InputFormat } from './photometry.js';
@@ -27,4 +28,22 @@ export async function readInput(argv: { file: string; format?: InputFormat; lamp
   const index = lampSetIndex(argv.lampSet);
   if (format === 'ies' && index !== undefined) throw new Error('--lamp-set applies to LDT inputs only');
   return { text, format, lampSetIndex: index };
+}
+
+/** Show the CLI's one-based selection convention rather than a JavaScript API option. */
+export function requireLampSetSelection(count: number, index?: number): void {
+  if (
+    (index === undefined && count > 1) ||
+    (index !== undefined && (!Number.isSafeInteger(index) || index < 0 || index >= count))
+  ) {
+    throw new Error(
+      `This file has ${count} alternative lamp configuration${count === 1 ? '' : 's'}. Select one with --lamp-set N, where N is an integer from 1 to ${count}. Run ies inspect <file> to see the configuration labels. Configurations are not summed.`,
+    );
+  }
+}
+
+/** Translate structured library errors at the CLI boundary without reparsing successful inputs. */
+export function explainLampSetError(error: unknown): never {
+  if (error instanceof LampSetSelectionError) requireLampSetSelection(error.lampSetCount, error.lampSetIndex);
+  throw error;
 }

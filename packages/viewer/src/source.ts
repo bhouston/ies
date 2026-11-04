@@ -1,4 +1,10 @@
-import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from '@ies-tools/core';
+import {
+  LampSetSelectionError,
+  parsePhotometry,
+  toPhotometricDocument,
+  type IESProfile,
+  type PhotometricDocument,
+} from '@ies-tools/core';
 
 export type PhotometryFormat = 'ies' | 'ldt';
 export interface PhotometrySource {
@@ -63,12 +69,57 @@ export function createPhotometrySourceLoader(fetcher: PhotometryFetch = (url, in
         if (source.profile) return toPhotometricDocument(source.profile);
         let text = source.text ?? source.iesText;
         if (text === undefined && source.src) {
-          const response = await fetcher(source.src, { signal: controller.signal });
-          if (!response.ok) throw new Error(`Failed to load photometry: HTTP ${response.status}`);
-          text = await response.text();
+          if (/^file:/i.test(source.src)) {
+            throw new Error(
+              'A file:// URL cannot be loaded by this viewer. Serve the file over HTTP(S), or read a local file with file.text() and pass photometryText (HTML element) or text (React).',
+            );
+          }
+          let response: Awaited<ReturnType<PhotometryFetch>>;
+          try {
+            response = await fetcher(source.src, { signal: controller.signal });
+          } catch (cause) {
+            throw new Error(
+              `Could not fetch photometry from ${source.src}. Check your connection and that the URL is reachable. The browser may also block cross-origin requests: the file server must allow this page's origin through CORS. Serve the file from the same origin, or read a local file with file.text() and pass photometryText (HTML element) or text (React).`,
+              { cause },
+            );
+          }
+          if (!response.ok) {
+            const action =
+              response.status === 404
+                ? 'Check the source URL and deploy the .ies or .ldt file at that path.'
+                : response.status === 401 || response.status === 403
+                  ? 'The file server denied access. Check authentication and permissions, or serve an accessible copy of the file.'
+                  : response.status >= 500
+                    ? 'The file server failed to respond successfully. Retry later or serve the file from another location.'
+                    : 'Check the source URL and the file server response.';
+            throw new Error(`Failed to load photometry: HTTP ${response.status}. ${action}`);
+          }
+          try {
+            text = await response.text();
+          } catch (cause) {
+            throw new Error(
+              `Could not finish reading photometry from ${source.src}. Check your connection and retry the request.`,
+              { cause },
+            );
+          }
         }
         if (controller.signal.aborted || current !== revision || text === undefined) return undefined;
-        return parsePhotometry(text, source.format, { lampSetIndex: source.lampSetIndex });
+        if (/^\s*(?:<!doctype\s+html\b|<html\b)/i.test(text)) {
+          throw new Error(
+            'The source contains HTML instead of IES or EULUMDAT photometry. Check that the source URL returns the .ies or .ldt file itself, rather than an application fallback or sign-in page.',
+          );
+        }
+        try {
+          return parsePhotometry(text, source.format, { lampSetIndex: source.lampSetIndex });
+        } catch (cause) {
+          if (cause instanceof LampSetSelectionError) {
+            throw new Error(
+              `This LDT file has ${cause.lampSetCount} alternative lamp configurations. Choose one in the configuration selector if available, or set lamp-set-index (HTML) / lampSetIndex (JavaScript) to an integer from 0 to ${cause.lampSetCount - 1}. Configurations are alternatives and are not summed.`,
+              { cause },
+            );
+          }
+          throw cause;
+        }
       } catch (error) {
         if (controller.signal.aborted || current !== revision) return undefined;
         throw error;

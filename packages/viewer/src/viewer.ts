@@ -51,7 +51,15 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   const listeners = new Set<ViewerSettingsListener>();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 100);
   camera.position.set(5, 4, 7);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  let renderer: THREE.WebGLRenderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (cause) {
+    throw new Error(
+      'Could not initialize the 3D viewer. Enable graphics acceleration and restart your browser or VS Code; a hardware GPU with WebGL2 is required. For inspection and validation, use ies inspect / ies validate. Type C charts can also be exported with ies chart without a GPU.',
+      { cause },
+    );
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = TONE_MAPPING[settings.toneMapping];
   renderer.domElement.setAttribute('aria-label', 'Photometric light illuminating a ground plane and wall');
@@ -99,7 +107,10 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     },
     setProfile(profile) {
       if (disposed) throw new Error('Viewer has been disposed');
-      if (profile.photometricType !== 1) throw new Error('The 3D viewer supports Type C photometry only');
+      if (profile.photometricType !== 1)
+        throw new Error(
+          'The 3D viewer supports Type C photometry only. This file uses Type A or B coordinates; inspect or validate it with ies inspect / ies validate or the VS Code information panel. Use a Type C file for 3D previews and charts.',
+        );
       const texture = createCandelaTexture(profile);
       uniforms.distribution.value.dispose();
       uniforms.distribution.value = texture;

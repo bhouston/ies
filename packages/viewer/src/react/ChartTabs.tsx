@@ -60,7 +60,10 @@ export function ChartTabs({ tab, onTabChange, profile, mountingHeight }: ChartTa
           {!profile ? (
             <p className="text-muted-foreground">Loading photometry…</p>
           ) : profile.photometricType !== 1 ? (
-            <p role="alert">Charts support Type C photometry only.</p>
+            <p role="alert">
+              Charts support Type C photometry only. Inspect or validate Type A/B files with ies inspect / ies validate
+              or the VS Code information panel.
+            </p>
           ) : tab === 'cone' ? (
             <ConeDiagramGraph profile={profile} style={{ maxHeight: '100%' }} />
           ) : tab === 'luminance' ? (

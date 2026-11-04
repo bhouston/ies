@@ -77,6 +77,6 @@ npm install @ies-tools/core
 - IES LM-63: the 1986, 1991, 1995, 2002 and 2019 editions, including embedded `TILT` data.
 - EULUMDAT `.ldt`, including files with several alternative lamp configurations.
 
-The 3D view and most charts need **Type C** photometry, which covers almost all published luminaire files. Type A and B files can still be inspected and validated. The 3D view also needs hardware WebGL2. See [compatibility and troubleshooting](./troubleshooting.md) for supported runtimes and common integration problems.
+The 3D view and most charts need **Type C** photometry, which covers almost all published luminaire files. Type A and B files can still be inspected and validated. The 3D view also needs hardware WebGL2. See [compatibility and limits](./troubleshooting.md) for supported runtimes and photometric assumptions.
 
 Looking to contribute? Read [CONTRIBUTING.md](https://github.com/bhouston/ies-tools/blob/main/CONTRIBUTING.md).

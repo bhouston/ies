@@ -109,12 +109,8 @@ A notification reports how many files were converted and how many warnings there
 | `iesTools.hover.enabled`      | `true`  | Explain the field under the cursor on hover.                                                                                    |
 | `iesTools.codeLens.enabled`   | `true`  | Show the photometric summary and **Open Light Preview** link on the first line.                                                 |
 
-## Requirements and troubleshooting
+## Requirements and diagnostics
 
-**The 3D view is blank or shows an error.** The preview needs hardware WebGL2. Make sure VS Code isn't started with GPU acceleration turned off (for example with `--disable-gpu`).
+The 3D preview needs hardware WebGL2 and Type C photometry. Type A and B files support inspection and validation in the information panel.
 
-**The file opens but doesn't render.** Rendering needs **Type C** photometry. Type A and B files can still be inspected and validated in the information panel.
-
-**An LDT file asks me to choose a configuration.** Some EULUMDAT files hold several alternative lamp configurations, such as different lamp options for the same luminaire. They are alternatives, so they are never added together. Choose one from the selector above the preview to render it and see its statistics.
-
-**The preview shows a parse error.** Use **Open as Text** to fix the file. The Problems panel points at the line that caused the error.
+Initialization failures explain recovery steps directly in the preview. Parse errors also appear in the Problems panel with source locations. For LDT files with alternative lamp configurations, the selector above the preview lists the available choices; statistics and rendering use the chosen configuration rather than adding alternatives together.

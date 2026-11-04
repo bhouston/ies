@@ -106,3 +106,59 @@ describe('format-neutral source loading without a renderer', () => {
       expect(() => parseLampSetIndex(text)).toThrow('nonnegative integer');
   });
 });
+
+it('explains possible connectivity and CORS failures without claiming to distinguish them', async () => {
+  const cause = new TypeError('Failed to fetch');
+  const loader = createPhotometrySourceLoader(async () => {
+    throw cause;
+  });
+  const failure = await loader.load({ src: 'https://lights.example/test.ies' }).catch((error: Error) => error);
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).cause).toBe(cause);
+  expect((failure as Error).message).toContain('Check your connection');
+  expect((failure as Error).message).toContain('may also block cross-origin requests');
+  expect((failure as Error).message).toContain('CORS');
+  expect((failure as Error).message).toContain('same origin');
+  expect((failure as Error).message).toContain('photometryText');
+});
+
+it.each([
+  [404, 'deploy the .ies or .ldt file'],
+  [401, 'authentication and permissions'],
+  [403, 'authentication and permissions'],
+  [503, 'Retry later'],
+  [429, 'file server response'],
+])('gives a relevant next step for HTTP %s', async (status, action) => {
+  const loader = createPhotometrySourceLoader(async () => ({ ok: false, status, text: async () => '' }));
+  await expect(loader.load({ src: '/light.ies' })).rejects.toThrow(action);
+});
+
+it('recognizes HTML fallback pages and local file URLs before attempting to parse photometry', async () => {
+  const loader = createPhotometrySourceLoader(async () => response('<!doctype html><html>Sign in</html>'));
+  await expect(loader.load({ src: '/fallback.ies' })).rejects.toThrow('application fallback or sign-in page');
+  await expect(loader.load({ src: 'file:///light.ies' })).rejects.toThrow('Serve the file over HTTP(S)');
+});
+
+it('keeps interrupted response errors actionable and retains their cause', async () => {
+  const cause = new Error('Connection closed');
+  const loader = createPhotometrySourceLoader(async () => ({
+    ok: true,
+    status: 200,
+    text: async () => {
+      throw cause;
+    },
+  }));
+  await expect(loader.load({ src: '/light.ies' })).rejects.toMatchObject({
+    cause,
+    message: expect.stringContaining('Check your connection and retry'),
+  });
+});
+
+it('explains zero-based lamp selection for the HTML and React integrations', async () => {
+  const loader = createPhotometrySourceLoader();
+  for (const lampSetIndex of [undefined, 2]) {
+    await expect(loader.load({ text: ldtSource({ alternatives: true }), lampSetIndex })).rejects.toThrow(
+      'lamp-set-index (HTML) / lampSetIndex (JavaScript) to an integer from 0 to 1',
+    );
+  }
+});

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
+import { WebGLRenderer } from 'three';
 import type { Mesh, Scene, ShaderMaterial, LineSegments, DataTexture } from 'three';
 import { parsePhotometry } from '@ies-tools/core';
 import { iesSource } from '../../core/test/iesSource.js';
@@ -62,4 +63,19 @@ it('clears the distribution, helper and document, disposes textures and can relo
     viewer.dispose();
   }
   expect(() => viewer.clear()).toThrow('disposed');
+});
+
+it('explains WebGL initialization recovery and preserves the underlying error', () => {
+  const cause = new Error('Error creating WebGL context');
+  vi.mocked(WebGLRenderer).mockImplementationOnce(function () {
+    throw cause;
+  });
+  let failure: unknown;
+  try {
+    createLightViewer(document.createElement('div'));
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toMatchObject({ cause, message: expect.stringContaining('Enable graphics acceleration') });
+  expect((failure as Error).message).toContain('ies chart');
 });
