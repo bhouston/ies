@@ -57,7 +57,7 @@ function setup() {
   return { canvas, objects, camera, move, orbit, screen, pointer, ring, settings: () => settings };
 }
 
-it('selects, drags the light on its horizontal plane without orbiting, and deselects', () => {
+it('selects, drags the light in the plane perpendicular to the wall without orbiting, and deselects', () => {
   const { canvas, objects, move, orbit, screen, pointer, ring, settings } = setup();
   const light = lightPosition(objects, settings());
   pointer('pointermove', screen(light), { buttons: 0 });
@@ -65,20 +65,14 @@ it('selects, drags the light on its horizontal plane without orbiting, and desel
   pointer('pointerdown', screen(light));
   expect(orbit).toHaveBeenLastCalledWith(false);
   expect(ring.hidden).toBe(false);
-  // Drag to the screen position of a point 1 m along X and 0.5 m toward the wall at the light's height.
-  pointer('pointermove', screen(light.clone().add(new THREE.Vector3(1, 0, -0.5))), { buttons: 1 });
-  expect(settings().lightOffset).toBeCloseTo(1, 2);
-  expect(settings().wallDistance).toBeCloseTo(1.5, 2);
-  expect(settings().floorDistance).toBe(2);
+  // One plain drag changes height and wall distance together: 1 m up and 0.5 m toward the wall.
+  pointer('pointermove', screen(light.clone().add(new THREE.Vector3(0, 1, -0.5))), { buttons: 1 });
+  expect(settings()).toMatchObject({ lightOffset: 0, floorDistance: 3, wallDistance: 1.5 });
+  // A pointer off to the side, even with Shift held, never moves the light along the wall.
+  pointer('pointermove', screen(light.clone().add(new THREE.Vector3(2, 0, 0))), { buttons: 1, shiftKey: true });
+  expect(settings().lightOffset).toBe(0);
   pointer('pointerup', screen(light));
   expect(orbit).toHaveBeenLastCalledWith(true);
-  // Shift+drag changes only the height.
-  const moved = lightPosition(objects, settings());
-  pointer('pointerdown', screen(moved), { shiftKey: true });
-  pointer('pointermove', screen(moved.clone().setY(3)), { shiftKey: true, buttons: 1 });
-  pointer('pointerup', screen(moved));
-  expect(settings().floorDistance).toBeCloseTo(3, 2);
-  expect(settings().lightOffset).toBeCloseTo(1, 2);
   // A click on empty space deselects; an orbit (press, move, release) does not.
   const empty = { clientX: 20, clientY: 580 };
   pointer('pointerdown', empty);
@@ -91,60 +85,85 @@ it('selects, drags the light on its horizontal plane without orbiting, and desel
   expect(ring.hidden).toBe(true);
 });
 
-it('nudges the selected light with arrow keys and deselects with Escape', () => {
+it('keeps a deprecated light offset set elsewhere and drags from a near edge-on camera', () => {
+  const { objects, camera, move, screen, pointer, settings } = setup();
+  move({ lightOffset: 1.5 });
+  // Looking straight at the wall, the perpendicular plane is edge-on; the camera-facing fallback still lifts it.
+  camera.position.set(1.6, 2, 8);
+  camera.lookAt(1.5, 2, 0);
+  camera.updateMatrixWorld();
+  const light = lightPosition(objects, settings());
+  pointer('pointerdown', screen(light));
+  pointer('pointermove', screen(light.clone().add(new THREE.Vector3(0.5, 0.75, 0))), { buttons: 1 });
+  pointer('pointerup', screen(light));
+  expect(settings()).toMatchObject({ lightOffset: 1.5, floorDistance: 2.75, wallDistance: 2 });
+});
+
+it('nudges height with Up/Down and wall distance with Left/Right, and deselects with Escape', () => {
   const { canvas, objects, screen, pointer, ring, settings } = setup();
   const key = (name: string, shiftKey = false) =>
     canvas.dispatchEvent(new KeyboardEvent('keydown', { key: name, shiftKey, cancelable: true }));
-  key('ArrowRight');
-  expect(settings().lightOffset).toBe(0);
+  key('ArrowUp');
+  expect(settings().floorDistance).toBe(2);
   pointer('pointerdown', screen(lightPosition(objects, settings())));
   pointer('pointerup', screen(lightPosition(objects, settings())));
-  key('ArrowRight');
   key('ArrowUp');
   key('ArrowUp', true);
-  expect(settings()).toMatchObject({ lightOffset: 0.1, wallDistance: 1.9, floorDistance: 2.1 });
+  key('ArrowRight');
+  expect(settings()).toMatchObject({ lightOffset: 0, floorDistance: 2.2, wallDistance: 1.9 });
+  key('ArrowDown');
+  key('ArrowLeft');
+  key('ArrowLeft');
+  expect(settings()).toMatchObject({ lightOffset: 0, floorDistance: 2.1, wallDistance: 2.1 });
   key('Escape');
   expect(ring.hidden).toBe(true);
-  key('ArrowRight');
-  expect(settings().lightOffset).toBe(0.1);
+  key('ArrowUp');
+  expect(settings().floorDistance).toBe(2.1);
 });
 
 it('nudges imperial positions in whole half-feet without millimetre drift', () => {
   const { canvas, objects, screen, pointer, settings, move } = setup();
-  move({ units: 'imperial', lightOffset: 0 });
+  move({ units: 'imperial', floorDistance: 0.3048 * 6 });
   pointer('pointerdown', screen(lightPosition(objects, settings())));
   pointer('pointerup', screen(lightPosition(objects, settings())));
   const key = (name: string, count: number) => {
     for (let i = 0; i < count; i++) canvas.dispatchEvent(new KeyboardEvent('keydown', { key: name, cancelable: true }));
   };
   for (const n of [1, 4, 25]) {
-    key('ArrowRight', n);
-    expect(settings().lightOffset).toBeCloseTo(n * 0.5 * 0.3048, 12);
-    key('ArrowLeft', n);
-    expect(settings().lightOffset).toBe(0);
+    key('ArrowUp', n);
+    expect(settings().floorDistance).toBeCloseTo((6 + n * 0.5) * 0.3048, 12);
+    key('ArrowDown', n);
+    expect(settings().floorDistance).toBeCloseTo(6 * 0.3048, 12);
   }
   // Off-grid starts snap onto the half-foot grid; untouched axes keep their values.
-  const wall = settings().wallDistance;
-  canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', shiftKey: true, cancelable: true }));
-  expect(settings().floorDistance / 0.3048).toBeCloseTo(7, 12); // 2 m ≈ 6.56 ft → 6.5 ft + 0.5 ft
-  expect(settings().wallDistance).toBe(wall);
+  const height = settings().floorDistance;
+  key('ArrowLeft', 1);
+  expect(settings().wallDistance / 0.3048).toBeCloseTo(7, 12); // 2 m ≈ 6.56 ft → 6.5 ft + 0.5 ft
+  expect(settings().floorDistance).toBe(height);
 });
 
 it('clamps dragged positions to the valid ranges and keeps the light in front of the wall', () => {
-  expect(lightSettingsAt(new THREE.Vector3(150, -1, -3), -2)).toEqual({
-    lightOffset: 100,
-    floorDistance: 0.1,
-    wallDistance: 0.1,
-  });
-  expect(lightSettingsAt(new THREE.Vector3(0.12345, 2, 1), -2)).toEqual({
-    lightOffset: 0.123,
-    floorDistance: 2,
-    wallDistance: 3,
-  });
+  expect(lightSettingsAt(new THREE.Vector3(150, -1, -3), -2)).toEqual({ floorDistance: 0.1, wallDistance: 0.1 });
+  expect(lightSettingsAt(new THREE.Vector3(0, 2.12345, 1), -2)).toEqual({ floorDistance: 2.123, wallDistance: 3 });
+  expect(lightSettingsAt(new THREE.Vector3(0, 200, 200), -2)).toEqual({ floorDistance: 100, wallDistance: 100 });
   // Imperial drags round to the hundredth of a foot the panel shows.
-  expect(lightSettingsAt(new THREE.Vector3(0.6, 2, 1), -2, 'imperial').lightOffset).toBeCloseTo(1.97 * 0.3048, 12);
-  const camera = new THREE.PerspectiveCamera();
-  camera.position.set(0, 5, 0);
-  // Looking straight down, a height drag falls back to a plane facing +Z.
-  expect(dragPlane(new THREE.Vector3(0, 2, 0), camera, true).normal.toArray()).toEqual([0, 0, 1]);
+  expect(lightSettingsAt(new THREE.Vector3(0, 0.6, 1), -2, 'imperial').floorDistance).toBeCloseTo(1.97 * 0.3048, 12);
+});
+
+it('drags in the plane perpendicular to the wall unless the camera sees it nearly edge-on', () => {
+  const light = new THREE.Vector3(0, 2, 0);
+  const plane = (x: number, y: number, z: number) => {
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(x, y, z);
+    return dragPlane(light, camera);
+  };
+  expect(plane(5, 4, 7).normal.toArray()).toEqual([1, 0, 0]);
+  // Looking along the wall, the plane faces the camera head-on.
+  expect(plane(-6, 2, 0).normal.toArray()).toEqual([1, 0, 0]);
+  // Facing the wall or looking down, the edge-on plane gives way to one along the wall facing the camera.
+  expect(plane(0.5, 2, 8).normal.toArray()).toEqual([0, 0, 1]);
+  expect(plane(1, 10, 1).normal.toArray()).toEqual([0, expect.closeTo(0.99, 2), expect.closeTo(0.12, 2)]);
+  expect(plane(0, 6, 0).normal.toArray()).toEqual([0, 1, 0]);
+  // A camera at the light keeps the perpendicular plane.
+  expect(plane(0, 2, 0).normal.toArray()).toEqual([1, 0, 0]);
 });

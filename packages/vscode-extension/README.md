@@ -21,7 +21,7 @@ code --install-extension benhouston3d.ies-vscode-extension
 
 ## Features
 
-- **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution; click and drag the light to reposition it, or Shift+drag to change its height.
+- **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution; click and drag the light to change its height and distance from the wall.
 - **Photometric charts:** switch tabs to see polar and Cartesian intensity curves, a 3D intensity topology and an isolux ground plot.
 - **Adjustable viewing conditions:** show or hide the back wall, change wall and floor distances, and choose tone mapping and exposure from the viewer's gear menu.
 - **Photometric information:** see the format and version, manufacturer, luminaire and lamp descriptions, power, peak intensity, flux, efficacy, beam and field angles, dimensions, and source metadata.
@@ -39,7 +39,7 @@ Declared lamp ratings and calculated luminaire values are labeled separately, so
 
 1. Open an `.ies` or `.ldt` file. The light preview is the default editor for these files.
 2. If the file opens as text, select **Open Light Preview** in the editor title bar, run **IES: Open Light Preview** from the Command Palette, or right-click the file in the Explorer and choose the same command. From the preview, select **Open as Text** in the title bar to return to the highlighted source.
-3. Drag the scene to orbit and scroll to zoom. Click the light and drag it to move it, or Shift+drag to change its height. Open the **gear menu** in the lower-right corner to adjust the wall, distances, tone mapping and exposure.
+3. Drag the scene to orbit and scroll to zoom. Click the light and drag it to change its height and distance from the wall. Open the **gear menu** in the lower-right corner to adjust the wall, distances, tone mapping and exposure.
 4. Use **File information** on the right to inspect properties and validation results. Its sections expand and collapse; in narrow windows, the information panel moves below the preview.
 
 For an LDT file with multiple lamp configurations, choose one from the selector above the preview. Each configuration is an alternative; the viewer uses one at a time.
