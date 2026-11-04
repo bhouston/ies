@@ -43,6 +43,17 @@ Parse errors throw `IESParseError` or `LDTParseError`, with a `code`, an optiona
 
 Sampling, metrics and charts need Type C photometry. Type A and B files can be parsed and inspected; Type C-only functions reject them with a clear error.
 
+To decide whether to show a 3D preview or charts before you mount a viewer, ask `getPhotometricTypeSupport`. It returns `{ supported: true }` for Type C. For Type A and B it returns `supported: false` with the `IES_UNSUPPORTED_COORDINATES` code, the photometric type and a message you can show. `SUPPORTED_PHOTOMETRIC_TYPES` lists the supported LM-63 type numbers (currently `[1]`). Both are also exported from `@ies-tools/viewer`.
+
+```ts
+import { getPhotometricTypeSupport, parsePhotometry } from '@ies-tools/core';
+
+const photometry = parsePhotometry(text);
+const support = getPhotometricTypeSupport(photometry.profile);
+if (support.supported) viewer.setDocument(photometry);
+else showNotice(support.message);
+```
+
 ### Inspect a file
 
 `inspectPhotometry` returns the same model the CLI's `ies inspect` and the VS Code information panel show: metadata, lamp configurations, statistics and diagnostics.

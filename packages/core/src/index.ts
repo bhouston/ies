@@ -302,6 +302,28 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+/** LM-63 photometric types that sampling, metrics, charts and the 3D viewer support: 1 (Type C). */
+export const SUPPORTED_PHOTOMETRIC_TYPES: readonly number[] = Object.freeze([1]);
+
+export type PhotometricTypeSupport =
+  | { supported: true }
+  | { supported: false; code: 'IES_UNSUPPORTED_COORDINATES'; photometricType: number; message: string };
+
+/** Report whether a profile can be sampled, charted and previewed in 3D, so hosts can decide whether to mount a viewer.
+ * Type A/B profiles stay available for parsing, inspection, validation and summaries.
+ */
+export function getPhotometricTypeSupport(profile: Pick<IESProfile, 'photometricType'>): PhotometricTypeSupport {
+  const type = profile.photometricType;
+  if (SUPPORTED_PHOTOMETRIC_TYPES.includes(type)) return { supported: true };
+  const name = type === 2 ? 'Type B' : type === 3 ? 'Type A' : `photometric type ${type}`;
+  return {
+    supported: false,
+    code: 'IES_UNSUPPORTED_COORDINATES',
+    photometricType: type,
+    message: `This file uses ${name} coordinates (photometric type ${type}). It can be parsed, inspected and validated; 3D previews, intensity sampling, charts and flux metrics support Type C photometry only (type 1).`,
+  };
+}
+
 /** Sample Type C luminous intensity in candela using bilinear interpolation and LM-63 symmetries.
  * Vertical 0° points down; horizontal angles wrap around the luminaire. Missing hemispheres are dark.
  * Tilt correction is applied at the supplied luminaire tilt angle (default 0°).
