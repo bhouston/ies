@@ -14,8 +14,6 @@ Install **IES and LDT Light Viewer** from the [Visual Studio Marketplace](https:
 code --install-extension benhouston3d.ies-vscode-extension
 ```
 
-Requires VS Code 1.85 or later. The 3D preview needs hardware WebGL2.
-
 ## Features
 
 - **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution; click and drag the light to change its height and distance from the wall.
