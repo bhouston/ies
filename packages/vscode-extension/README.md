@@ -1,8 +1,5 @@
 # IES and LDT Light Viewer for VS Code
 
-[![Marketplace version](https://img.shields.io/visual-studio-marketplace/v/benhouston3d.ies-vscode-extension)](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension)
-[![Marketplace installs](https://img.shields.io/visual-studio-marketplace/i/benhouston3d.ies-vscode-extension)](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension)
-
 Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension) or [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension), or run `code --install-extension benhouston3d.ies-vscode-extension`. Requires VS Code 1.85+; the 3D preview requires hardware WebGL2.
 
 **An IES & EULUMDAT Viewer, Inspector, and Syntax Highlighter.**
