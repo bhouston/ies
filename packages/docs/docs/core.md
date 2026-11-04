@@ -179,7 +179,7 @@ const table = buildIntensityTable(profile, { unit: 'cd/klm' });
 // table.values[gammaIndex][cIndex], with table.gammas, table.cPlanes and table.unit.
 ```
 
-`luminousShape(profile.dimensions, profile.units)` reads the luminous-opening shape from the signed IES width, length and height (LM-63-2019 Table 1, plus the older negative-width circle). It returns the shape name, such as `rectangular`, `circular`, `vertical-cylinder` or `sphere`, and its size in metres. `projectedLuminousArea(shape, direction)` gives the area seen from a unit direction (Y up, +X toward C0), so intensity divided by it is the average luminance in cd/m².
+`luminousShape(profile.dimensions, profile.units)` reads the luminous-opening shape from the signed IES width, length and height (the 15 shapes of LM-63-2002/2019 Table 1, plus the older negative-width circle and vertical disks or ellipses facing the 90° plane, which are not in Table 1). It returns the shape name, such as `rectangular`, `circular`, `vertical-cylinder` or `sphere`, and its size in metres. `projectedLuminousArea(shape, direction)` gives the area seen from a unit direction (Y up, +X toward C0), so intensity divided by it is the average luminance in cd/m².
 
 ```js
 const shape = luminousShape({ width: -0.1, length: 1.2, height: -0.1 });
