@@ -45,7 +45,8 @@ async function main() {
   const failures = checkThresholds(packages, thresholds);
   await mkdir('coverage/packages', { recursive: true });
   const rows = Object.entries(packages).map(
-    ([name, values]) => `| ${name} | ${metrics.map((metric) => `${values[metric].pct.toFixed(2)}%`).join(' | ')} |`,
+    ([name, values]) =>
+      `| ${name} | ${metrics.map((metric) => `${values[metric].pct.toFixed(2)}% (floor ${thresholds[name][metric]}%)`).join(' | ')} |`,
   );
   const revision = process.env.GITHUB_SHA;
   const source = revision ? `Commit: ${revision}` : 'Local working tree';
