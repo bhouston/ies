@@ -15,6 +15,8 @@ const controllers: {
   setDocument: ReturnType<typeof vi.fn>;
   setSettings: ReturnType<typeof vi.fn>;
   dispose: ReturnType<typeof vi.fn>;
+  /** Simulate a viewer-originated change, such as dragging the light. */
+  drag: (patch: Partial<ViewerSettings>) => void;
 }[] = [];
 const flush = async () => {
   await act(async () => {
@@ -26,6 +28,7 @@ beforeEach(() => {
   controllers.length = 0;
   mocks.createLightViewer.mockImplementation((_host: HTMLElement, options: Partial<ViewerSettings>) => {
     let settings = resolveViewerSettings(options);
+    const events = new EventTarget();
     const controller = {
       clear: vi.fn(),
       setDocument: vi.fn(),
@@ -34,6 +37,12 @@ beforeEach(() => {
       }),
       getSettings: () => ({ ...settings }),
       dispose: vi.fn(),
+      addEventListener: (type: string, listener: EventListener) => events.addEventListener(type, listener),
+      drag: (patch: Partial<ViewerSettings>) => {
+        const previousSettings = settings;
+        settings = resolveViewerSettings(patch, settings);
+        events.dispatchEvent(new CustomEvent('settingschange', { detail: { settings, previousSettings } }));
+      },
     };
     controllers.push(controller);
     return controller;
@@ -315,6 +324,7 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       showWall: false,
       wallDistance: 3.5,
       floorDistance: 3.048,
+      lightOffset: 0,
       toneMapping: 'neutral',
       exposure: 0,
       helper: false,
@@ -324,6 +334,17 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       units: 'imperial',
     });
     expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(11);
+  });
+  it('reflects light drags inside the viewer to attributes, the panel and one settings event', () => {
+    const viewer = mount(element()),
+      events: CustomEvent[] = [];
+    viewer.addEventListener('settingschange', (event) => events.push(event as CustomEvent));
+    act(() => controllers[0]!.drag({ lightOffset: 1.5, wallDistance: 1.25 }));
+    expect(viewer.settings).toMatchObject({ lightOffset: 1.5, wallDistance: 1.25 });
+    expect(viewer.getAttribute('light-offset')).toBe('1.5');
+    expect(viewer.getAttribute('wall-distance')).toBe('1.25');
+    expect(input(viewer, 'lightOffset').value).toBe('1.5');
+    expect(events).toHaveLength(1);
   });
   it('applies every setting attribute present when parsed markup creates the element', () => {
     const host = document.createElement('div');

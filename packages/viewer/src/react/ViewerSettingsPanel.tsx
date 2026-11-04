@@ -168,6 +168,7 @@ export function ViewerSettingsPanel({
           [
             ['wallDistance', 'Wall distance', true],
             ['floorDistance', 'Floor distance', true],
+            ['lightOffset', 'Light offset', true],
             ['exposure', 'Exposure', false],
           ] as const
         ).map(([key, label, length]) => (
@@ -176,7 +177,7 @@ export function ViewerSettingsPanel({
             <input
               name={key}
               type="number"
-              min={length ? shownLength(0.1) : 0}
+              min={key === 'lightOffset' ? shownLength(-100) : length ? shownLength(0.1) : 0}
               max={length ? shownLength(100) : undefined}
               step="0.1"
               value={length ? shownLength(settings[key]) : settings[key]}

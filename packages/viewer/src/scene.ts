@@ -162,6 +162,8 @@ export function createLightScene(settings: ViewerSettings) {
     /** Ruler labels in world space, positioned by the viewer's HTML overlay. */
     rulerLabels: [] as RulerLabel[],
     cutoff: undefined as number | undefined,
+    /** World Z of the wall plane. The light sits `wallDistance` in front of it, so dragging the light keeps the wall still. */
+    wallZ: -settings.wallDistance,
   };
   applyLightSceneSettings(objects, settings);
   return objects;
@@ -170,15 +172,20 @@ export type LightScene = ReturnType<typeof createLightScene>;
 export function applyLightSceneSettings(objects: LightScene, settings: ViewerSettings): void {
   const extent = Math.max(10, settings.wallDistance * 2.5, settings.floorDistance * 4);
   const wallHeight = Math.max(5, settings.floorDistance * 2.5);
-  objects.floor.scale.set(extent / 10, extent / 10, 1);
-  objects.wall.scale.set(extent / 10, wallHeight / 5, 1);
-  objects.wall.position.set(0, wallHeight / 2, -settings.wallDistance);
+  const light = lightPosition(objects, settings);
+  // Floor and wall stay centred on X = 0 and widen to keep an offset light covered.
+  const width = extent + 2 * Math.abs(light.x);
+  objects.floor.scale.set(width / 10, extent / 10, 1);
+  objects.floor.position.z = light.z;
+  objects.wall.scale.set(width / 10, wallHeight / 5, 1);
+  objects.wall.position.set(0, wallHeight / 2, objects.wallZ);
   objects.wall.visible = settings.showWall;
-  objects.fixture.position.y = settings.floorDistance;
-  objects.solid.position.y = settings.floorDistance;
+  objects.fixture.position.copy(light);
+  objects.solid.position.copy(light);
+  for (const nadirObject of [objects.helper, objects.rulers]) nadirObject.position.set(light.x, 0, light.z);
   objects.solid.scale.setScalar(settings.floorDistance / 2);
   objects.solid.visible = settings.photometricSolid && objects.cutoff !== undefined;
-  objects.uniforms.lightPosition.value.set(0, settings.floorDistance, 0);
+  objects.uniforms.lightPosition.value.copy(light);
   objects.uniforms.exposure.value = settings.exposure;
   const measurement = settings.viewMode === 'measurement';
   if (measurement !== 'MEASUREMENT' in objects.material.defines) {
@@ -188,7 +195,13 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   }
   objects.rulers.visible = settings.rulers;
   const ruler = settings.rulers ? rulerLines(settings, extent) : undefined;
-  if (ruler) rulerSegments(objects)[0]!.geometry.setPositions(ruler.positions);
+  if (ruler) {
+    // A fresh geometry: the renderer caches an instanced geometry's segment count on first draw.
+    const lines = rulerSegments(objects);
+    lines[0]!.geometry.dispose();
+    const geometry = new LineSegmentsGeometry().setPositions(ruler.positions);
+    for (const line of lines) line.geometry = geometry;
+  }
   objects.rulerLabels = ruler?.labels ?? [];
   objects.helper.visible = settings.helper && objects.cutoff !== undefined;
   if (objects.helper.visible)
@@ -197,6 +210,10 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
       new THREE.Float32BufferAttribute(helperLines(objects.cutoff!, settings.floorDistance), 3),
     );
 }
+
+/** World position of the luminaire: `lightOffset` along X, `floorDistance` up, `wallDistance` in front of the wall. */
+export const lightPosition = (objects: Pick<LightScene, 'wallZ'>, settings: ViewerSettings) =>
+  new THREE.Vector3(settings.lightOffset, settings.floorDistance, objects.wallZ + settings.wallDistance);
 
 /** Largest vertical angle (0° = nadir) whose intensity exceeds 1% of the peak, in degrees. */
 export function cutoffAngle(profile: IESProfile): number {
