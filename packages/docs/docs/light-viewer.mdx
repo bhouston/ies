@@ -9,7 +9,7 @@ import LiveLightViewer from '@site/src/components/LiveLightViewer';
 
 <LiveLightViewer charts="true" style={{ marginBottom: '1rem' }} />
 
-This is a live `<light-viewer>` showing a track light's IES file. Drag to orbit, scroll to zoom, use the gear for viewer settings, and switch tabs for charts.
+This is a live `<light-viewer>` showing a track light's IES file. Drag to orbit, scroll to zoom, use the gear for viewer settings, and switch tabs for charts. The live demo uses the viewer built with this documentation and may include changes that have not yet been published to npm.
 
 `<light-viewer>` is a web component: it works in plain HTML and in any framework, with no build step.
 
@@ -22,7 +22,7 @@ Load the self-contained bundle from jsDelivr, then add the element:
 <light-viewer src="/lights/luminaire.ies" exposure="1" style="height: 600px"></light-viewer>
 ```
 
-This URL always serves the latest release. Add a version, such as `@ies-tools/viewer@1.1.0`, to pin one.
+This unversioned URL follows the latest published release, subject to CDN and browser caching. Add an exact version, such as `@ies-tools/viewer@1.2.0`, to pin one.
 
 To self-host, copy `@ies-tools/viewer/dist/light-viewer.js` into your site's public files and point the script at it. With a bundler, install the package and import the element instead:
 
