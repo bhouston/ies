@@ -87,11 +87,82 @@ Attach listeners before setting a source.
 | `photometry`     | A `PhotometricDocument` from `parsePhotometry` in `@ies-tools/core` |
 | `settings`       | Viewer settings; see [Viewer settings](#viewer-settings)            |
 
-| Event            | `event.detail`                                                           |
-| ---------------- | ------------------------------------------------------------------------ |
-| `load`           | `{ profile, document, sourceFormat }`                                    |
-| `error`          | `{ message, error }`; the message is also shown unless `errors="silent"` |
-| `settingschange` | `{ settings, previousSettings }`                                         |
+| Event            | `event.detail`                                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `load`           | `{ profile, document, sourceFormat }`                                                                                                    |
+| `error`          | `{ message, error }`; the message is also shown unless `errors="silent"`. Bubbles; see [Handle errors yourself](#handle-errors-yourself) |
+| `settingschange` | `{ settings, previousSettings }`                                                                                                         |
+
+### Handle errors yourself
+
+The `error` event is a `CustomEvent` (not an `ErrorEvent`) with `detail.message`, a string, and `detail.error`, the original thrown value (usually an `Error`). It bubbles, crosses shadow roots (`composed`), and can't be cancelled, so `preventDefault()` does nothing. The viewer still shows its own overlay unless `errors="silent"`.
+
+Because the event bubbles, it also reaches `error` listeners on `document` and `window`. Those include error-reporting tools and development overlays such as Vite's, which then report a failure you have already handled. To keep the error local, call `event.stopPropagation()` in a listener on the element:
+
+```js
+viewer.addEventListener('error', (event) => {
+  event.stopPropagation();
+  showMessage(event.detail.message);
+});
+```
+
+Listeners on the element itself still run; only listeners further up the page miss the event.
+
+In a React app that renders `<light-viewer>` directly, attach the listener in an effect and remove it on cleanup. This one shows a malformed file's message in the page and rejects a readiness promise, without triggering Vite's overlay:
+
+```tsx
+import { useEffect, useRef, useState } from 'react';
+import type { LightViewerElement } from '@ies-tools/viewer/element';
+import '@ies-tools/viewer/element';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'light-viewer': React.HTMLAttributes<LightViewerElement> & {
+        ref?: React.Ref<LightViewerElement>;
+        format?: 'ies' | 'ldt';
+        errors?: 'silent';
+      };
+    }
+  }
+}
+
+export function Fixture({ text, onReady }: { text: string; onReady: (ready: Promise<void>) => void }) {
+  const ref = useRef<LightViewerElement>(null);
+  const [message, setMessage] = useState<string>();
+  useEffect(() => {
+    const viewer = ref.current;
+    if (!viewer) return;
+    const listeners = new AbortController();
+    const { signal } = listeners;
+    setMessage(undefined);
+    const ready = new Promise<void>((resolve, reject) => {
+      viewer.addEventListener('load', () => resolve(), { signal });
+      viewer.addEventListener(
+        'error',
+        (event: Event) => {
+          event.stopPropagation(); // keep it away from window and Vite's overlay
+          const { message } = (event as CustomEvent<{ message: string }>).detail;
+          setMessage(message);
+          reject(new Error(message));
+        },
+        { signal },
+      );
+    });
+    onReady(ready);
+    viewer.photometryText = text;
+    return () => listeners.abort();
+  }, [text, onReady]);
+  return (
+    <>
+      {message && <p role="alert">{message}</p>}
+      <light-viewer ref={ref} format="ies" errors="silent" />
+    </>
+  );
+}
+```
+
+The `LightViewer` React component doesn't dispatch DOM events; it reports failures only through `onError`, so it never reaches global handlers.
 
 Changing the source cancels any earlier request. Removing the element stops loading and frees its GPU resources; adding it back recreates the viewer with the same source and settings.
 
