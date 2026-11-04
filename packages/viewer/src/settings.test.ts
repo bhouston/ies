@@ -10,6 +10,7 @@ import {
   fitDistanceChange,
   helperLines,
   rulerLines,
+  rulerSegments,
   cutoffAngle,
   displayedShape,
   fixtureGeometry,
@@ -62,12 +63,25 @@ describe('physical scene settings', () => {
   it('moves receivers and light in meters, and applies visibility/exposure independently', () => {
     const objects = createLightScene({ ...DEFAULT_VIEWER_SETTINGS });
     try {
-      const next = resolveViewerSettings({ wallDistance: 5, floorDistance: 4, showWall: false, exposure: 2 });
+      const next = resolveViewerSettings({
+        wallDistance: 5,
+        floorDistance: 4,
+        lightOffset: 1.5,
+        showWall: false,
+        exposure: 2,
+      });
       applyLightSceneSettings(objects, next);
-      expect(objects.wall.position.z).toBe(-5);
+      // The wall stays where it is; the light moves 5 m in front of it and 1.5 m along it.
+      expect(objects.wall.position.z).toBe(-2);
       expect(objects.fixture.position.y - objects.floor.position.y).toBe(4);
       expect(objects.wall.visible).toBe(false);
-      expect(objects.uniforms.lightPosition.value.toArray()).toEqual([0, 4, 0]);
+      expect(objects.uniforms.lightPosition.value.toArray()).toEqual([1.5, 4, 3]);
+      for (const object of [objects.fixture, objects.solid]) expect(object.position.toArray()).toEqual([1.5, 4, 3]);
+      for (const object of [objects.helper, objects.rulers]) expect(object.position.toArray()).toEqual([1.5, 0, 3]);
+      expect(objects.floor.scale.x * 10).toBe(19);
+      objects.wallZ = -5;
+      applyLightSceneSettings(objects, next);
+      expect(objects.uniforms.lightPosition.value.z).toBe(0);
       expect(objects.uniforms.exposure.value).toBe(2);
       expect(objects.scene.background).toEqual(new THREE.Color(0));
     } finally {
@@ -122,6 +136,12 @@ describe('physical scene settings', () => {
     expect(noWall.labels.map((label) => label.text)).toContain('15 ft');
     const objects = createLightScene({ ...DEFAULT_VIEWER_SETTINGS });
     expect(objects.rulerLabels.length).toBeGreaterThan(0);
+    // More segments need a new geometry: WebGL caches the instance count of one already drawn.
+    const [halo, line] = rulerSegments(objects);
+    const metric = halo!.geometry;
+    applyLightSceneSettings(objects, { ...DEFAULT_VIEWER_SETTINGS, units: 'imperial' });
+    expect(halo!.geometry).not.toBe(metric);
+    expect(line!.geometry).toBe(halo!.geometry);
     applyLightSceneSettings(objects, { ...DEFAULT_VIEWER_SETTINGS, rulers: false });
     expect(objects.rulers.visible).toBe(false);
     expect(objects.rulerLabels).toEqual([]);

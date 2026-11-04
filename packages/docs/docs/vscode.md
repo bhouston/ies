@@ -24,7 +24,7 @@ VSCodium, Cursor and other editors that use Open VSX can install it from [Open V
 ## Preview a light
 
 1. Open an `.ies` or `.ldt` file. The light preview is the default editor for these files.
-2. Drag the scene to orbit and scroll to zoom.
+2. Drag the scene to orbit and scroll to zoom. Click the light and drag it to move it, or Shift+drag to change its height; the arrow keys nudge a selected light and Escape deselects it.
 3. Open the **gear menu** to show or hide the back wall and the blue beam guide lines, change the wall and floor distances, and choose tone mapping and exposure.
 
 If a file opens as text instead, select **Open Light Preview** in the editor title bar, run **IES: Open Light Preview** from the Command Palette, or right-click the file in the Explorer and choose **Open Light Preview**.

@@ -56,7 +56,7 @@ export function Photometry() {
 
 ## LightViewer
 
-`LightViewer` shows the luminaire lighting a floor and wall against a black background. Drag to orbit and scroll to zoom. It needs hardware WebGL2 and Type C photometry.
+`LightViewer` shows the luminaire lighting a floor and wall against a black background. Drag to orbit and scroll to zoom; click and drag the light to move it (Shift+drag changes its height), which reports the new distances through `onSettingsChange`. It needs hardware WebGL2 and Type C photometry.
 
 ```tsx
 <LightViewer src="/lights/luminaire.ies" />
@@ -86,6 +86,7 @@ These props set the scene. They update the view without reloading the file.
 | `showWall`         | Show the back wall                                                           | `true`      |
 | `wallDistance`     | Distance from the light to the wall in metres                                | `2`         |
 | `floorDistance`    | Height of the light above the floor in metres                                | `2`         |
+| `lightOffset`      | Sideways position of the light along the wall in metres, −100 to 100         | `0`         |
 | `toneMapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`           | `aces`      |
 | `exposure`         | Display brightness, 0 or above                                               | `1`         |
 | `helper`           | Blue lines showing the beam's extent                                         | `true`      |

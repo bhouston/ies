@@ -43,8 +43,9 @@ export class LightViewerElement extends ElementBase {
       return;
     }
     const previousSettings = this.settings;
-    this.#viewer?.setSettings(next);
+    // Updated first so the viewer's own settingschange, below, is recognised as already applied.
     this.#settings = next;
+    this.#viewer?.setSettings(next);
     this.#reflecting = true;
     try {
       // Reflect only changed settings, and never rewrite an attribute that already matches: setAttribute
@@ -53,6 +54,7 @@ export class LightViewerElement extends ElementBase {
         ['show-wall', 'showWall'],
         ['wall-distance', 'wallDistance'],
         ['floor-distance', 'floorDistance'],
+        ['light-offset', 'lightOffset'],
         ['tone-mapping', 'toneMapping'],
         ['exposure', 'exposure'],
         ['helper', 'helper'],
@@ -163,6 +165,10 @@ export class LightViewerElement extends ElementBase {
     }
     try {
       this.#viewer = createLightViewer(this.#host!, this.#settings);
+      // Dragging the light changes settings inside the viewer; reflect them like panel edits.
+      this.#viewer.addEventListener('settingschange', ({ detail }) => {
+        if (!settingsEqual(detail.settings, this.#settings)) this.settings = detail.settings;
+      });
       this.#panel?.connect();
       this.#updatePanel();
       void this.#load();

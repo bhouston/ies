@@ -67,6 +67,7 @@ export function LightViewer({
   showWall,
   wallDistance,
   floorDistance,
+  lightOffset,
   toneMapping,
   helper,
   photometricSolid,
@@ -102,6 +103,7 @@ export function LightViewer({
           showWall,
           wallDistance,
           floorDistance,
+          lightOffset,
           toneMapping,
           helper,
           photometricSolid,
@@ -184,6 +186,7 @@ export function LightViewer({
         showWall,
         wallDistance,
         floorDistance,
+        lightOffset,
         toneMapping,
         helper,
         photometricSolid,
@@ -204,7 +207,19 @@ export function LightViewer({
     return () => {
       active = false;
     };
-  }, [exposure, showWall, wallDistance, floorDistance, toneMapping, helper, photometricSolid, rulers, viewMode, units]);
+  }, [
+    exposure,
+    showWall,
+    wallDistance,
+    floorDistance,
+    lightOffset,
+    toneMapping,
+    helper,
+    photometricSolid,
+    rulers,
+    viewMode,
+    units,
+  ]);
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     const next = resolveViewerSettings(patch, controller.current?.getSettings() ?? panelSettings);
     controller.current?.setSettings(next);

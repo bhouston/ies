@@ -26,6 +26,8 @@ export interface ViewerSettings {
   wallDistance: number;
   /** Floor distance below the luminaire in meters. Defaults to 2. */
   floorDistance: number;
+  /** Sideways offset of the luminaire along the wall in meters, from -100 to 100. Defaults to 0. */
+  lightOffset: number;
   /** Tone mapping operator. Defaults to `aces`. */
   toneMapping: ToneMappingName;
   /** Nonnegative display exposure. Defaults to 1. */
@@ -45,6 +47,7 @@ export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   showWall: true,
   wallDistance: 2,
   floorDistance: 2,
+  lightOffset: 0,
   toneMapping: 'aces',
   exposure: 1,
   helper: true,
@@ -57,6 +60,7 @@ export const VIEWER_SETTINGS_ATTRIBUTES = [
   'show-wall',
   'wall-distance',
   'floor-distance',
+  'light-offset',
   'tone-mapping',
   'exposure',
   'helper',
@@ -92,6 +96,7 @@ export function resolveViewerSettings(
   for (const [key, min, max] of [
     ['wallDistance', 0.1, 100],
     ['floorDistance', 0.1, 100],
+    ['lightOffset', -100, 100],
     ['exposure', 0, Infinity],
   ] as const) {
     const value = next[key];
@@ -104,7 +109,7 @@ export function settingsEqual(a: Readonly<ViewerSettings>, b: Readonly<ViewerSet
   return (Object.keys(DEFAULT_VIEWER_SETTINGS) as (keyof ViewerSettings)[]).every((key) => a[key] === b[key]);
 }
 export function viewerSettingFromAttribute(name: string, value: string | null): Partial<ViewerSettings> {
-  const number = (key: 'wallDistance' | 'floorDistance' | 'exposure') => ({
+  const number = (key: 'wallDistance' | 'floorDistance' | 'lightOffset' | 'exposure') => ({
     [key]: value === null ? DEFAULT_VIEWER_SETTINGS[key] : value.trim() ? Number(value) : NaN,
   });
   const booleans = {
@@ -122,6 +127,7 @@ export function viewerSettingFromAttribute(name: string, value: string | null): 
   }
   if (name === 'wall-distance') return number('wallDistance');
   if (name === 'floor-distance') return number('floorDistance');
+  if (name === 'light-offset') return number('lightOffset');
   if (name === 'exposure') return number('exposure');
   if (name === 'tone-mapping')
     return { toneMapping: (value ?? DEFAULT_VIEWER_SETTINGS.toneMapping) as ToneMappingName };

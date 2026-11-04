@@ -9,6 +9,7 @@ import {
   type PhotometricDocument,
 } from '@ies-tools/core';
 import { renderIlluminanceLegend } from './legend.js';
+import { attachLightDrag } from './lightDrag.js';
 import type { PhotometryFormat } from './source.js';
 import { DEFAULT_COLOR_TEMPERATURE, documentColorTemperature, temperatureColor } from './lightColor.js';
 import {
@@ -88,12 +89,23 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   rulerLayer.className = 'ruler-labels';
   overlay.append(rulerLayer, legend);
   container.append(overlay);
+  // Created before the controls so selecting the light can stop an orbit from starting.
+  const objects = createLightScene(settings);
+  const lightDrag = attachLightDrag({
+    canvas: renderer.domElement,
+    overlay,
+    camera,
+    objects,
+    getSettings: () => ({ ...settings }),
+    move: (patch) => update(patch, false),
+    orbit: (enabled) => (controls.enabled = enabled),
+    render: () => render(),
+  });
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 1, 0);
   if (settings.floorDistance !== 2 || settings.wallDistance !== 2)
     fitDistanceChange(camera, controls.target, { ...DEFAULT_VIEWER_SETTINGS }, settings);
   controls.update();
-  const objects = createLightScene(settings);
   const { scene, uniforms, material } = objects;
   let disposed = false;
   let document: PhotometricDocument | undefined;
@@ -133,7 +145,10 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     const placed: [number, number, number, number][] = [];
     rulerLabels.forEach((label, i) => {
       const node = rulerLayer.children[i] as HTMLElement;
-      projected.set(...label.position).project(camera);
+      projected
+        .set(...label.position)
+        .add(objects.rulers.position)
+        .project(camera);
       const x = ((projected.x + 1) / 2) * width;
       const y = ((1 - projected.y) / 2) * height;
       const box: [number, number, number, number] = [
@@ -158,6 +173,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     if (disposed) return;
     renderer.render(scene, camera);
     placeRulerLabels();
+    lightDrag.place(container.clientWidth, container.clientHeight);
   };
   const resize = () => {
     const width = Math.max(1, container.clientWidth);
@@ -185,6 +201,36 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     updatePeak();
     updateLegend();
     render();
+  };
+  /** Apply settings; `fit` reframes the camera for new distances, which drags skip. */
+  const update = (patch: Partial<ViewerSettings>, fit: boolean) => {
+    const next = resolveViewerSettings(patch, settings);
+    if (settingsEqual(settings, next)) return;
+    const previousSettings = { ...settings };
+    // Typed wall distances keep the light in place and move the wall; drags keep the wall in place.
+    if (fit) objects.wallZ += settings.wallDistance - next.wallDistance;
+    applyLightSceneSettings(objects, next);
+    if (next.toneMapping !== settings.toneMapping) {
+      renderer.toneMapping = TONE_MAPPING[next.toneMapping];
+      material.needsUpdate = true;
+      objects.fixture.material.needsUpdate = true;
+    }
+    if (fit && (next.floorDistance !== settings.floorDistance || next.wallDistance !== settings.wallDistance)) {
+      fitDistanceChange(camera, controls.target, settings, next);
+      controls.update();
+    }
+    settings = next;
+    if (
+      next.floorDistance !== previousSettings.floorDistance ||
+      next.wallDistance !== previousSettings.wallDistance ||
+      next.showWall !== previousSettings.showWall
+    )
+      updatePeak();
+    updateLegend();
+    render();
+    events.dispatchEvent(
+      new CustomEvent('settingschange', { detail: { settings: { ...settings }, previousSettings } }),
+    );
   };
   return {
     renderer,
@@ -217,31 +263,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     },
     setSettings(patch) {
       if (disposed) throw new Error('Viewer has been disposed');
-      const next = resolveViewerSettings(patch, settings);
-      if (settingsEqual(settings, next)) return;
-      const previousSettings = { ...settings };
-      applyLightSceneSettings(objects, next);
-      if (next.toneMapping !== settings.toneMapping) {
-        renderer.toneMapping = TONE_MAPPING[next.toneMapping];
-        material.needsUpdate = true;
-        objects.fixture.material.needsUpdate = true;
-      }
-      if (next.floorDistance !== settings.floorDistance || next.wallDistance !== settings.wallDistance) {
-        fitDistanceChange(camera, controls.target, settings, next);
-        controls.update();
-      }
-      settings = next;
-      if (
-        next.floorDistance !== previousSettings.floorDistance ||
-        next.wallDistance !== previousSettings.wallDistance ||
-        next.showWall !== previousSettings.showWall
-      )
-        updatePeak();
-      updateLegend();
-      render();
-      events.dispatchEvent(
-        new CustomEvent('settingschange', { detail: { settings: { ...settings }, previousSettings } }),
-      );
+      update(patch, true);
     },
     addEventListener(type, listener) {
       listeners.add(listener);
@@ -259,6 +281,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       disposed = true;
       observer.disconnect();
       controls.dispose();
+      lightDrag.dispose();
       disposeLightScene(objects);
       for (const listener of listeners) events.removeEventListener('settingschange', listener as EventListener);
       listeners.clear();
