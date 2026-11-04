@@ -9,7 +9,7 @@ sidebar_label: VS Code extension
 
 The **IES and LDT Light Viewer** extension previews IES and EULUMDAT files in VS Code. It shows the light on a floor and wall, draws photometric charts, lists the file's properties and validation results, and converts between formats.
 
-![The light viewer raising a selected downlight until its glare halo appears, orbiting below it across the lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](/img/vscode-extension.gif)
+![The light viewer selecting a downlight, raising it with the arrow keys and an upward drag that changes only its height, orbiting lower and zooming in until its glare halo shows above the lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](/img/vscode-extension.gif)
 
 ## Install
 
