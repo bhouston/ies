@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Light viewer · Error overlay prototype</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font:
+          14px/1.6 system-ui,
+          sans-serif;
+        background: #101318;
+        color: #e8e9ed;
+      }
+      body {
+        max-width: 1100px;
+        margin: 56px auto;
+        padding: 0 24px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #8b929e;
+      }
+      h1 {
+        margin: 8px 0;
+        font-size: 28px;
+        font-weight: 550;
+        letter-spacing: -0.03em;
+      }
+      p {
+        color: #9ea6b3;
+        margin: 0 0 24px;
+      }
+      light-viewer {
+        height: 560px;
+        border: 1px solid #343941;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 20px;
+      }
+      nav button {
+        border: 1px solid #3c424c;
+        border-radius: 7px;
+        background: #20252d;
+        color: #e8e9ed;
+        padding: 9px 15px;
+        font: inherit;
+        cursor: pointer;
+      }
+      nav button:hover {
+        background: #303743;
+      }
+      nav button:focus-visible {
+        outline: 2px solid #f87171;
+        outline-offset: 3px;
+      }
+      .hint {
+        font-size: 12px;
+        margin-top: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="eyebrow">Light viewer / Design prototype</div>
+    <h1>A little clarity when something goes wrong.</h1>
+    <p>A translucent error log above the viewer and every chart tab. Dismiss it to keep exploring.</p>
+    <div id="mount"></div>
+    <nav aria-label="Error demonstrations">
+      <button id="missing">Show 404 error</button>
+      <button id="invalid">Show invalid file</button>
+      <button id="recover">Load valid light</button>
+    </nav>
+    <p class="hint" id="hint">The preview opens with a real failed URL request. Try the tabs or dismiss the error.</p>
+    <script type="module">
+      // Never initialize the 3D viewer on a software rasterizer.
+      const probe = document.createElement('canvas');
+      const gl = probe.getContext('webgl2');
+      const debug = gl?.getExtension('WEBGL_debug_renderer_info');
+      const renderer = debug && gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
+      if (!renderer || /swiftshader|llvmpipe|lavapipe|software/i.test(renderer)) {
+        document.querySelector('#hint').textContent = 'This preview needs a confirmed hardware WebGL2 context.';
+        document.querySelectorAll('nav button').forEach((button) => (button.disabled = true));
+      } else {
+        console.info('Confirmed preview GPU:', renderer);
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        await import('../packages/viewer/dist/light-viewer.js?prototype=clipboard-1');
+        const viewer = document.createElement('light-viewer');
+        viewer.setAttribute('charts', 'true');
+        viewer.setAttribute('src', '/lights/missing-luminaire.ies');
+        document.querySelector('#mount').append(viewer);
+        document.querySelector('#missing').onclick = () => {
+          viewer.removeAttribute('src');
+          viewer.setAttribute('src', '/lights/missing-luminaire.ies');
+        };
+        document.querySelector('#invalid').onclick = () => {
+          viewer.photometryText = 'This is not a valid IES photometric file.';
+        };
+        document.querySelector('#recover').onclick = () => {
+          viewer.setAttribute('src', '../packages/docs/static/lights/track-light.ies');
+        };
+      }
+    </script>
+  </body>
+</html>

@@ -60,11 +60,11 @@ Attach listeners before setting a source.
 | `photometry`     | A `PhotometricDocument` from `parsePhotometry` in `@ies-tools/core` |
 | `settings`       | Viewer settings; see [Viewer settings](#viewer-settings)            |
 
-| Event            | `event.detail`                                                |
-| ---------------- | ------------------------------------------------------------- |
-| `load`           | `{ profile, document, sourceFormat }`                         |
-| `error`          | `{ message, error }`; the message is also shown in the viewer |
-| `settingschange` | `{ settings, previousSettings }`                              |
+| Event            | `event.detail`                                                           |
+| ---------------- | ------------------------------------------------------------------------ |
+| `load`           | `{ profile, document, sourceFormat }`                                    |
+| `error`          | `{ message, error }`; the message is also shown unless `errors="silent"` |
+| `settingschange` | `{ settings, previousSettings }`                                         |
 
 Changing the source cancels any earlier request. Removing the element stops loading and frees its GPU resources; adding it back recreates the viewer with the same source and settings.
 
@@ -127,6 +127,18 @@ viewer.addEventListener('settingschange', (event) => console.log(event.detail.se
 ```
 
 Settings are kept when you load another file.
+
+## Error overlay
+
+Loading, parsing and initialization failures appear in a translucent overlay at the top-left, above every chart tab. It includes the error message, source and available cause details, a dismiss button, and **Copy to clipboard**. Starting another load clears the previous error.
+
+Omit `errors` to show errors (the default). Set `errors="silent"` to hide the overlay while still receiving the same `error` events:
+
+```html
+<light-viewer src="/lights/luminaire.ies" errors="silent"></light-viewer>
+```
+
+Changing `errors` takes effect immediately without reloading. Removing it reveals the current error unless it was dismissed or cleared.
 
 ## Chart tabs
 
