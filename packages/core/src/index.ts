@@ -461,3 +461,5 @@ export type {
   TopologyVertex,
   UpAxis,
 } from './charts.js';
+export { luminousShape, projectedLuminousArea } from './shape.js';
+export type { LuminousShape, LuminousShapeKind } from './shape.js';

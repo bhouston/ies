@@ -54,6 +54,7 @@ export class LightViewerElement extends ElementBase {
         ['tone-mapping', next.toneMapping],
         ['exposure', String(next.exposure)],
         ['helper', String(next.helper)],
+        ['photometric-solid', String(next.photometricSolid)],
       ])
         this.setAttribute(name!, value!);
     } finally {

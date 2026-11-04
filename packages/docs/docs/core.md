@@ -179,4 +179,12 @@ const table = buildIntensityTable(profile, { unit: 'cd/klm' });
 // table.values[gammaIndex][cIndex], with table.gammas, table.cPlanes and table.unit.
 ```
 
+`luminousShape(profile.dimensions, profile.units)` reads the luminous-opening shape from the signed IES width, length and height (LM-63-2019 Table 1, plus the older negative-width circle). It returns the shape name, such as `rectangular`, `circular`, `vertical-cylinder` or `sphere`, and its size in metres. `projectedLuminousArea(shape, direction)` gives the area seen from a unit direction (Y up, +X toward C0), so intensity divided by it is the average luminance in cd/m².
+
+```js
+const shape = luminousShape({ width: -0.1, length: 1.2, height: -0.1 });
+// { kind: 'horizontal-cylinder-along-length', solid: 'cylinder', axis: 'x', width: 0.1, length: 1.2, height: 0.1 }
+projectedLuminousArea(shape, [0, -1, 0]); // 0.12 m² seen from below
+```
+
 Axis helpers `niceTicks`, `logRadius`, `logTicks`, `orientGraphPoint` and `formatGraphValue` are exported too. The options match the chart props described on the [Charts](./graphs.md) page.
