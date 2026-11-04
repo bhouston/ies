@@ -31,17 +31,9 @@ module.exports = {
       items: [
         { to: '/docs/quick-start', label: 'Get started', position: 'left' },
         { to: '/docs/cli', label: 'CLI', position: 'left' },
-        { to: '/docs/react', label: 'React', position: 'left' },
+        { to: '/docs/vscode', label: 'VS Code Extension', position: 'left' },
+        { to: '/docs/core', label: 'Library', position: 'left' },
         { to: '/docs/light-viewer', label: '<light-viewer>', position: 'left' },
-        {
-          type: 'dropdown',
-          label: 'API',
-          position: 'left',
-          items: [
-            { to: '/docs/api/core', label: '@ies-tools/core' },
-            { to: '/docs/api/react', label: '@ies-tools/viewer/react' },
-          ],
-        },
         { href: 'https://github.com/bhouston/ies-tools', label: 'GitHub', position: 'right' },
       ],
     },
