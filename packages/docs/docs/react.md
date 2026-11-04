@@ -76,6 +76,7 @@ Give it one source. If you pass more than one, the first in this order wins: `do
 | `onLoad`             | Called with `(profile, { document, sourceFormat })`                                 |
 | `onError`            | Called with an `Error`; the message is also shown in the viewer                     |
 | `className`, `style` | Wrapper styling; the default height is 480 pixels                                   |
+| `ref`                | Receives a handle with `whenReady()` and `toBlob()`; see below                      |
 
 ### Scene settings
 
@@ -101,6 +102,28 @@ These props set the scene. They update the view without reloading the file.
 If you leave a setting prop out, the user controls it from the gear panel.
 
 The scene shows direct light only: it doesn't compute reflections between surfaces or shadows from the luminaire's body.
+
+### Wait for rendering and save an image
+
+Pass a `ref` to get a handle with the same `whenReady()` and `toBlob()` as the [`<light-viewer>` element](./light-viewer.mdx#wait-for-rendering-and-save-an-image):
+
+```tsx
+import { useEffect, useRef } from 'react';
+import { LightViewer, type LightViewerHandle } from '@ies-tools/viewer/react';
+
+export function Thumbnail({ src, onImage }: { src: string; onImage: (image: Blob) => void }) {
+  const viewer = useRef<LightViewerHandle>(null);
+  useEffect(() => {
+    viewer.current?.toBlob({ type: 'image/webp', quality: 0.85, width: 512, height: 384 }).then(onImage, console.error);
+  }, [src, onImage]);
+  return <LightViewer ref={viewer} src={src} />;
+}
+```
+
+- `whenReady()` resolves once the current source has loaded and its frame is drawn, or straight away with no source. If the source changes first, it waits for the new one.
+- `toBlob()` waits for `whenReady()`, then returns a PNG (default), JPEG or WebP of the 3D scene with the current settings. It takes the same `type`, `quality`, `width` and `height` options as the element. The image is opaque and has only the scene: no legend, ruler labels, settings panel or error message.
+- Both reject on the same failures that reach `onError` (network errors, unreadable files, Type A/B files), if WebGL fails to start or the GPU context is lost, and when the component unmounts. Call them again after a new source loads.
+- A new source starts loading when React applies the new props. Call the handle from an effect, as above, or after that render. A call in the same event handler that changes the source still sees the old source.
 
 ## Charts
 

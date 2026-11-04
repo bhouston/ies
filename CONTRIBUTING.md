@@ -38,6 +38,17 @@ pnpm test
 
 The Husky pre-commit hook formats and lints staged files (`oxfmt`, `oxlint --fix`) and type-checks the workspace. CI runs the same checks plus any repository-specific gates, such as coverage floors, bundle-size budgets, package-content checks, and a dependency audit; see `.github/workflows/ci.yml`. Explain any intentional threshold change in the PR.
 
+### Hardware GPU capture test
+
+`packages/cli/src/capture.gpu.test.ts` drives `<light-viewer>` `whenReady()`/`toBlob()` in a real browser. CI has no GPU, so it only runs when you opt in:
+
+```sh
+pnpm build
+IES_GPU_TESTS=1 pnpm test capture.gpu
+```
+
+It needs an installed Chrome or Edge (set `IES_BROWSER` to another executable) and a hardware GPU; it fails if WebGL reports a software renderer such as SwiftShader. Run it before a release and after any change to the viewer's rendering, capture or readiness code (`packages/viewer/src/viewer.ts`, `readiness.ts`, `element.ts` or the React `LightViewer`). The React handle shares the element's readiness and capture code, which jsdom tests cover with a mocked GPU.
+
 ## Releases
 
 Merging to `main` never publishes. A release is a separate, deliberate step that the maintainer triggers whenever the changes accumulated on `main` should ship:
