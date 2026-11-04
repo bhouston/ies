@@ -290,6 +290,10 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       input(viewer, 'helper').click();
     });
     expect(viewer.getAttribute('helper')).toBe('false');
+    act(() => {
+      input(viewer, 'photometricSolid').click();
+    });
+    expect(viewer.getAttribute('photometric-solid')).toBe('true');
     expect(viewer.settings).toEqual({
       showWall: false,
       wallDistance: 3.5,
@@ -297,8 +301,9 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       toneMapping: 'neutral',
       exposure: 0,
       helper: false,
+      photometricSolid: true,
     });
-    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(6);
+    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(7);
   });
   it('updates controls from attributes without reloading its source', async () => {
     const viewer = element();
