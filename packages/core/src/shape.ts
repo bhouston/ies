@@ -1,4 +1,10 @@
-/** LM-63-2019 Table 1 luminous-opening shapes, plus the legacy circular encodings. */
+/**
+ * Luminous-opening shapes. The first 15 are the rows of LM-63 Table 1 ("Shapes of Luminous Areas and
+ * Solids"; introduced in LM-63-2002 and kept unchanged in LM-63-2019). Two kinds are not in Table 1:
+ * the `-facing-width` kinds (0, -, -). They are the mirror of Table 1's (-, 0, -) disk, using the
+ * standard's rule that two negative dimensions make the plane they span round.
+ * Cross-checked against Radiance ies2rad: https://github.com/LBNL-ETA/pyradiance/blob/main/src/radiance/cv/ies2rad.c
+ */
 export type LuminousShapeKind =
   | 'point'
   | 'rectangular'
@@ -15,12 +21,14 @@ export type LuminousShapeKind =
   | 'ellipsoidal-spheroid'
   | 'vertical-circle-facing-length'
   | 'vertical-ellipse-facing-length'
+  // Not in Table 1 (see above).
   | 'vertical-circle-facing-width'
   | 'vertical-ellipse-facing-width';
 
 /**
- * A classified luminous opening with absolute sizes in metres. Type C axes: length runs along
- * C0–C180 (+X), width along C90–C270 (+Z) and height is vertical (+Y). `solid` is the primitive that
+ * A classified luminous opening with absolute sizes in metres. Type C axes (LM-63 §5.11–5.13, Figure 1):
+ * length is parallel to the 0° photometric plane, along C0–C180 (+X). Width is perpendicular to it,
+ * along C90–C270 (+Z). Height is vertical (+Y). `solid` is the primitive that
  * bounds the shape; a cylinder's `axis` is its extruded direction (a disk is a cylinder of zero extent).
  */
 export interface LuminousShape {
@@ -34,7 +42,7 @@ export interface LuminousShape {
 
 const ZERO = 1e-9;
 const sign = (value: number) => (value > ZERO ? '+' : value < -ZERO ? '-' : '0');
-// Files round their dimensions; treat values within 0.1% as equal.
+// LM-63 gives no equality tolerance for "diameter" cells. Files round, so values within 0.1% count as equal.
 const same = (a: number, b: number) => Math.abs(Math.abs(a) - Math.abs(b)) <= 1e-3 * Math.max(Math.abs(a), Math.abs(b));
 
 /**
@@ -84,7 +92,9 @@ export function luminousShape(
       return shape(same(w, h) ? 'vertical-circle-facing-length' : 'vertical-ellipse-facing-length', 'cylinder', 'x');
     case '0--':
       return shape(same(l, h) ? 'vertical-circle-facing-width' : 'vertical-ellipse-facing-width', 'cylinder', 'z');
-    // Before 2019 (and in LDT conversions) a circle is a negative diameter with the other side zero.
+    // LM-63-1986/1991/1995 (and this package's LDT conversion) write a circle as one negative diameter
+    // with the other side zero. ponytail: the version is not passed in, so a 1995 sphere (-D, 0, -D per ies2rad) reads
+    // as the 2002+ vertical circle; pass the file version if pre-2002 spheres ever show up.
     case '-00':
     case '-0+':
     case '0-0':

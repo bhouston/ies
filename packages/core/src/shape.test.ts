@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { luminousShape, projectedLuminousArea } from './index.js';
 
 describe('luminousShape', () => {
+  // LM-63 Table 1 rows (LM-63-2002 / LM-63-2019), then the two (0, -, -) extensions.
   it.each([
     [0, 0, 0, 'point', 'ellipsoid', 'y'],
     [0.3, 1.2, 0, 'rectangular', 'box', 'y'],
@@ -18,6 +19,7 @@ describe('luminousShape', () => {
     [-0.1, -0.2, -0.1, 'ellipsoidal-spheroid', 'ellipsoid', 'y'],
     [-0.1, 0, -0.1, 'vertical-circle-facing-length', 'cylinder', 'x'],
     [-0.1, 0, -0.2, 'vertical-ellipse-facing-length', 'cylinder', 'x'],
+    // Extensions, not in Table 1.
     [0, -0.1, -0.1, 'vertical-circle-facing-width', 'cylinder', 'z'],
     [0, -0.1, -0.2, 'vertical-ellipse-facing-width', 'cylinder', 'z'],
   ] as const)('classifies %f %f %f as %s', (width, length, height, kind, solid, axis) => {
