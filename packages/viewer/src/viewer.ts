@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parsePhotometry, toPhotometricDocument, type IESProfile, type PhotometricDocument } from '@ies-tools/core';
 import type { PhotometryFormat } from './source.js';
 import { createCandelaTexture } from './texture.js';
+import { DEFAULT_COLOR_TEMPERATURE, documentColorTemperature, temperatureColor } from './lightColor.js';
 import {
   createLightScene,
   applyLightSceneSettings,
@@ -89,6 +90,22 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   observer.observe(container);
   controls.addEventListener('change', render);
   resize();
+  const setDocument = (next: PhotometricDocument) => {
+    if (disposed) throw new Error('Viewer has been disposed');
+    const profile = next.profile;
+    if (profile.photometricType !== 1)
+      throw new Error(
+        'The 3D viewer supports Type C photometry only. This file uses Type A or B coordinates; inspect or validate it with ies inspect / ies validate or the VS Code information panel. Use a Type C file for 3D previews and charts.',
+      );
+    const texture = createCandelaTexture(profile);
+    uniforms.distribution.value.dispose();
+    uniforms.distribution.value = texture;
+    uniforms.lightColor.value.copy(temperatureColor(documentColorTemperature(next)));
+    objects.cutoff = cutoffAngle(profile);
+    applyLightSceneSettings(objects, settings);
+    document = next;
+    render();
+  };
   return {
     renderer,
     get document() {
@@ -100,29 +117,16 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
       texture.needsUpdate = true;
       uniforms.distribution.value.dispose();
       uniforms.distribution.value = texture;
+      uniforms.lightColor.value.copy(temperatureColor(DEFAULT_COLOR_TEMPERATURE));
       objects.cutoff = undefined;
       applyLightSceneSettings(objects, settings);
       document = undefined;
       render();
     },
     setProfile(profile) {
-      if (disposed) throw new Error('Viewer has been disposed');
-      if (profile.photometricType !== 1)
-        throw new Error(
-          'The 3D viewer supports Type C photometry only. This file uses Type A or B coordinates; inspect or validate it with ies inspect / ies validate or the VS Code information panel. Use a Type C file for 3D previews and charts.',
-        );
-      const texture = createCandelaTexture(profile);
-      uniforms.distribution.value.dispose();
-      uniforms.distribution.value = texture;
-      objects.cutoff = cutoffAngle(profile);
-      applyLightSceneSettings(objects, settings);
-      document = toPhotometricDocument(profile);
-      render();
+      setDocument(toPhotometricDocument(profile));
     },
-    setDocument(next) {
-      this.setProfile(next.profile);
-      document = next;
-    },
+    setDocument,
     loadDocument(text, format, parseOptions) {
       const next = parsePhotometry(text, format, parseOptions);
       this.setDocument(next);

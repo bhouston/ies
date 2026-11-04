@@ -6,129 +6,179 @@ import { describe, expect, it } from 'vitest';
 import { inspectPhotometry, validatePhotometry } from '@ies-tools/core';
 import { iesSource } from '../../../core/test/iesSource.js';
 import { ldtSource } from '../../test/photometryFixtures.js';
-import { PhotometryInfoPanel } from './index.js';
+import { PhotometryInfoPanel, type PhotometryInfoPanelProps } from './PhotometryInfoPanel.js';
 
-const render = (text: string) =>
-  renderToStaticMarkup(<PhotometryInfoPanel inspection={inspectPhotometry(text, 'ies')} validation={null} />);
+function panel(props: Partial<PhotometryInfoPanelProps> = {}) {
+  const host = document.createElement('div');
+  host.innerHTML = renderToStaticMarkup(
+    <PhotometryInfoPanel inspection={inspectPhotometry(iesSource(), 'ies')} validation={null} {...props} />,
+  );
+  return host;
+}
+const inspect = (text: string) => panel({ inspection: inspectPhotometry(text, 'ies') });
+const disclosure = (host: HTMLElement, title: string) =>
+  [...host.querySelectorAll('details')].find(
+    (details) => details.querySelector('summary span')?.textContent === title,
+  )!;
+const rowValue = (host: HTMLElement, label: string) =>
+  [...host.querySelectorAll('dt')].find((term) => term.textContent === label)?.parentElement?.querySelector('dd')
+    ?.textContent;
+const tableRows = (host: HTMLElement) =>
+  [...host.querySelectorAll('tbody tr')].map((row) =>
+    [...row.querySelectorAll('th, td')].map((cell) => cell.textContent),
+  );
 
-describe('PhotometryInfoPanel extended metrics', () => {
-  it('shows flux split, ratios, CIE flux code, peak, nadir and a collapsed zonal lumens table', () => {
-    const html = render(iesSource({ lamps: 2, lumens: 1000, vertical: [0, 180] }));
-    expect(html).toContain('Downward flux fraction');
-    expect(html).toContain('50.0 %');
-    expect(html).toContain('0.628 (DLOR 0.314 / ULOR 0.314)');
-    expect(html).toContain('25 50 75 31 63');
-    expect(html).toContain('100 cd at C0° γ0°');
-    expect(html).toContain('Nadir intensity');
-    expect(html).toMatch(/<details class="[^"]*"><summary[^>]*>Zonal lumens<\/summary>/);
-    expect(html).toContain('<td class="text-left">90–180°</td><td>628.3</td><td>31.4</td><td>50.0</td>');
+describe('PhotometryInfoPanel hierarchy and source honesty', () => {
+  it('leads with identity and useful output metrics, with technical details collapsed', () => {
+    const host = inspect(
+      iesSource({ metadata: '[MANUFAC] Example lighting\n[LUMINAIRE] Compact downlight\n[COLORTEMP] 3000K\n[CRI] 90' }),
+    );
+    expect(host.querySelector('h2')?.textContent).toBe('Compact downlight');
+    expect(host.textContent).toContain('Example lighting');
+    const overview = host.querySelector('section[aria-label="Lighting overview"]')!;
+    expect([...overview.querySelectorAll('dt')].map((term) => term.textContent)).toEqual([
+      'Light output',
+      'Input power',
+      'Efficacy',
+      'Peak intensity',
+    ]);
+    expect(overview.textContent).toContain('1,257');
+    expect(overview.textContent).toContain('Integrated estimate');
+    expect(overview.textContent).toContain('Declared in source');
+    expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('3000K');
+    expect(disclosure(host, 'Light source').open).toBe(true);
+    expect(disclosure(host, 'Beam & field').open).toBe(false);
+    for (const title of ['Flux & efficiency', 'Distribution', 'Zonal lumens', 'File & geometry', 'Raw metadata']) {
+      const details = disclosure(host, title);
+      expect(details.open).toBe(false);
+      expect(overview.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(disclosure(host, 'Lamp configurations (1)')).toBeUndefined();
+  });
+  it('omits absent source color rather than inventing the renderer fallback', () => {
+    const host = inspect(iesSource());
+    const source = disclosure(host, 'Light source');
+    expect(rowValue(source, 'Color')).toBeUndefined();
+    expect(rowValue(source, 'Color rendering')).toBeUndefined();
+    expect(host.textContent).not.toContain('6500');
+    const declared = inspect(iesSource({ metadata: '[COLORTEMP] 6500K' }));
+    expect(rowValue(disclosure(declared, 'Light source'), 'Color')).toBe('6500K');
+  });
+  it('shows explicitly declared custom color keywords without inferring from descriptions', () => {
+    const declared = inspect(iesSource({ metadata: '[_TEMPCOLOR] 3000K\n[_CRI] 90' }));
+    expect(rowValue(disclosure(declared, 'Light source'), 'Color')).toBe('3000K');
+    expect(rowValue(disclosure(declared, 'Light source'), 'Color rendering')).toBe('90');
+    const described = inspect(iesSource({ metadata: '[LAMP] LED 2700K' }));
+    expect(rowValue(disclosure(described, 'Light source'), 'Color')).toBeUndefined();
+    expect(disclosure(described, 'Light source').textContent).toContain('LED 2700K');
+    const conflicting = inspect(iesSource({ metadata: '[_TEMPCOLOR] 3000K\n[_CCT] 4000K' }));
+    expect(rowValue(disclosure(conflicting, 'Light source'), 'Color')).toBe('4000K / 3000K');
+    expect(conflicting.textContent).not.toContain('6500');
+  });
+  it('preserves declared versus integrated flux, ratios, CIE codes, directions and zonal data', () => {
+    const host = inspect(iesSource({ lamps: 2, lumens: 1000, vertical: [0, 180] }));
+    expect(rowValue(host, 'Declared lamp flux')).toBe('2,000 lm');
+    expect(rowValue(host, 'Integrated luminaire flux')).toBe('1,257 lm');
+    expect(rowValue(host, 'Downward flux fraction')).toBe('50.0 %');
+    expect(rowValue(host, 'Light output ratio')).toBe('0.628 (DLOR 0.314 / ULOR 0.314)');
+    expect(rowValue(host, 'CIE flux code')).toBe('25 50 75 31 63');
+    expect(rowValue(host, 'Peak intensity (tilt applied)')).toBe('100 cd at C0° γ0°');
+    expect(rowValue(host, 'Nadir intensity')).toBe('100 cd');
+    const zonal = disclosure(host, 'Zonal lumens');
+    expect(zonal.open).toBe(false);
+    expect(tableRows(zonal)).toHaveLength(9);
+    expect(tableRows(zonal)).toContainEqual(['90–180°', '628.3', '31.4', '50.0']);
+    expect(zonal.querySelector('th[scope="row"]')).not.toBeNull();
   });
   it('marks lamp-relative values unavailable for absolute photometry', () => {
-    const html = render(iesSource({ vertical: [0, 180] }));
-    expect(html).toContain('Not available (no declared lamp flux)');
-    expect(html).toContain('25 50 75 — —');
-    expect(html).toContain('<td>1256.6</td><td>—</td><td>100.0</td>');
+    const host = inspect(iesSource({ vertical: [0, 180] }));
+    expect(rowValue(host, 'Light output ratio')).toBe('Not available (no declared lamp flux)');
+    expect(rowValue(host, 'Lumens per lamp')).toBe('Not specified (absolute photometry)');
+    expect(rowValue(host, 'CIE flux code')).toBe('25 50 75 — —');
+    expect(tableRows(disclosure(host, 'Zonal lumens'))).toContainEqual(['0–180°', '1256.6', '—', '100.0']);
   });
-  it('omits extended rows and the zonal table for unsupported coordinates', () => {
-    const html = render(iesSource({ type: 2, vertical: [-90, 0, 90] }));
-    expect(html).not.toContain('Downward flux fraction');
-    expect(html).not.toContain('Zonal lumens');
+  it('explains unsupported coordinates without suggesting zero calculated output', () => {
+    const host = inspect(iesSource({ type: 2, vertical: [-90, 0, 90] }));
+    expect(disclosure(host, 'Distribution')).toBeUndefined();
+    expect(disclosure(host, 'Zonal lumens')).toBeUndefined();
+    expect(disclosure(host, 'Beam & field')).toBeUndefined();
+    const overview = host.querySelector('section[aria-label="Lighting overview"]')!;
+    expect(overview.querySelectorAll('[aria-label="Not available"]')).toHaveLength(2);
+    expect(overview.textContent).toContain('Type C');
+    expect(rowValue(overview as HTMLElement, 'Input power')).toContain('10');
   });
-  it('falls back to Not available for partial metrics and dashes for missing zonal percentages', () => {
+  it('keeps null and zero measurements distinct', () => {
     const inspection = inspectPhotometry(iesSource({ values: [[0, 0, 0]] }), 'ies');
-    const html = renderToStaticMarkup(
-      <PhotometryInfoPanel
-        inspection={{ ...inspection, cieFluxCode: null, peakDirection: null, downwardFluxFraction: null }}
-        validation={null}
-      />,
-    );
-    expect(html).toContain(
-      '<dt class="text-muted-foreground">CIE flux code</dt><dd class="m-0 min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]">Not available</dd>',
-    );
-    expect(html).toContain(
-      '<dt class="text-muted-foreground">Peak intensity (tilt applied)</dt><dd class="m-0 min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]">Not available</dd>',
-    );
-    expect(html).toContain(
-      '<dt class="text-muted-foreground">Downward flux fraction</dt><dd class="m-0 min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]">Not available</dd>',
-    );
-    expect(html).toContain('<td class="text-left">0–180°</td><td>0.0</td><td>—</td><td>—</td>');
+    const host = panel({
+      inspection: { ...inspection, cieFluxCode: null, peakDirection: null, downwardFluxFraction: null },
+    });
+    for (const label of ['CIE flux code', 'Peak intensity (tilt applied)', 'Downward flux fraction'])
+      expect(rowValue(host, label)).toBe('Not available');
+    expect(rowValue(host, 'Integrated luminaire flux')).toBe('0 lm');
+    expect(tableRows(disclosure(host, 'Zonal lumens'))).toContainEqual(['0–180°', '0.0', '—', '—']);
   });
-  it('renders LDT lamp sets unselected (no metrics) and selected (relative metrics, relative to the set)', () => {
+  it('distinguishes unselected LDT alternatives from the selected source color and output', () => {
     const text = ldtSource({ alternatives: true });
-    const unselected = renderToStaticMarkup(
-      <PhotometryInfoPanel inspection={inspectPhotometry(text, 'ldt')} validation={validatePhotometry(text, 'ldt')} />,
-    );
-    expect(unselected).toContain('Select an alternative configuration to calculate intensity and flux.');
-    expect(unselected).not.toContain('Downward flux fraction');
-    expect(unselected).not.toContain('Zonal lumens');
-    const selected = renderToStaticMarkup(
-      <PhotometryInfoPanel inspection={inspectPhotometry(text, 'ldt', 1)} validation={null} />,
-    );
-    expect(selected).toContain('Second configuration (selected)');
-    expect(selected).toContain('0.628 (DLOR 0.314 / ULOR 0.314)');
-    expect(selected).toContain('25 50 75 31 63');
-    const absolute = renderToStaticMarkup(
-      <PhotometryInfoPanel inspection={inspectPhotometry(ldtSource({ absolute: true }), 'ldt')} validation={null} />,
-    );
-    expect(absolute).toContain('Not available (no declared lamp flux)');
-    expect(absolute).toContain('25 50 75 — —');
+    const unselected = panel({
+      inspection: inspectPhotometry(text, 'ldt'),
+      validation: validatePhotometry(text, 'ldt'),
+    });
+    expect(unselected.textContent).toContain('Select an alternative configuration to calculate intensity and flux.');
+    expect(disclosure(unselected, 'Lamp configurations (2)').open).toBe(true);
+    expect(disclosure(unselected, 'Light source')).toBeUndefined();
+    expect(unselected.querySelector('section[aria-label="Lighting overview"]')).toBeNull();
+    expect(disclosure(unselected, 'Distribution')).toBeUndefined();
+    const selected = panel({ inspection: inspectPhotometry(text, 'ldt', 1) });
+    expect(disclosure(selected, 'Lamp configurations (2)').open).toBe(false);
+    expect(selected.textContent).toContain('Second configuration (selected)');
+    expect(rowValue(disclosure(selected, 'Light source'), 'Color')).toBe('4000K');
+    expect(rowValue(selected, 'Light output ratio')).toBe('0.628 (DLOR 0.314 / ULOR 0.314)');
+    const absolute = panel({ inspection: inspectPhotometry(ldtSource({ absolute: true }), 'ldt') });
+    expect(rowValue(absolute, 'Declared luminaire flux')).toBe('2,000 lm');
+    expect(rowValue(disclosure(absolute, 'Light source'), 'Lamp count')).toBe('1');
+    expect(rowValue(absolute, 'Light output ratio')).toBe('Not available (no declared lamp flux)');
   });
-  it('expands the collapsed zonal lumens section on toggle', async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const host = document.createElement('div');
-    document.body.append(host);
-    const root = createRoot(host);
-    await act(() =>
-      root.render(
-        <PhotometryInfoPanel
-          inspection={inspectPhotometry(iesSource({ lamps: 2, lumens: 1000, vertical: [0, 180] }), 'ies')}
-          validation={null}
-        />,
-      ),
-    );
-    const zonal = [...host.querySelectorAll('details')].find(
-      (details) => details.querySelector('summary')?.textContent === 'Zonal lumens',
-    )!;
-    expect(zonal.open).toBe(false);
-    zonal.querySelector('summary')!.click();
-    expect(zonal.open).toBe(true);
-    const rows = [...zonal.querySelectorAll('tbody tr')].map((row) =>
-      [...row.querySelectorAll('td')].map((cell) => cell.textContent),
-    );
-    expect(rows).toHaveLength(9);
-    expect(rows[0]).toEqual(['0–30°', expect.any(String), expect.any(String), expect.any(String)]);
-    expect(rows.at(-1)).toEqual(['0–180°', '1256.6', '62.8', '100.0']);
-    await act(() => root.unmount());
-    host.remove();
+  it('keeps clean validation compact, exposes warning counts and expands failures', () => {
+    const clean = panel({ validation: { valid: true, diagnostics: [] } });
+    expect(disclosure(clean, 'Validation').open).toBe(false);
+    expect(disclosure(clean, 'Validation').querySelector('summary')?.textContent).toContain('Valid');
+    expect(clean.textContent).toContain('No validation issues.');
+    const warning = { code: 'W', severity: 'warning' as const, message: 'Missing test data' };
+    const warned = panel({ validation: { valid: true, diagnostics: [warning] } });
+    expect(disclosure(warned, 'Validation').querySelector('summary')?.textContent).toContain('1 warning');
+    const strict = panel({ validation: { valid: false, diagnostics: [warning] }, strict: true });
+    expect(disclosure(strict, 'Validation').open).toBe(true);
+    expect(strict.querySelector('[role="alert"]')?.textContent).toContain('Fails strict validation');
+    const broken = panel({
+      inspection: null,
+      validation: { valid: false, diagnostics: [{ code: 'E', severity: 'error', message: 'Broken' }] },
+    });
+    expect(disclosure(broken, 'Validation').open).toBe(true);
+    expect(broken.textContent).toContain('Invalid');
+    expect(broken.textContent).toContain('No current inspection data');
+    expect(broken.querySelector('[aria-label="Validation diagnostics"]')?.textContent).toContain('Broken');
   });
-  it('renders file details, validation states, errors, advisories and measured beam widths around the metrics', () => {
+  it('preserves file provenance, beam details, advisories and rendering failures', () => {
     const text = iesSource({
       metadata: '[MANUFAC] Example',
       vertical: [0, 10, 20, 90],
       values: [[100, 100, 0, 0]],
       tilt: 'INCLUDE\n1\n2\n0 90\n1 0.5',
     });
-    const validation = validatePhotometry(text, 'ies', true);
     const inspection = inspectPhotometry(text, 'ies');
-    const html = renderToStaticMarkup(
-      <PhotometryInfoPanel
-        inspection={{ ...inspection, diagnostics: [{ code: 'EXTRA', severity: 'info', field: 'x', message: 'Extra' }] }}
-        validation={validation}
-        fileName="example.ies"
-        fileSize={42}
-        strict
-        onStrictChange={() => {}}
-        inspectionError="Parse failed"
-        viewerError="No GPU"
-      />,
-    );
+    const host = panel({
+      inspection: { ...inspection, diagnostics: [{ code: 'EXTRA', severity: 'info', field: 'x', message: 'Extra' }] },
+      validation: validatePhotometry(text, 'ies', true),
+      fileName: 'example.ies',
+      fileSize: 42,
+      strict: true,
+      onStrictChange: () => {},
+      inspectionError: 'Parse failed',
+      viewerError: 'No GPU',
+    });
     for (const fragment of [
       'example.ies',
-      '42 bytes (UTF-8)',
       'Strict validation',
-      'Fails strict validation',
-      'aria-label="Validation diagnostics"',
-      'Field: ',
       'Parse failed',
       'No GPU',
       'Inspection advisories',
@@ -136,20 +186,58 @@ describe('PhotometryInfoPanel extended metrics', () => {
       'Embedded curve',
       'Beam angle (50%)',
     ])
-      expect(html).toContain(fragment);
-    expect(html).not.toContain('Not available (no-crossing)');
-    const errors = renderToStaticMarkup(
-      <PhotometryInfoPanel
-        inspection={null}
-        validation={{ valid: false, diagnostics: [{ code: 'E', severity: 'error', message: 'Broken' }] }}
-      />,
-    );
-    expect(errors).toContain('Invalid');
-    expect(errors).toContain('text-destructive');
-    expect(errors).toContain('No current inspection data');
-    const clean = renderToStaticMarkup(
-      <PhotometryInfoPanel inspection={null} validation={{ valid: true, diagnostics: [] }} />,
-    );
-    expect(clean).toContain('No validation issues.');
+      expect(host.textContent).toContain(fragment);
+    expect(rowValue(host, 'Source size')).toBe('42 bytes (UTF-8)');
+    expect(host.querySelector('table[aria-label="Beam and field angles"]')).not.toBeNull();
+    expect(disclosure(host, 'Beam & field').open).toBe(true);
+    expect(host.textContent).not.toContain('Not available (no-crossing)');
+    expect(disclosure(host, 'Inspection advisories').open).toBe(false);
+  });
+  it('preserves all raw metadata as safe, wrapping text without duplicate advisories', () => {
+    const text = iesSource({
+      metadata: '[LUMINAIRE] <img src=x onerror=alert(1)>\n[_CUSTOM] A long note\n[MORE] More details',
+    });
+    const inspection = inspectPhotometry(text, 'ies');
+    const host = panel({ inspection, validation: { valid: true, diagnostics: inspection.diagnostics } });
+    expect(disclosure(host, 'Inspection advisories')).toBeUndefined();
+    expect(host.querySelector('img')).toBeNull();
+    expect(disclosure(host, 'Raw metadata').open).toBe(false);
+    expect(rowValue(disclosure(host, 'Raw metadata'), '_CUSTOM')).toBe('A long note\nMore details');
+    expect(host.querySelector('h2')?.textContent).toBe('<img src=x onerror=alert(1)>');
+  });
+  it('toggles native disclosures and strict validation without changing the selected configuration', async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    let strict = false;
+    const inspection = inspectPhotometry(ldtSource({ alternatives: true }), 'ldt', 1);
+    try {
+      await act(() =>
+        root.render(
+          <PhotometryInfoPanel
+            inspection={inspection}
+            validation={{ valid: true, diagnostics: [] }}
+            onStrictChange={(value) => {
+              strict = value;
+            }}
+          />,
+        ),
+      );
+      const zonal = disclosure(host, 'Zonal lumens');
+      expect(zonal.open).toBe(false);
+      zonal.querySelector('summary')!.click();
+      expect(zonal.open).toBe(true);
+      expect(tableRows(zonal)).toHaveLength(9);
+      const validation = disclosure(host, 'Validation');
+      validation.querySelector('summary')!.click();
+      expect(validation.open).toBe(true);
+      await act(() => (validation.querySelector('input') as HTMLInputElement).click());
+      expect(strict).toBe(true);
+      expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('4000K');
+    } finally {
+      await act(() => root.unmount());
+      host.remove();
+    }
   });
 });

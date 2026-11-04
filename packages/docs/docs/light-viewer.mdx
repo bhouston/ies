@@ -38,6 +38,14 @@ The CDN bundle includes everything it needs. The bundler import uses your copies
 
 The element is 480 pixels tall by default; set its height with CSS. Files fetched from another origin must allow it with CORS. Rendering needs hardware WebGL2 and Type C photometry.
 
+## Light color
+
+The 3D preview uses one uniform white-light color temperature per luminaire or selected LDT lamp configuration. It reads native LDT color temperature and IES keywords `COLORTEMP`, `CCT`, `COLORTEMPERATURE`, `COLOR_TEMPERATURE`, `TEMPCOLOR` (including underscore-prefixed variants), and `_SEARCH_COLORTEMP`. Explicit fields take priority over descriptions. Without a temperature field, a single unambiguous Kelvin value in the lamp or luminaire description is used.
+
+Missing, invalid, conflicting, or unsupported temperatures default to **6500 K**. The supported range is 1667–25000 K; selectable temperature ranges also use the default. No temperature is inferred from filenames or catalog codes.
+
+The approximate temperature tint is applied in linear RGB before tone mapping and normalized to preserve luminance. Measured candela, calculated lux, and charts remain unchanged. This previews warm/cool white appearance; it does not simulate spectra, CRI, Duv, multiple color channels, or color varying with angle. Tone mapping and exposure affect the displayed color.
+
 ## Load a file from JavaScript
 
 To show a file the user picked, set its text instead of a URL:
