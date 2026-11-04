@@ -2,8 +2,10 @@
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM"],
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "noEmit": true
   },
+  "references": [{ "path": "../core" }, { "path": "../viewer" }],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.test.tsx"]
 }
