@@ -83,7 +83,8 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
 
 /** Largest vertical angle (0° = nadir) whose intensity exceeds 1% of the peak, in degrees. */
 export function cutoffAngle(profile: IESProfile): number {
-  const peak = Math.max(0, ...profile.candelaValues.flat());
+  let peak = 0;
+  for (const row of profile.candelaValues) for (const candela of row) peak = Math.max(peak, candela);
   let cutoff = 0;
   for (const row of profile.candelaValues)
     row.forEach((candela, i) => {
