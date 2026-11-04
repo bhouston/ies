@@ -5,7 +5,7 @@ sidebar_label: React
 
 # React components
 
-![The light viewer in Measurement mode: false-color isolux contours on the floor and wall, an illuminance legend, floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](/img/light-viewer.png)
+![The light viewer in Realistic mode: an auto-exposed downlight mounted 4.2 m high with a glowing glare halo, washing the wall and pooling light on the floor, with floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](/img/light-viewer.png)
 
 `@ies-tools/viewer/react` provides the 3D light viewer, every photometric chart, and the file information panel as React components.
 
