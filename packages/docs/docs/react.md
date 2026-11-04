@@ -124,6 +124,10 @@ See [Charts](./graphs.md) for what each one shows and its props.
 
 `PhotometryInfoPanel` and `ValidationChecks` show a file's properties and validation results, the same as the VS Code information panel. They take the inspection and validation results from `@ies-tools/core`.
 
+The panel leads with the luminaire identity and a compact overview of light output, input power, efficacy, and peak intensity. Light source characteristics and available beam widths are expanded; flux accounting, distribution ratios, zonal lumens, file geometry, and raw metadata are collapsed. Successful validation stays compact with visible issue counts, while failures expand automatically. Alternative LDT configurations expand when a selection is needed, and calculated summary cards stay hidden until a configuration is selected.
+
+**Color** shows explicit source temperature metadata only, including recognized custom IES keywords. Missing values are omitted; the 3D renderer's 6500 K fallback is never inserted into inspection data. Calculated output is labeled as an estimate and kept distinct from declared lamp ratings. Numbers use a compact display format; the core inspection model retains its original precision.
+
 ```tsx
 import { inspectParsedPhotometry, validatePhotometry } from '@ies-tools/core';
 import { PhotometryInfoPanel } from '@ies-tools/viewer/react';

@@ -1,22 +1,10 @@
 import { Color } from 'three';
 import type { PhotometricDocument } from '@ies-tools/core';
+import { declaredColorTemperatures } from './colorMetadata.js';
 
 export const DEFAULT_COLOR_TEMPERATURE = 6500;
 const MIN_TEMPERATURE = 1667;
 const MAX_TEMPERATURE = 25000;
-const TEMPERATURE_KEYS = [
-  'COLORTEMP',
-  '_COLORTEMP',
-  'CCT',
-  '_CCT',
-  'COLORTEMPERATURE',
-  '_COLORTEMPERATURE',
-  'COLOR_TEMPERATURE',
-  '_COLOR_TEMPERATURE',
-  'TEMPCOLOR',
-  '_TEMPCOLOR',
-  '_SEARCH_COLORTEMP',
-] as const;
 
 function supported(value: number): boolean {
   return Number.isFinite(value) && value >= MIN_TEMPERATURE && value <= MAX_TEMPERATURE;
@@ -37,8 +25,8 @@ export function documentColorTemperature(document: PhotometricDocument): number 
     if (lamp?.colorTemperature.trim()) return parseTemperature(lamp.colorTemperature) ?? DEFAULT_COLOR_TEMPERATURE;
   }
   const metadata = document.profile.metadata;
-  const declared = TEMPERATURE_KEYS.map((key) => metadata[key]).filter((value) => value?.trim());
-  if (declared.length) return uniqueTemperature(declared.map((value) => parseTemperature(value!)));
+  const declared = declaredColorTemperatures(metadata);
+  if (declared.length) return uniqueTemperature(declared.map((value) => parseTemperature(value)));
 
   // Only explicit Kelvin units in descriptions: never infer temperature from catalog codes or watts.
   const description =
