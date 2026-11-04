@@ -5,7 +5,7 @@ sidebar_label: React
 
 # React components
 
-![The light viewer in Realistic mode: an auto-exposed downlight mounted 4.2 m high with a glowing glare halo, washing the wall and pooling light on the floor, with floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](/img/light-viewer.png)
+![The light viewer in Realistic mode, seen from low beside the light: an auto-exposed downlight mounted 3 m high glows with a soft glare halo above a cone of light that pools on the floor and washes the wall, with floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](/img/light-viewer.png)
 
 `@ies-tools/viewer/react` provides the 3D light viewer, every photometric chart, and the file information panel as React components.
 
