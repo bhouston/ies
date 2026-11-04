@@ -26,7 +26,11 @@ export interface ViewerSettings {
   wallDistance: number;
   /** Floor distance below the luminaire in meters. Defaults to 2. */
   floorDistance: number;
-  /** Sideways offset of the luminaire along the wall in meters, from -100 to 100. Defaults to 0. */
+  /**
+   * Sideways offset of the luminaire along the wall in meters, from -100 to 100. Defaults to 0.
+   * @deprecated Moving along the wall changes nothing meaningful; the panel, drags and arrow keys no longer set it.
+   * Still honoured when set; it will be removed in the next major version.
+   */
   lightOffset: number;
   /** Tone mapping operator. Defaults to `aces`. */
   toneMapping: ToneMappingName;
