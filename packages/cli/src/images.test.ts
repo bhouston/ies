@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parsePhotometry, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
 import { chartPhotometry } from './chart.js';
-import { imageDimensions, requireHardwareGPU } from './render.js';
+import { imageDimensions, renderPhotometry, requireHardwareGPU } from './render.js';
 import yargs from 'yargs';
 import { command as chart } from './commands/chart.js';
 import { command as render } from './commands/render.js';
@@ -142,7 +142,7 @@ describe('image command arguments', () => {
     ['chart', [fixture, '-o', 'x.jpg']],
     ['render', [fixture, '-o', 'x.png', '--width', '1.5']],
     ['render', [fixture, '-o', 'x.png', '--height', '0']],
-    ['render', [fixture, '-o', 'x.png', '--exposure', '-1']],
+    ['render', [fixture, '-o', 'x.png', '--exposure', '21']],
     ['render', [fixture, '-o', 'x.png', '--timeout', '0']],
     ['render', [fixture, '-o', 'x.png', '--width', 'NaN']],
     ['chart', [fixture, '-o', 'x.svg', '--type', 'unknown']],
@@ -175,7 +175,7 @@ describe('image command arguments', () => {
     [{ upAxis: 'w' }, 'Up axis'],
     [{ colorScale: 'cubic' }, 'Colour scale'],
     [{ timeout: 601 }, 'Timeout'],
-    [{ exposure: -1 }, 'Exposure'],
+    [{ exposure: -7 }, 'Exposure'],
     [{ angle: Infinity }, 'finite number'],
   ])('validates %j without relying on yargs choices', (extra, message) =>
     expect(() => imageOptions('chart', { file: fixture, output: 'x.svg', ...extra })).toThrow(message),
@@ -184,6 +184,9 @@ describe('image command arguments', () => {
     expect(imageDimensions()).toEqual({ width: 1024, height: 768 });
     expect(() => imageDimensions(8193, 10)).toThrow();
   });
+  it.each([21, -7, NaN])('rejects manual exposure %d outside EV100 -6 to 20 before launching a browser', (exposure) =>
+    expect(renderPhotometry('', { exposure })).rejects.toThrow('EV100'),
+  );
 });
 
 describe('exclusive image outputs', () => {

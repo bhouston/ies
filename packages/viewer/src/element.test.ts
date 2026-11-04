@@ -294,7 +294,13 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       tone.value = 'neutral';
       tone.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    changeNumber(viewer, 'exposure', '0');
+    expect(input(viewer, 'exposure').disabled).toBe(true);
+    act(() => {
+      input(viewer, 'autoExposure').click();
+    });
+    expect(viewer.getAttribute('auto-exposure')).toBe('false');
+    expect(input(viewer, 'exposure').disabled).toBe(false);
+    changeNumber(viewer, 'exposure', '7.5');
     act(() => {
       input(viewer, 'helper').click();
     });
@@ -326,14 +332,31 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
       floorDistance: 3.048,
       lightOffset: 0,
       toneMapping: 'neutral',
-      exposure: 0,
+      autoExposure: false,
+      exposure: 7.5,
       helper: false,
       photometricSolid: true,
       rulers: false,
       viewMode: 'measurement',
       units: 'imperial',
     });
-    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(11);
+    expect(controllers[0]!.setSettings).toHaveBeenCalledTimes(12);
+  });
+  it('reflects the exposure metered while applying a setting, with one settings event', () => {
+    const viewer = mount(element()),
+      events: CustomEvent[] = [];
+    viewer.addEventListener('settingschange', (event) => events.push(event as CustomEvent));
+    // Auto exposure re-meters inside setSettings and reports it through the viewer's own event.
+    controllers[0]!.setSettings.mockImplementation((patch: Partial<ViewerSettings>) =>
+      controllers[0]!.drag({ ...patch, exposure: 7.3 }),
+    );
+    act(() => {
+      viewer.settings = { floorDistance: 3 };
+    });
+    expect(viewer.settings).toMatchObject({ floorDistance: 3, exposure: 7.3 });
+    expect(viewer.getAttribute('exposure')).toBe('7.3');
+    expect(input(viewer, 'exposure').value).toBe('7.3');
+    expect(events).toHaveLength(1);
   });
   it('reflects light drags inside the viewer to attributes, the panel and one settings event', () => {
     const viewer = mount(element()),
@@ -377,15 +400,15 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     expect(viewer.settings).toEqual(DEFAULT_VIEWER_SETTINGS);
     expect(controllers[0]!.setSettings).not.toHaveBeenCalled();
     act(() => {
-      viewer.settings = { exposure: 250, wallDistance: 7 };
+      viewer.settings = { exposure: 12, wallDistance: 7 };
     });
     viewer.data = ldtSource();
     await flush();
-    expect(viewer.settings.exposure).toBe(250);
+    expect(viewer.settings.exposure).toBe(12);
     expect(viewer.settings.wallDistance).toBe(7);
     const snapshot = viewer.settings;
     snapshot.exposure = 1;
-    expect(viewer.settings.exposure).toBe(250);
+    expect(viewer.settings.exposure).toBe(12);
   });
   it('shows chart tabs only with charts="true" and charts the loaded profile', async () => {
     const viewer = element();

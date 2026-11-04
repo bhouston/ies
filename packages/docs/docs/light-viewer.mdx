@@ -19,7 +19,7 @@ Load the self-contained bundle from jsDelivr, then add the element:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
-<light-viewer src="/lights/luminaire.ies" exposure="1" style="height: 600px"></light-viewer>
+<light-viewer src="/lights/luminaire.ies" style="height: 600px"></light-viewer>
 ```
 
 This unversioned URL follows the latest published release, subject to CDN and browser caching. Add an exact version, such as `@ies-tools/viewer@1.2.0`, to pin one.
@@ -50,10 +50,20 @@ The approximate temperature tint is applied in linear RGB before tone mapping an
 
 The buttons beside the gear switch between two views, and between metric and imperial units.
 
-- **Realistic** shows how the light looks on a matte floor (30% reflectance) and a lighter wall (60% reflectance). Exposure and tone mapping set the displayed brightness.
+- **Realistic** shows how the light looks on a matte floor (30% reflectance) and a lighter wall (60% reflectance), as a camera would see it. Exposure and tone mapping set the displayed brightness (see [Exposure](#exposure)).
 - **Measurement** colors the floor and wall by illuminance and draws isolux lines. The legend lists each line's level in lux, or footcandles in imperial units. The scale runs from the peak illuminance at the current distances down three decades; the colors match the isolux chart. Exposure and tone mapping do not change it.
 
 Imperial units also show the wall and floor distances in feet. The `wall-distance` and `floor-distance` attributes are always metres.
+
+## Exposure
+
+The realistic view is exposed like a camera. **Auto exposure** is on by default: the viewer meters the brightest point on the floor or wall and picks the exposure that keeps it just below white, so the hotspot and its falloff stay visible. It re-meters when you load a file or change the floor or wall distance. Auto exposure changes only overall brightness, never the relative brightness of surfaces, and the glowing fixture uses the same exposure.
+
+The exposure is an EV100 value, the number a camera's light meter reports at ISO 100. Each +1 EV halves the brightness. Typical indoor scenes are about EV 4–8. The settings panel shows the metered EV next to the **Auto exposure** checkbox; clear the checkbox to set your own EV, starting from the metered value. Technically, a surface with luminance 1.2 · 2<sup>EV</sup> cd/m² has the display value 1 before tone mapping.
+
+:::note Behavior change
+`exposure` used to be an unscaled brightness multiplier (default `1`). It is now EV100 (default `6`), and auto exposure is on by default. To keep a fixed exposure, set `auto-exposure="false"` and an EV, such as `exposure="6"`.
+:::
 
 ## Load a file from JavaScript
 
@@ -120,7 +130,8 @@ The gear button opens a settings panel. Set the same options with attributes:
   floor-distance="2"
   light-offset="0"
   tone-mapping="aces"
-  exposure="1"
+  auto-exposure="true"
+  exposure="6"
   helper="true"
   photometric-solid="false"
   rulers="true"
@@ -136,7 +147,8 @@ The gear button opens a settings panel. Set the same options with attributes:
 | `floor-distance`    | Height of the light above the floor, 0.1–100 metres                                                                    | `2`         |
 | `light-offset`      | Sideways position of the light along the wall, −100 to 100 metres                                                      | `0`         |
 | `tone-mapping`      | `aces`, `agx`, `neutral`, `reinhard`, `cineon`, `linear` or `none`                                                     | `aces`      |
-| `exposure`          | Display brightness, any number 0 or above                                                                              | `1`         |
+| `auto-exposure`     | `true` or `false`: meter the exposure from the brightest floor or wall point; `exposure` then reports the metered EV   | `true`      |
+| `exposure`          | Camera exposure in EV100, −6 to 20; used when `auto-exposure` is `false`. +1 halves the brightness                     | `6`         |
 | `helper`            | `true` or `false`: blue lines showing the beam's extent                                                                | `true`      |
 | `photometric-solid` | `true` or `false`: amber 3D shape of the candela distribution                                                          | `false`     |
 | `rulers`            | `true` or `false`: floor distance rulers and the mounting height                                                       | `true`      |
@@ -159,7 +171,7 @@ The light itself is drawn with the luminous-opening shape from the file (point, 
 Change settings from JavaScript with the `settings` property. It accepts a partial object and returns a copy:
 
 ```js
-viewer.settings = { showWall: false, floorDistance: 3, toneMapping: 'agx', exposure: 2 };
+viewer.settings = { showWall: false, floorDistance: 3, toneMapping: 'agx', autoExposure: false, exposure: 7 };
 viewer.addEventListener('settingschange', (event) => console.log(event.detail.settings));
 ```
 
@@ -196,9 +208,9 @@ The settings panel takes its colours from CSS custom properties such as `--popov
 ```js
 import { createLightViewer } from '@ies-tools/viewer';
 
-const viewer = createLightViewer(document.querySelector('#viewport'), { height: 2, exposure: 1 });
+const viewer = createLightViewer(document.querySelector('#viewport'), { height: 2 });
 viewer.load(iesOrLdtText);
-viewer.setExposure(2);
+viewer.setExposure(7); // manual EV100; turns auto exposure off
 // When you remove the view:
 viewer.dispose();
 ```

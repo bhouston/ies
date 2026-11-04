@@ -10,6 +10,7 @@ export interface HardwareGPUInfo {
 export interface RenderOptions {
   width?: number;
   height?: number;
+  /** Manual EV100 exposure, -6 to 20; undefined meters the exposure automatically. */
   exposure?: number;
   browser?: string;
   /** Browser startup/load/render timeout in seconds. */
@@ -94,9 +95,10 @@ const gpuState = `(() => {
 /** Capture the same custom element used by `ies view`, after checking its real renderer and completing GPU work. */
 export async function renderPhotometry(text: string, options: RenderOptions = {}): Promise<RenderedPhotometry> {
   const { width, height } = imageDimensions(options.width, options.height);
-  const exposure = options.exposure ?? 1;
+  const exposure = options.exposure;
   const timeout = options.timeout ?? 60;
-  if (!Number.isFinite(exposure) || exposure < 0) throw new RangeError('Exposure must be finite and nonnegative');
+  if (exposure !== undefined && !(exposure >= -6 && exposure <= 20))
+    throw new RangeError('Exposure must be an EV100 from -6 to 20');
   if (!Number.isFinite(timeout) || timeout <= 0 || timeout > 600)
     throw new RangeError('Timeout must be between 0 and 600 seconds');
   const document = parsePhotometry(text, options.inputFormat, { lampSetIndex: options.lampSetIndex });
@@ -120,7 +122,11 @@ export async function renderPhotometry(text: string, options: RenderOptions = {}
     const glError = await page.evaluate<number>(`(() => {
       const viewer = document.querySelector('light-viewer');
       viewer.setAttribute('settings-panel', 'hidden');
-      viewer.setAttribute('exposure', ${JSON.stringify(exposure)});
+      const exposure = ${JSON.stringify(exposure ?? null)};
+      if (exposure !== null) {
+        viewer.setAttribute('auto-exposure', 'false');
+        viewer.setAttribute('exposure', exposure);
+      }
       const gl = viewer.shadowRoot.querySelector('canvas').getContext('webgl2');
       gl.finish();
       return gl.getError();

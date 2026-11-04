@@ -30,7 +30,10 @@ export interface ViewerSettings {
   lightOffset: number;
   /** Tone mapping operator. Defaults to `aces`. */
   toneMapping: ToneMappingName;
-  /** Nonnegative display exposure. Defaults to 1. */
+  /** Meter the exposure from the peak floor/wall luminance and report it in `exposure`. Defaults to true. */
+  autoExposure: boolean;
+  /** Camera exposure value EV100, -6 to 20: luminance 1.2 · 2^EV100 cd/m² displays as 1 before tone mapping.
+   * Used when `autoExposure` is false; otherwise set by the viewer to the metered value. Defaults to 6. */
   exposure: number;
   /** Show the blue beam-extent helper lines (cone or spheres). Defaults to true. */
   helper: boolean;
@@ -49,7 +52,8 @@ export const DEFAULT_VIEWER_SETTINGS: Readonly<ViewerSettings> = Object.freeze({
   floorDistance: 2,
   lightOffset: 0,
   toneMapping: 'aces',
-  exposure: 1,
+  autoExposure: true,
+  exposure: 6,
   helper: true,
   viewMode: 'realistic',
   units: 'metric',
@@ -62,6 +66,7 @@ export const VIEWER_SETTINGS_ATTRIBUTES = [
   'floor-distance',
   'light-offset',
   'tone-mapping',
+  'auto-exposure',
   'exposure',
   'helper',
   'view-mode',
@@ -87,6 +92,7 @@ export function resolveViewerSettings(
   if (typeof next.helper !== 'boolean') throw new TypeError('helper must be a boolean');
   if (typeof next.photometricSolid !== 'boolean') throw new TypeError('photometricSolid must be a boolean');
   if (typeof next.rulers !== 'boolean') throw new TypeError('rulers must be a boolean');
+  if (typeof next.autoExposure !== 'boolean') throw new TypeError('autoExposure must be a boolean');
   if (!TONE_MAPPING_OPTIONS.some((option) => option.value === next.toneMapping))
     throw new RangeError('Unsupported toneMapping function');
   if (!VIEW_MODE_OPTIONS.some((option) => option.value === next.viewMode))
@@ -97,7 +103,7 @@ export function resolveViewerSettings(
     ['wallDistance', 0.1, 100],
     ['floorDistance', 0.1, 100],
     ['lightOffset', -100, 100],
-    ['exposure', 0, Infinity],
+    ['exposure', -6, 20],
   ] as const) {
     const value = next[key];
     if (!Number.isFinite(value) || value < min || value > max)
@@ -117,6 +123,7 @@ export function viewerSettingFromAttribute(name: string, value: string | null): 
     helper: 'helper',
     'photometric-solid': 'photometricSolid',
     rulers: 'rulers',
+    'auto-exposure': 'autoExposure',
   } as const;
   if (Object.hasOwn(booleans, name)) {
     const key = booleans[name as keyof typeof booleans];

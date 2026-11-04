@@ -168,27 +168,53 @@ export function ViewerSettingsPanel({
           [
             ['wallDistance', 'Wall distance', true],
             ['floorDistance', 'Floor distance', true],
-            ['lightOffset', 'Light offset', true],
-            ['exposure', 'Exposure', false],
+            ['lightOffset', 'Light offset'],
           ] as const
-        ).map(([key, label, length]) => (
+        ).map(([key, label]) => (
           <label key={key} className="my-3 flex items-center justify-between gap-3">
-            {length ? `${label} (${unit})` : label}
+            {`${label} (${unit})`}
             <input
               name={key}
               type="number"
-              min={key === 'lightOffset' ? shownLength(-100) : length ? shownLength(0.1) : 0}
-              max={length ? shownLength(100) : undefined}
+              min={shownLength(key === 'lightOffset' ? -100 : 0.1)}
+              max={shownLength(100)}
               step="0.1"
-              value={length ? shownLength(settings[key]) : settings[key]}
+              value={shownLength(settings[key])}
               className={`w-24 ${control}`}
-              onChange={(event) => {
-                const value = event.currentTarget.valueAsNumber;
-                change({ [key]: length ? lengthFromUnits(value, settings.units) : value });
-              }}
+              onChange={(event) =>
+                change({ [key]: lengthFromUnits(event.currentTarget.valueAsNumber, settings.units) })
+              }
             />
           </label>
         ))}
+        {/* While metering, the EV field shows the metered value; unchecking keeps it as the manual start. */}
+        <div className="my-3 flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2">
+            <input
+              name="autoExposure"
+              type="checkbox"
+              checked={settings.autoExposure}
+              className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => change({ autoExposure: event.currentTarget.checked })}
+            />
+            Auto exposure
+          </label>
+          <label className="flex items-center gap-2">
+            EV
+            <input
+              name="exposure"
+              type="number"
+              min={-6}
+              max={20}
+              step="0.1"
+              disabled={settings.autoExposure}
+              title="Camera exposure value at ISO 100 (EV100)"
+              value={Number(settings.exposure.toFixed(1))}
+              className={`w-20 disabled:opacity-60 ${control}`}
+              onChange={(event) => change({ exposure: event.currentTarget.valueAsNumber })}
+            />
+          </label>
+        </div>
         {toggles.map(([key, label, options]) => (
           <label key={key} className="my-3 flex items-center justify-between gap-3">
             {label}

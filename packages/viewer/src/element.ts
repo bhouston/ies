@@ -30,6 +30,7 @@ export class LightViewerElement extends ElementBase {
   #viewer?: LightViewerController;
   #settings: ViewerSettings = { ...DEFAULT_VIEWER_SETTINGS };
   #reflecting = false;
+  #applying = false;
   #panel?: SettingsPanel;
   #tab: ViewerTab = '3d';
   #profile?: IESProfile;
@@ -37,15 +38,24 @@ export class LightViewerElement extends ElementBase {
     return { ...this.#settings };
   }
   set settings(patch: Partial<ViewerSettings>) {
-    const next = resolveViewerSettings(patch, this.#settings);
+    let next = resolveViewerSettings(patch, this.#settings);
+    if (this.#viewer) {
+      // The viewer's own settingschange for this call is applied below, not re-entered.
+      this.#applying = true;
+      try {
+        this.#viewer.setSettings(next);
+      } finally {
+        this.#applying = false;
+      }
+      // Auto exposure replaces `exposure` with the metered EV.
+      next = this.#viewer.getSettings();
+    }
     if (settingsEqual(next, this.#settings)) {
       this.#updatePanel();
       return;
     }
     const previousSettings = this.settings;
-    // Updated first so the viewer's own settingschange, below, is recognised as already applied.
     this.#settings = next;
-    this.#viewer?.setSettings(next);
     this.#reflecting = true;
     try {
       // Reflect only changed settings, and never rewrite an attribute that already matches: setAttribute
@@ -56,6 +66,7 @@ export class LightViewerElement extends ElementBase {
         ['floor-distance', 'floorDistance'],
         ['light-offset', 'lightOffset'],
         ['tone-mapping', 'toneMapping'],
+        ['auto-exposure', 'autoExposure'],
         ['exposure', 'exposure'],
         ['helper', 'helper'],
         ['photometric-solid', 'photometricSolid'],
@@ -167,7 +178,7 @@ export class LightViewerElement extends ElementBase {
       this.#viewer = createLightViewer(this.#host!, this.#settings);
       // Dragging the light changes settings inside the viewer; reflect them like panel edits.
       this.#viewer.addEventListener('settingschange', ({ detail }) => {
-        if (!settingsEqual(detail.settings, this.#settings)) this.settings = detail.settings;
+        if (!this.#applying && !settingsEqual(detail.settings, this.#settings)) this.settings = detail.settings;
       });
       this.#panel?.connect();
       this.#updatePanel();

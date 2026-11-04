@@ -25,6 +25,25 @@ export const lengthFromUnits = (value: number, units: MeasurementUnits) =>
  * reaches first, matching the viewer's candela texture.
  */
 export function peakReceiverIlluminance(profile: IESProfile, floorDistance: number, wallDistance?: number): number {
+  return peakReceiver(profile, floorDistance, wallDistance, 1, 1);
+}
+/** Peak luminance in cd/m² of matte (Lambertian) receivers, L = ρE/π, with the geometry of {@link peakReceiverIlluminance}. */
+export function peakReceiverLuminance(
+  profile: IESProfile,
+  floorDistance: number,
+  wallDistance: number | undefined,
+  floorReflectance: number,
+  wallReflectance: number,
+): number {
+  return peakReceiver(profile, floorDistance, wallDistance, floorReflectance / Math.PI, wallReflectance / Math.PI);
+}
+function peakReceiver(
+  profile: IESProfile,
+  floorDistance: number,
+  wallDistance: number | undefined,
+  floorScale: number,
+  wallScale: number,
+): number {
   let peak = 0;
   for (let v = 0; v <= 180; v++) {
     const theta = (v * Math.PI) / 180;
@@ -35,15 +54,23 @@ export function peakReceiverIlluminance(profile: IESProfile, floorDistance: numb
       const toWall = wallDistance !== undefined && towardWall > 0 ? wallDistance / towardWall : Infinity;
       if (toFloor === Infinity && toWall === Infinity) continue;
       // E = I cos(incidence) / r², with cos(incidence) = surface distance / r.
-      const lux =
+      const value =
         toFloor <= toWall
-          ? (sampleIntensity(profile, v, h) * down ** 3) / floorDistance ** 2
-          : (sampleIntensity(profile, v, h) * towardWall ** 3) / wallDistance! ** 2;
-      peak = Math.max(peak, lux);
+          ? (floorScale * sampleIntensity(profile, v, h) * down ** 3) / floorDistance ** 2
+          : (wallScale * sampleIntensity(profile, v, h) * towardWall ** 3) / wallDistance! ** 2;
+      peak = Math.max(peak, value);
     }
   }
   return peak;
 }
+
+/** Luminance in cd/m² that saturates a camera at `ev100` (ISO 100): L_max = 78 / (100 · 0.65) · 2^EV100 = 1.2 · 2^EV100. */
+export const saturationLuminance = (ev100: number) => 1.2 * 2 ** ev100;
+/** Display value, before tone mapping, at which auto exposure places the peak luminance: where ACES and AgX roll into their shoulder, keeping the hotspot gradient. */
+export const AUTO_EXPOSURE_PEAK = 1;
+/** Metered EV100 that displays `peakLuminance` (cd/m²) as {@link AUTO_EXPOSURE_PEAK}, rounded to 0.1 EV. */
+export const autoExposureValue = (peakLuminance: number) =>
+  Math.round(Math.log2(peakLuminance / saturationLuminance(0) / AUTO_EXPOSURE_PEAK) * 10) / 10;
 
 export interface IlluminanceLegend {
   unit: 'lx' | 'fc';

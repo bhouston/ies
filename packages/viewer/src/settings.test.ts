@@ -36,19 +36,25 @@ describe('physical scene settings', () => {
     const profile = parseIES(iesSource({ vertical, horizontal, values }));
     expect(cutoffAngle(profile)).toBe(60);
   });
-  it('keeps defaults and accepts all supported tone curves and nonnegative exposures', () => {
+  it('keeps defaults and accepts all supported tone curves and EV100 exposures from -6 to 20', () => {
     expect(resolveViewerSettings({})).toEqual(DEFAULT_VIEWER_SETTINGS);
     for (const option of TONE_MAPPING_OPTIONS)
       expect(resolveViewerSettings({ toneMapping: option.value }).toneMapping).toBe(option.value);
-    expect(resolveViewerSettings({ exposure: 0 }).exposure).toBe(0);
-    expect(resolveViewerSettings({ exposure: 1000 }).exposure).toBe(1000);
+    expect(resolveViewerSettings({ exposure: -6 }).exposure).toBe(-6);
+    expect(resolveViewerSettings({ exposure: 20 }).exposure).toBe(20);
+    expect(resolveViewerSettings({ exposure: 6.5, autoExposure: false })).toMatchObject({
+      exposure: 6.5,
+      autoExposure: false,
+    });
     expect(TONE_MAPPING.agx).toBe(THREE.AgXToneMapping);
   });
   it.each([
     { wallDistance: 0 },
     { floorDistance: Infinity },
-    { exposure: -1 },
+    { exposure: -6.1 },
+    { exposure: 21 },
     { exposure: NaN },
+    { autoExposure: 'false' },
     { showWall: 'false' },
     { helper: 'false' },
     { photometricSolid: 1 },
@@ -82,7 +88,8 @@ describe('physical scene settings', () => {
       objects.wallZ = -5;
       applyLightSceneSettings(objects, next);
       expect(objects.uniforms.lightPosition.value.z).toBe(0);
-      expect(objects.uniforms.exposure.value).toBe(2);
+      // EV100 2 saturates at 1.2 · 2² cd/m².
+      expect(objects.uniforms.exposure.value).toBeCloseTo(1 / 4.8, 12);
       expect(objects.scene.background).toEqual(new THREE.Color(0));
     } finally {
       disposeLightScene(objects);

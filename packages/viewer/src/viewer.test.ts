@@ -2,7 +2,15 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { WebGLRenderer } from 'three';
 import type { Mesh, Scene, ShaderMaterial, LineSegments, DataTexture } from 'three';
-import { parsePhotometry, parseIES, parseLDT, serializeLDT, writeLDT } from '@ies-tools/core';
+import {
+  autoExposureValue,
+  parsePhotometry,
+  parseIES,
+  parseLDT,
+  saturationLuminance,
+  serializeLDT,
+  writeLDT,
+} from '@ies-tools/core';
 import { temperatureColor } from './lightColor.js';
 import { iesSource } from '../../core/test/iesSource.js';
 const gpu = vi.hoisted(() => ({ render: vi.fn(), dispose: vi.fn() }));
@@ -40,7 +48,7 @@ it('clears the distribution, helper and document, disposes textures and can relo
     }),
   );
   const host = document.createElement('div');
-  const viewer = createLightViewer(host, { exposure: 2, floorDistance: 4 });
+  const viewer = createLightViewer(host, { autoExposure: false, exposure: 2, floorDistance: 4 });
   try {
     const photometry = parsePhotometry(iesSource());
     viewer.setDocument(photometry);
@@ -125,6 +133,47 @@ it('updates uniform color for IES profiles, selected LDT configurations, fallbac
     expect(color()).toEqual(temperatureColor(6500));
     viewer.setDocument(selected);
     expect(color()).toEqual(temperatureColor(4000));
+  } finally {
+    viewer.dispose();
+  }
+});
+
+it('meters EV100 from the peak receiver luminance until switched to manual', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn(function () {
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }),
+  );
+  const viewer = createLightViewer(document.createElement('div'));
+  const events: unknown[] = [];
+  viewer.addEventListener('settingschange', (event) => events.push(event.detail));
+  try {
+    // Isotropic 100 cd: the 60% wall 2 m away (25 lx) is the brightest receiver.
+    viewer.load(iesSource());
+    const ev = autoExposureValue((0.6 * 25) / Math.PI);
+    expect(viewer.getSettings()).toMatchObject({ autoExposure: true, exposure: ev });
+    expect(events).toHaveLength(1);
+    const exposure = () => renderedMaterial().uniforms.exposure!.value as number;
+    expect(exposure()).toBeCloseTo(1 / saturationLuminance(ev), 12);
+    viewer.setSettings({ exposure: 12 });
+    expect(viewer.getSettings().exposure).toBe(ev);
+    // A wall 1 m away receives four times the illuminance: two stops more exposure.
+    viewer.setSettings({ wallDistance: 1 });
+    expect(viewer.getSettings().exposure).toBeCloseTo(ev + 2, 1);
+    viewer.setSettings({ autoExposure: false });
+    expect(viewer.getSettings().exposure).toBeCloseTo(ev + 2, 1);
+    viewer.setSettings({ exposure: 9 });
+    viewer.setSettings({ wallDistance: 2 });
+    expect(viewer.getSettings().exposure).toBe(9);
+    // One more stop halves the displayed luminance.
+    const nine = exposure();
+    viewer.setSettings({ exposure: 10 });
+    expect(exposure()).toBeCloseTo(nine / 2, 12);
+    viewer.setSettings({ autoExposure: true });
+    expect(viewer.getSettings().exposure).toBe(ev);
+    viewer.setExposure(8);
+    expect(viewer.getSettings()).toMatchObject({ autoExposure: false, exposure: 8 });
   } finally {
     viewer.dispose();
   }
