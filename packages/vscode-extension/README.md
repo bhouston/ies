@@ -6,14 +6,6 @@ See how a luminaire distributes light without leaving VS Code. Open an IES or EU
 
 ![The light viewer selecting a downlight, raising it with the arrow keys and an upward drag that changes only its height, orbiting lower and zooming in until its glare halo shows above the lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/vscode-extension.gif)
 
-## Install
-
-Install **IES and LDT Light Viewer** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension) or, for VSCodium, Cursor and other Open VSX editors, from [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension). From a terminal:
-
-```sh
-code --install-extension benhouston3d.ies-vscode-extension
-```
-
 ## Features
 
 - **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution; click and drag the light to change its height and distance from the wall.
