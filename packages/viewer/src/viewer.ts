@@ -17,6 +17,7 @@ import {
   disposeLightScene,
   fitDistanceChange,
   applyIlluminanceLegend,
+  rulerSegments,
   setLightSceneProfile,
   TONE_MAPPING,
 } from './scene.js';
@@ -83,7 +84,9 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
   legend.className = 'illuminance-legend';
   legend.style.cssText =
     'position:absolute;top:12px;right:12px;padding:8px 10px;border-radius:8px;background:rgb(0 0 0 / 60%);color:#e5e7eb;font:11px/1.3 var(--viewer-font-family, var(--vscode-font-family, system-ui, sans-serif))';
-  overlay.append(legend);
+  const rulerLayer = container.ownerDocument.createElement('div');
+  rulerLayer.className = 'ruler-labels';
+  overlay.append(rulerLayer, legend);
   container.append(overlay);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 1, 0);
@@ -110,8 +113,51 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     renderIlluminanceLegend(legend, settings.viewMode === 'measurement' ? scale : undefined);
   };
   updateLegend();
+  let rulerLabels: typeof objects.rulerLabels = [];
+  const projected = new THREE.Vector3();
+  // ponytail: label widths are estimated from text length rather than measured, avoiding a layout per render.
+  const placeRulerLabels = () => {
+    if (rulerLabels !== objects.rulerLabels) {
+      rulerLabels = objects.rulerLabels;
+      rulerLayer.replaceChildren(
+        ...rulerLabels.map((label) => {
+          const node = container.ownerDocument.createElement('div');
+          node.textContent = label.text;
+          node.style.cssText = `position:absolute;left:0;top:0;padding:1px 5px;border-radius:4px;background:rgb(15 23 42 / 72%);color:#f8fafc;white-space:nowrap;font:${label.height ? 600 : 400} 11px/16px var(--viewer-font-family, var(--vscode-font-family, system-ui, sans-serif))`;
+          return node;
+        }),
+      );
+    }
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const placed: [number, number, number, number][] = [];
+    rulerLabels.forEach((label, i) => {
+      const node = rulerLayer.children[i] as HTMLElement;
+      projected.set(...label.position).project(camera);
+      const x = ((projected.x + 1) / 2) * width;
+      const y = ((1 - projected.y) / 2) * height;
+      const box: [number, number, number, number] = [
+        x - label.text.length * 3.3 - 8,
+        y - 10,
+        x + label.text.length * 3.3 + 8,
+        y + 10,
+      ];
+      node.hidden =
+        Math.abs(projected.z) > 1 ||
+        box[2] < 0 ||
+        box[0] > width ||
+        box[3] < 0 ||
+        box[1] > height ||
+        placed.some((other) => box[0] < other[2] && other[0] < box[2] && box[1] < other[3] && other[1] < box[3]);
+      if (node.hidden) return;
+      placed.push(box);
+      node.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+    });
+  };
   const render = () => {
-    if (!disposed) renderer.render(scene, camera);
+    if (disposed) return;
+    renderer.render(scene, camera);
+    placeRulerLabels();
   };
   const resize = () => {
     const width = Math.max(1, container.clientWidth);
@@ -119,6 +165,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
+    for (const line of rulerSegments(objects)) line.material.resolution.set(width, height);
     render();
   };
   const observer = new ResizeObserver(resize);

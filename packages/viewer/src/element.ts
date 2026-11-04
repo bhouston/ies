@@ -57,6 +57,7 @@ export class LightViewerElement extends ElementBase {
         ['exposure', 'exposure'],
         ['helper', 'helper'],
         ['photometric-solid', 'photometricSolid'],
+        ['rulers', 'rulers'],
         ['view-mode', 'viewMode'],
         ['units', 'units'],
       ] as const)
