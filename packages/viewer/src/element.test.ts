@@ -111,6 +111,76 @@ describe('light-viewer DOM and source lifecycle with a mocked GPU boundary', () 
     ]);
     expect(viewer.data).toBe(viewer.iesText);
   });
+  it('shows HTTP errors above the tabs, supports dismissal, and recovers on a valid source', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, status: 404 }));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    const viewer = element();
+    const errors: CustomEvent[] = [];
+    viewer.addEventListener('error', (event) => errors.push(event as CustomEvent));
+    viewer.setAttribute('src', '/missing.ies');
+    viewer.setAttribute('charts', 'true');
+    mount(viewer);
+    await flush();
+    const root = viewer.shadowRoot!;
+    const overlay = root.querySelector<HTMLDivElement>('.error-log')!;
+    expect(overlay.hidden).toBe(false);
+    expect(overlay.getAttribute('role')).toBe('alert');
+    expect(overlay.textContent).toContain('Failed to load photometry: HTTP 404');
+    expect(overlay.textContent).toContain('Source: /missing.ies');
+    expect(errors[0]!.detail.message).toContain('HTTP 404');
+    const copy = overlay.querySelector<HTMLButtonElement>('.error-log-copy')!;
+    copy.click();
+    await flush();
+    expect(writeText).toHaveBeenCalledWith(
+      'Unable to load photometry\n\nFailed to load photometry: HTTP 404\n\nError\nSource: /missing.ies',
+    );
+    expect(overlay.querySelector('[role="status"]')!.textContent).toBe('Copied');
+    writeText.mockRejectedValueOnce(new Error('Clipboard permission denied'));
+    copy.click();
+    await flush();
+    expect(overlay.querySelector('[role="status"]')!.textContent).toContain('Couldn’t copy');
+    expect(copy.disabled).toBe(false);
+    act(() => {
+      root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="false"]')!.click();
+    });
+    expect(overlay.hidden).toBe(false);
+    act(() => {
+      overlay.querySelector<HTMLButtonElement>('button')!.click();
+    });
+    expect(overlay.hidden).toBe(true);
+    viewer.data = 'invalid photometry';
+    await flush();
+    expect(overlay.hidden).toBe(false);
+    expect(overlay.textContent).toContain('Inline photometry');
+    viewer.data = iesSource();
+    await flush();
+    expect(overlay.hidden).toBe(true);
+    expect(controllers[0]!.setDocument).toHaveBeenCalledOnce();
+  });
+  it('silences only the visible error overlay and applies changes without reloading', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 404 })),
+    );
+    const viewer = element();
+    const onError = vi.fn();
+    viewer.addEventListener('error', onError);
+    viewer.setAttribute('errors', 'silent');
+    viewer.setAttribute('src', '/missing.ies');
+    mount(viewer);
+    await flush();
+    const overlay = viewer.shadowRoot!.querySelector<HTMLDivElement>('.error-log')!;
+    expect(overlay.hidden).toBe(true);
+    expect(onError).toHaveBeenCalledOnce();
+    viewer.removeAttribute('errors');
+    expect(overlay.hidden).toBe(false);
+    viewer.setAttribute('errors', 'silent');
+    expect(overlay.hidden).toBe(true);
+    viewer.setAttribute('errors', 'anything-else');
+    expect(overlay.hidden).toBe(false);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
   it('aborts old URLs and never publishes their stale result', async () => {
     let complete!: (value: unknown) => void;
     let signal: AbortSignal | undefined;

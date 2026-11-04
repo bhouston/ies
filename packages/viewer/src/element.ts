@@ -1,3 +1,4 @@
+import { ErrorOverlay } from './errorOverlay.js';
 import type { PhotometricDocument } from '@ies-tools/core';
 import {
   DEFAULT_VIEWER_SETTINGS,
@@ -23,6 +24,7 @@ export class LightViewerElement extends ElementBase {
     'lamp-set-index',
     'settings-panel',
     'charts',
+    'errors',
     ...VIEWER_SETTINGS_ATTRIBUTES,
   ];
   #viewer?: LightViewerController;
@@ -95,6 +97,7 @@ export class LightViewerElement extends ElementBase {
   #revision = 0;
   #host?: HTMLDivElement;
   #status?: HTMLDivElement;
+  #errors?: ErrorOverlay;
   get photometryText(): string {
     return this.#text ?? '';
   }
@@ -137,6 +140,7 @@ export class LightViewerElement extends ElementBase {
       this.#status = document.createElement('div');
       this.#status.className = 'status';
       this.#status.setAttribute('role', 'status');
+      this.#errors = new ErrorOverlay(this);
       this.#panel = new SettingsPanel(
         this,
         (patch) => {
@@ -148,7 +152,7 @@ export class LightViewerElement extends ElementBase {
           this.#error(error);
         },
       );
-      root.append(style, this.#host, this.#status, this.#panel.root);
+      root.append(style, this.#host, this.#status, this.#panel.root, this.#errors.root);
     }
     try {
       this.#viewer = createLightViewer(this.#host!, this.#settings);
@@ -168,6 +172,10 @@ export class LightViewerElement extends ElementBase {
   }
   attributeChangedCallback(name: string): void {
     if (this.#reflecting) return;
+    if (name === 'errors') {
+      this.#errors?.syncVisibility();
+      return;
+    }
     if (name === 'settings-panel' || name === 'charts') {
       this.#updatePanel();
       return;
@@ -191,6 +199,7 @@ export class LightViewerElement extends ElementBase {
     if (!this.#viewer) return;
     const revision = ++this.#revision;
     try {
+      this.#errors?.clear();
       this.#status!.textContent = 'Loading photometry…';
       const next = await this.#loader.load({
         document: this.#document,
@@ -219,12 +228,18 @@ export class LightViewerElement extends ElementBase {
         }),
       );
     } catch (error) {
-      if (revision === this.#revision && this.isConnected) this.#error(error);
+      if (revision === this.#revision && this.isConnected) this.#error(error, 'Unable to load photometry');
     }
   }
-  #error(error: unknown): void {
+  #error(error: unknown, title = 'Viewer error'): void {
     const message = error instanceof Error ? error.message : String(error);
-    if (this.#status) this.#status.textContent = message;
+    if (this.#status) this.#status.textContent = '';
+    const source = this.#document
+      ? 'Provided photometric document'
+      : this.#text !== undefined
+        ? 'Inline photometry'
+        : this.getAttribute('src');
+    this.#errors?.show(title, error, source);
     this.dispatchEvent(new CustomEvent('error', { detail: { message, error }, bubbles: true, composed: true }));
   }
 }
