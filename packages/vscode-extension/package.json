@@ -2,7 +2,7 @@
   "name": "ies-vscode-extension",
   "displayName": "IES and LDT Light Viewer",
   "version": "0.1.0",
-  "description": "Preview IES and EULUMDAT lighting distributions on a floor and wall with an interactive 3D viewer.",
+  "description": "An IES & EULUMDAT Viewer, Inspector, and Syntax Highlighter",
   "categories": [
     "Other",
     "Visualization"

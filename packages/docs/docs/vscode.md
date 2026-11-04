@@ -5,6 +5,8 @@ sidebar_label: VS Code extension
 
 # VS Code extension
 
+**An IES & EULUMDAT Viewer, Inspector, and Syntax Highlighter.**
+
 The **IES and LDT Light Viewer** extension previews IES and EULUMDAT files in VS Code. It shows the light on a floor and wall, draws photometric charts, lists the file's properties and validation results, and converts between formats.
 
 ![The light preview in VS Code cycling through the 3D view and chart tabs](/img/vscode-extension.gif)
