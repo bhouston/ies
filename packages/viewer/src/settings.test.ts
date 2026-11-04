@@ -91,6 +91,16 @@ describe('physical scene settings', () => {
       // EV100 2 saturates at 1.2 · 2² cd/m².
       expect(objects.uniforms.exposure.value).toBeCloseTo(1 / 4.8, 12);
       expect(objects.scene.background).toEqual(new THREE.Color(0));
+      // Glare follows the light, shares its distribution and exposure, and is never picked or shown in measurement.
+      expect(objects.glare.position.toArray()).toEqual([1.5, 4, 0]);
+      expect(objects.glare.material.uniforms.distribution).toBe(objects.uniforms.distribution);
+      expect(objects.glare.material.uniforms.exposure).toBe(objects.uniforms.exposure);
+      expect(objects.glare.visible).toBe(true);
+      const hits: THREE.Intersection[] = [];
+      objects.glare.raycast(new THREE.Raycaster(), hits);
+      expect(hits).toHaveLength(0);
+      applyLightSceneSettings(objects, { ...next, viewMode: 'measurement' });
+      expect(objects.glare.visible).toBe(false);
     } finally {
       disposeLightScene(objects);
     }

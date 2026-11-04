@@ -189,6 +189,7 @@ export function createLightViewer(container: HTMLElement, options: LightViewerOp
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
     for (const line of rulerSegments(objects)) line.material.resolution.set(width, height);
+    objects.glare.material.uniforms.resolution!.value.set(width, height);
     render();
   };
   const observer = new ResizeObserver(resize);

@@ -98,15 +98,18 @@ export function createLightScene(settings: ViewerSettings) {
     fixtureGeometry(displayedShape(luminousShape({ width: 0, length: 0, height: 0 }))),
     new THREE.ShaderMaterial({
       uniforms: fixtureUniforms,
-      vertexShader: `varying vec3 worldPosition;
-      void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; gl_Position=projectionMatrix*viewMatrix*world; }`,
-      fragmentShader: `uniform sampler2D luminanceMap; uniform vec3 lightColor; uniform float exposure; varying vec3 worldPosition;
+      vertexShader: `varying vec3 worldPosition; varying vec3 worldNormal;
+      void main() { vec4 world=modelMatrix*vec4(position,1.); worldPosition=world.xyz; worldNormal=mat3(modelMatrix)*normal; gl_Position=projectionMatrix*viewMatrix*world; }`,
+      fragmentShader: `uniform sampler2D luminanceMap; uniform vec3 lightColor; uniform float exposure; varying vec3 worldPosition; varying vec3 worldNormal;
       void main() { vec3 d=normalize(cameraPosition-worldPosition); float theta=acos(clamp(-d.y,-1.,1.));
         float phi=0.; if(length(d.xz)>0.000001) phi=atan(d.z,d.x); if(phi<0.) phi+=6.28318530718;
         vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
         gl_FragColor=vec4(lightColor*(texture2D(luminanceMap,uv).r*exposure),1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
+        // A dark housing with lighter grazing edges keeps the body visible where it emits nothing toward the camera.
+        float facing=abs(dot(normalize(worldNormal),d));
+        gl_FragColor.rgb=max(gl_FragColor.rgb,vec3(mix(${HOUSING_EDGE},${HOUSING_FACE},facing)));
       }`,
     }),
   );
@@ -148,6 +151,13 @@ export function createLightScene(settings: ViewerSettings) {
   const rulers = new THREE.Group();
   rulers.add(rulerLine(0x0f172a, 4, 0.7, 1), rulerLine(RULER_COLOR, 1.5, 1, 2));
   scene.add(rulers);
+  const glare = createGlare({
+    distribution: uniforms.distribution,
+    luminanceMap: fixtureUniforms.luminanceMap,
+    lightColor: uniforms.lightColor,
+    exposure: uniforms.exposure,
+  });
+  scene.add(glare);
   // Set from the loaded profile; undefined until then, which hides the helper.
   const objects = {
     scene,
@@ -157,6 +167,7 @@ export function createLightScene(settings: ViewerSettings) {
     wall,
     fixture,
     fixtureUniforms,
+    glare,
     helper,
     solid,
     solidLines,
@@ -183,6 +194,7 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   objects.wall.position.set(0, wallHeight / 2, objects.wallZ);
   objects.wall.visible = settings.showWall;
   objects.fixture.position.copy(light);
+  objects.glare.position.copy(light);
   objects.solid.position.copy(light);
   for (const nadirObject of [objects.helper, objects.rulers]) nadirObject.position.set(light.x, 0, light.z);
   objects.solid.scale.setScalar(settings.floorDistance / 2);
@@ -190,6 +202,7 @@ export function applyLightSceneSettings(objects: LightScene, settings: ViewerSet
   objects.uniforms.lightPosition.value.copy(light);
   objects.uniforms.exposure.value = 1 / saturationLuminance(settings.exposure);
   const measurement = settings.viewMode === 'measurement';
+  objects.glare.visible = !measurement;
   if (measurement !== 'MEASUREMENT' in objects.material.defines) {
     if (measurement) objects.material.defines.MEASUREMENT = '';
     else delete objects.material.defines.MEASUREMENT;
@@ -330,6 +343,8 @@ export function disposeLightScene(objects: LightScene): void {
   objects.wall.geometry.dispose();
   objects.fixture.geometry.dispose();
   objects.fixture.material.dispose();
+  objects.glare.geometry.dispose();
+  objects.glare.material.dispose();
   objects.fixtureUniforms.luminanceMap.value.dispose();
   objects.helper.geometry.dispose();
   objects.helper.material.dispose();
@@ -342,6 +357,69 @@ export function disposeLightScene(objects: LightScene): void {
   for (const line of rulers) line.material.dispose();
   objects.uniforms.distribution.value.dispose();
   objects.material.dispose();
+}
+
+/** sRGB greys of the fixture housing where it emits nothing toward the camera: grazing edges and faces seen head-on. */
+const HOUSING_EDGE = '0.35';
+const HOUSING_FACE = '0.06';
+/** Camera glare: radii in CSS pixels of the halo's narrow and wide lobes and of its quad. */
+export const GLARE_CORE = 3;
+export const GLARE_WIDE = 24;
+export const GLARE_RADIUS = 160;
+/** Share of the fixture's exposed image energy that the lens scatters into the halo, and the wide lobe's part of it. */
+export const GLARE_FRACTION = 0.1;
+const GLARE_WIDE_SHARE = 0.25;
+/** The smallest fixture image, in CSS pixels² (a 4 px radius disc), whose energy feeds the halo. */
+export const GLARE_MIN_AREA = 50;
+
+/**
+ * Camera-facing additive halo at the light, like lens glare from a bright source. Its energy is GLARE_FRACTION of
+ * the fixture's exposed image: luminance toward the camera (the emissive fixture's lookup) times its image area,
+ * which is I · (pixels per metre)², floored at GLARE_MIN_AREA so small sources still read. A downlight seen from
+ * above has no glare. Shares the scene exposure and tone mapping; not pickable (dragging hit-tests the fixture).
+ */
+function createGlare(uniforms: {
+  distribution: { value: THREE.Texture };
+  luminanceMap: { value: THREE.Texture };
+  lightColor: { value: THREE.Color };
+  exposure: { value: number };
+}) {
+  const glare = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2),
+    new THREE.ShaderMaterial({
+      uniforms: { ...uniforms, resolution: { value: new THREE.Vector2(1, 1) } },
+      vertexShader: `uniform sampler2D distribution; uniform sampler2D luminanceMap; uniform float exposure; uniform vec2 resolution;
+      varying vec2 offset; varying float energy;
+      void main() { vec3 center=(modelMatrix*vec4(0.,0.,0.,1.)).xyz; vec3 toCamera=cameraPosition-center;
+        float d=max(length(toCamera),1e-3); vec3 dir=toCamera/d; float theta=acos(clamp(-dir.y,-1.,1.));
+        float phi=0.; if(length(dir.xz)>0.000001) phi=atan(dir.z,dir.x); if(phi<0.) phi+=6.28318530718;
+        vec2 uv=(vec2(phi/6.28318530718,theta/3.14159265359)*vec2(360.,180.)+0.5)/vec2(361.,181.);
+        float pixelsPerMetre=.5*resolution.y*projectionMatrix[1][1]/d;
+        float image=max(texture2D(distribution,uv).r*pixelsPerMetre*pixelsPerMetre,texture2D(luminanceMap,uv).r*${GLARE_MIN_AREA.toFixed(1)});
+        energy=${GLARE_FRACTION.toFixed(3)}*image*exposure;
+        // Drawn just in front of the fixture body so it overlays it, while nearer surfaces still occlude it.
+        vec4 clip=projectionMatrix*viewMatrix*vec4(center+dir*min(.25,.5*d),1.);
+        offset=position.xy*${GLARE_RADIUS.toFixed(1)};
+        clip.xy+=offset*2./resolution*clip.w;
+        gl_Position=clip; }`,
+      fragmentShader: `uniform vec3 lightColor; varying vec2 offset; varying float energy;
+      // Unit-energy profile (1 + r²/a²)⁻² / πa².
+      float lobe(float r2, float a) { float f=1./(1.+r2/(a*a)); return f*f/(3.14159265359*a*a); }
+      void main() { float r2=dot(offset,offset); float window=max(1.-r2/${(GLARE_RADIUS * GLARE_RADIUS).toFixed(1)},0.);
+        float psf=mix(lobe(r2,${GLARE_CORE.toFixed(1)}),lobe(r2,${GLARE_WIDE.toFixed(1)}),${GLARE_WIDE_SHARE.toFixed(2)});
+        gl_FragColor=vec4(lightColor*energy*psf*window*window,1.);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      transparent: true,
+    }),
+  );
+  glare.frustumCulled = false;
+  glare.renderOrder = 3;
+  glare.raycast = () => {};
+  return glare;
 }
 
 function blankTexture(): THREE.DataTexture {
