@@ -75,6 +75,11 @@ Run `pnpm docs:build` to generate reference pages and check documentation links.
 
 Regenerate chart screenshots with `pnpm build && pnpm docs:charts`; this is not run in CI. To try the extension from source, run `pnpm --filter ies-vscode-extension package` after building, then install the resulting VSIX from `packages/vscode-extension/` using VS Code's **Install from VSIX** action.
 
+### Consuming the packages
+
+- **Published packages (recommended).** Install `@ies-tools/core` and `@ies-tools/viewer` from npm. They ship compiled JavaScript and declarations and need no TypeScript configuration from this repository.
+- **Source integration (supported for `core` and `viewer`).** You can add this repository as a submodule and list those packages in a parent pnpm workspace. Install `@types/node` and `typescript` in the parent workspace; TypeScript finds them through normal ancestor `node_modules` resolution, so no symlinks or submodule edits are needed. Build with `pnpm --filter @ies-tools/viewer... build`, or add `packages/core` and `packages/viewer` (both `composite`, with `viewer` referencing `core`) to the parent's `tsc -b` references. The viewer's custom-element bundle (`dist/light-viewer.js`) comes from its `build` script, not from `tsc -b`, so run `build` when you need it. Packages still extend `tsconfig.node.json` and `tsconfig.base.json` from the repository root, so keep the whole checkout.
+
 ### VS Code extension internals
 
 - The preview is a webview that reuses the bundled `<light-viewer>` script; it loads no CDN resources. File text, format hints and lamp-configuration labels are sent as validated structured messages, never interpolated into HTML, and labels are assigned through `textContent`.
