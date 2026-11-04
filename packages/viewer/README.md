@@ -10,7 +10,7 @@ Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUM
 
 The preview uses one uniform color temperature from IES metadata or the selected native LDT lamp configuration, falling back to **6500 K** when missing, invalid, or ambiguous. A linear RGB tint preserves photometric luminance; candela, lux, and charts are unchanged. This approximates warm/cool white appearance without spectral or CRI simulation. See [light color](https://ies-tools.ben3d.ca/docs/light-viewer#light-color) for recognized fields and limits.
 
-![The light viewer in Measurement mode: false-color isolux contours on the floor and wall, an illuminance legend, floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/light-viewer.png)
+![The light viewer in Realistic mode: an auto-exposed downlight mounted 4.2 m high with a glowing glare halo, washing the wall and pooling light on the floor, with floor and mounting-height rulers, chart tabs, and Realistic/Measurement and Metric/Imperial toggles](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/light-viewer.png)
 
 ```sh
 npm install @ies-tools/viewer @ies-tools/core three

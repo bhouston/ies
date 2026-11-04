@@ -116,7 +116,7 @@ export default function Home() {
           <figure className={styles.shot}>
             <img
               src={useBaseUrl('/img/vscode-extension.gif')}
-              alt="The light viewer orbiting a lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs"
+              alt="The light viewer raising a selected downlight until its glare halo appears, orbiting below it across the lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs"
               width="840"
               height="525"
               loading="lazy"
