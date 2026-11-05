@@ -1,0 +1,13 @@
+{
+  "name": "ies-tools",
+  "short_name": "ies-tools",
+  "description": "Parse, validate, convert and preview IES and EULUMDAT photometric files.",
+  "start_url": ".",
+  "display": "browser",
+  "background_color": "#0e0d0b",
+  "theme_color": "#0e0d0b",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon.png", "sizes": "256x256", "type": "image/png" }
+  ]
+}

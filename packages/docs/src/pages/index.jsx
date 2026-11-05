@@ -48,7 +48,7 @@ const facts = [
 export default function Home() {
   return (
     <Layout
-      title="Preview measured light. Build with photometric data"
+      title="Preview IES and EULUMDAT photometric files"
       description="Parse, validate, convert and preview IES and EULUMDAT photometric files from the terminal, React, a web component or VS Code."
     >
       <header className={styles.hero}>
