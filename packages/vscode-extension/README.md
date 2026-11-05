@@ -4,7 +4,7 @@
 
 See how a luminaire distributes light without leaving VS Code. Open an IES or EULUMDAT file to preview its measured light on a floor and back wall, inspect its photometric properties, and check for data issues.
 
-![The light viewer selecting a downlight, raising it with the arrow keys and an upward drag that changes only its height, orbiting lower and zooming in until its glare halo shows above the lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/vscode-extension.gif)
+![The light viewer's 3D view of a track light 3 m above the floor beside a wall, switching to Measurement mode with isolux contours and a legend, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/vscode-extension.gif)
 
 ## Features
 
