@@ -116,7 +116,7 @@ export default function Home() {
           <figure className={styles.shot}>
             <img
               src={useBaseUrl('/img/vscode-extension.gif')}
-              alt="The light viewer selecting a downlight, raising it with the arrow keys and an upward drag that changes only its height, orbiting lower and zooming in until its glare halo shows above the lit floor and wall, switching to Measurement mode with isolux contours and a legend, toggling Imperial units, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs"
+              alt="The light viewer's 3D view of a track light 3 m above the floor beside a wall, switching to Measurement mode with isolux contours and a legend, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs"
               width="840"
               height="525"
               loading="lazy"
@@ -147,6 +147,26 @@ export default function Home() {
               </div>
             ))}
           </dl>
+        </section>
+        <section className={`${styles.editor} ${styles.moveLight}`} aria-labelledby="move-light-title">
+          <div className={styles.sectionHeading}>
+            <p className={styles.kicker}>INTERACTIVE 3D VIEW</p>
+            <h2 id="move-light-title">Move the light, watch it land.</h2>
+            <p>
+              Drag the light to change its height and distance from the wall. The light on the floor and wall updates as
+              you move it, and you can orbit and zoom to inspect the result.
+            </p>
+            <Link to="/docs/light-viewer">Try the live viewer →</Link>
+          </div>
+          <figure className={styles.shot}>
+            <img
+              src={useBaseUrl('/img/viewer-move-light.gif')}
+              alt="The light viewer selecting a track light and dragging it up and sideways while its height label and the light on the floor and wall follow, then orbiting lower and zooming in"
+              width="720"
+              height="450"
+              loading="lazy"
+            />
+          </figure>
         </section>
         <section className={styles.library}>
           <div className={styles.sectionHeading}>

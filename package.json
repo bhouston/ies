@@ -17,6 +17,7 @@
     "lint:fix": "oxlint --fix .",
     "docs:build": "pnpm --filter ies-docs build",
     "docs:charts": "node scripts/chart-screenshots.mjs",
+    "docs:media": "node scripts/viewer-media.mjs",
     "release": "semantic-release",
     "check:release": "node scripts/check-release.mjs",
     "coverage:report": "node scripts/coverage-report.mjs"

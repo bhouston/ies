@@ -258,6 +258,8 @@ The photometric solid draws the candela distribution around the light: its dista
 
 ### Moving the light
 
+![The light viewer selecting a track light and dragging it up and sideways while its height label and the light on the floor and wall follow, then orbiting lower and zooming in](/img/viewer-move-light.gif)
+
 Click the light to select it; a cyan ring marks it, and the pointer shows a grab hand over it. Drag it to raise or lower it and to move it toward or away from the wall; it never moves sideways along the wall. The wall stays where it is, so height changes set `floor-distance` and moves toward or away from the wall set `wall-distance`. Distances stay within their 0.1–100 metre ranges. With the light selected, Up and Down change its height and Right and Left move it toward and away from the wall (matching the default view, where the wall lies back and to the right), in steps of 0.1 m (0.5 ft in imperial units); Escape or a click on empty space deselects it. Touch screens drag the same way. Each move updates the attributes, the settings panel and a `settingschange` event; the camera stays put. The settings panel's distance fields remain available for exact values.
 
 The rulers run along the floor's two main axes (C0–C180 and C90–C270) through the point directly below the light, with a tick every metre or foot and labels such as `2 m` or `6 ft`, counted from `0` below the light. A vertical ruler on the wall in front of the light shows the mounting height, for example `2.00 m`; with the wall hidden it rises from the floor to the light. Switching units relabels them. The rulers appear in both view modes and in image exports.
@@ -286,6 +288,8 @@ Omit `errors` to show errors (the default). Set `errors="silent"` to hide the ov
 Changing `errors` takes effect immediately without reloading. Removing it reveals the current error unless it was dismissed or cleared.
 
 ## Chart tabs
+
+![The light viewer's 3D view of a track light 3 m above the floor beside a wall, switching to Measurement mode with isolux contours and a legend, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](/img/vscode-extension.gif)
 
 Add `charts="true"` to show a tab bar: the 3D view, then **Polar**, **Cartesian**, **Topology**, **Isolux**, **Cone**, **Luminance** and **Intensity table**. The Polar and Cartesian tabs have a **Log scale** checkbox, and the Isolux tab uses the floor distance as the mounting height. The settings panel applies to the 3D view only. See [Charts](./graphs.md) for how to read each chart.
 

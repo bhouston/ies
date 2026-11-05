@@ -130,6 +130,9 @@
 .editor a {
   font-weight: 700;
 }
+.moveLight {
+  padding-top: 5.5rem;
+}
 .sectionHeading {
   max-width: 46rem;
 }

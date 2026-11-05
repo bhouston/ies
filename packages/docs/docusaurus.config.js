@@ -52,7 +52,7 @@ module.exports = {
   themes: [[require.resolve('@easyops-cn/docusaurus-search-local'), { hashed: true, indexBlog: false }]],
   plugins: [[clidocPlugin, { input: 'ies.opencli.json', outputDir: 'docs/cli-reference', basePath: '/cli/reference' }]],
   themeConfig: {
-    image: 'img/vscode-extension.gif',
+    image: 'img/social-card.png',
     metadata: [
       { property: 'og:site_name', content: 'ies-tools' },
       { name: 'twitter:site', content: '@BenHouston3D' },
