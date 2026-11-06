@@ -1,13 +1,13 @@
 # Releases
 
-Releases follow the mtlx workflow: merge reviewed changes with green CI, then manually dispatch `release.yml` against `main`. Merging never publishes packages.
+Releases follow the mtlx workflow: merge reviewed changes with green CI, then manually dispatch `release.yml` against `main`. Merging never publishes packages or deploys the documentation site.
 
 ```sh
 gh workflow run release.yml --ref main -f dry_run=true
 gh workflow run release.yml --ref main
 ```
 
-Semantic-release determines a shared version from Conventional Commits, publishes `@ies-tools/core`, `@ies-tools/viewer`, and `@ies-tools/cli` in dependency order, creates a GitHub Release with package tarballs, and publishes the extension to VS Code Marketplace and Open VSX.
+Semantic-release determines a shared version from Conventional Commits, publishes `@ies-tools/core`, `@ies-tools/viewer`, and `@ies-tools/cli` in dependency order, creates a GitHub Release with package tarballs, and publishes the extension to VS Code Marketplace and Open VSX. After a real release (not a dry run), the `website` job calls `docs.yml` to build and deploy the documentation from the new `v*` tag. To redeploy the latest release, run `gh workflow run docs.yml --ref main` (optionally `-f ref=v<version>`).
 
 ## One-time registry setup
 
