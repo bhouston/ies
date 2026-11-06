@@ -1,12 +1,40 @@
+<p align="center">
+  <a href="https://ies-tools.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="IES and LDT Light Viewer for VS Code logo" src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/icon.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension"><img src="https://img.shields.io/open-vsx/v/benhouston3d/ies-vscode-extension.svg" alt="open vsx version"></a>
+  <a href="https://open-vsx.org/extension/benhouston3d/ies-vscode-extension"><img src="https://img.shields.io/open-vsx/dt/benhouston3d/ies-vscode-extension.svg" alt="open vsx downloads"></a>
+  <a href="https://discord.gg/fwupDN493R"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://ies-tools.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # IES and LDT Light Viewer for VS Code
 
-**An IES & EULUMDAT Viewer, Inspector, and Syntax Highlighter.**
+> Preview, inspect and validate IES and EULUMDAT files in VS Code.
+
+- 💡 Interactive 3D Light Preview
+- 📊 Photometric Charts in Tabs
+- ✅ Live Validation and Hover Help
+- 🎨 IES and LDT Syntax Highlighting
+- 🔄 Convert IES, LDT, and JSON
+- 🔒 Local, No Upload or Account
 
 See how a luminaire distributes light without leaving VS Code. Open an IES or EULUMDAT file to preview its measured light on a floor and back wall, inspect its photometric properties, and check for data issues.
 
+[Read the Docs to Learn More](https://ies-tools.ben3d.ca/docs/vscode).
+
 ![The light viewer's 3D view of a track light 3 m above the floor beside a wall, switching to Measurement mode with isolux contours and a legend, then stepping through the polar, Cartesian, topology, isolux, cone, luminance and intensity table tabs](https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/vscode-extension.gif)
 
-## Features
+## Installation
+
+- **VS Code**: Install from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.ies-vscode-extension).
+- **Cursor**: Install from [Open VSX](https://open-vsx.org/extension/benhouston3d/ies-vscode-extension).
+
+## Feature Details
 
 - **Interactive light preview:** drag to orbit and scroll to zoom around the light distribution; click and drag the light to change its height and distance from the wall.
 - **Photometric charts:** switch tabs to see polar and Cartesian intensity curves, a 3D intensity topology and an isolux ground plot.
@@ -77,8 +105,18 @@ The extension reads IES LM-63 files, including the 1986, 1991, 1995, 2002 and 20
 
 The 3D preview requires **Type C photometry**. Type A and B IES data can be inspected and validated, but their 3D distributions are not rendered.
 
-## Help and feedback
+## Help and Feedback
 
 See the [viewer documentation](https://ies-tools.ben3d.ca/docs/vscode) for more details, or [report an issue](https://github.com/bhouston/ies-tools/issues).
 
-Contributor setup and build instructions are in [CONTRIBUTING.md](https://github.com/bhouston/ies-tools/blob/main/CONTRIBUTING.md).
+## Contribution
+
+See [Contributing Guide](https://github.com/bhouston/ies-tools/blob/main/CONTRIBUTING.md).
+
+## License
+
+MIT
+
+## Author
+
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).

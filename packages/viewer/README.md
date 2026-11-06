@@ -1,10 +1,33 @@
+<p align="center">
+  <a href="https://ies-tools.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="@ies-tools/viewer logo" src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/icon.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://npmjs.com/package/@ies-tools/viewer"><img src="https://img.shields.io/npm/v/@ies-tools/viewer.svg" alt="npm package"></a>
+  <a href="https://www.npmtrends.com/@ies-tools/viewer"><img src="https://img.shields.io/npm/dw/@ies-tools/viewer.svg" alt="npm downloads"></a>
+  <a href="https://discord.gg/fwupDN493R"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://ies-tools.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # @ies-tools/viewer
 
-[![npm version](https://img.shields.io/npm/v/@ies-tools/viewer)](https://www.npmjs.com/package/@ies-tools/viewer)
-[![npm downloads per month](https://img.shields.io/npm/dm/@ies-tools/viewer)](https://www.npmjs.com/package/@ies-tools/viewer)
-[![Statement coverage](https://ies-tools.ben3d.ca/coverage/packages/viewer.svg)](https://ies-tools.ben3d.ca/coverage/)
+> Three.js viewer, React components and web component for IES light.
 
-[Documentation](https://ies-tools.ben3d.ca/docs/react) · [npm](https://www.npmjs.com/package/@ies-tools/viewer) · [Issues](https://github.com/bhouston/ies-tools/issues)
+- 💡 3D Light Preview on Floor and Wall
+- ⚛️ React Components
+- 🧩 Standalone `<light-viewer>` Element
+- 📊 Polar, Isolux, and Topology Charts
+- 🌡️ Light Color From File Metadata
+- 📄 IES and EULUMDAT Type C
+
+Shared Three.js viewer, React components, and a `<light-viewer>` custom element for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall, lit from the measured candela distribution.
+
+[Read the Docs to Learn More](https://ies-tools.ben3d.ca/docs/react).
+
+## How the Preview Works
 
 Shared Three.js viewer, React components, and `<light-viewer>` for IES and EULUMDAT Type C photometry. The scene has a black background, a ground plane, and a wall. A fixture two metres above the floor faces down. Receiver shaders use the measured IES candela distribution, incidence cosine, and inverse square distance on both surfaces. Values use metres. The realistic view is exposed like a camera: luminance L (cd/m²) displays as L / (1.2 · 2^EV100) before ACES tone mapping. Auto exposure (default) meters EV100 from the peak floor/wall luminance (`peakReceiverLuminance` and `autoExposureValue` from `@ies-tools/core`); `autoExposure: false` uses the `exposure` EV100 (default 6). This is a direct diffuse light preview without indirect light or occlusion simulation. The fixture uses the file's luminous-opening shape (`luminousShape` from `@ies-tools/core`; 1 cm minimum per axis, 5 cm minimum overall, points as 5 cm spheres). Its shader samples a second 361×181 map of average luminance, I / projected area of the displayed shape, toward the camera, shown with the receivers' exposure and tone mapping, over a dark-grey housing with lighter grazing edges. A camera-facing additive glare halo, sized in screen pixels, scatters a fixed share of the fixture's exposed image energy (luminance toward the camera times its image area) into a soft lobe drawn behind the fixture body, so the body stays visible inside it; it is skipped by hit-testing and hidden in measurement mode. The optional photometric solid is the core intensity topology normalized to a peak radius of half the floor distance.
 
@@ -62,3 +85,15 @@ The custom element and React viewer share `ViewerSettingsPanel`, built with Reac
 ## Requirements and help
 
 Use React 19 and Three.js 0.186.x with the bundler entry points. The standalone CDN bundle includes its dependencies. See [a complete React example](https://ies-tools.ben3d.ca/docs/quick-start#show-the-sample-in-react) and [compatibility and troubleshooting](https://ies-tools.ben3d.ca/docs/troubleshooting) for hardware WebGL2, CORS and server rendering guidance.
+
+## Contribution
+
+See [Contributing Guide](https://github.com/bhouston/ies-tools/blob/main/CONTRIBUTING.md).
+
+## License
+
+MIT
+
+## Author
+
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
