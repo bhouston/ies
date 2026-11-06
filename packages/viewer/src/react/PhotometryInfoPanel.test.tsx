@@ -37,16 +37,17 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     expect(host.textContent).toContain('Example lighting');
     const overview = host.querySelector('section[aria-label="Lighting overview"]')!;
     expect([...overview.querySelectorAll('dt')].map((term) => term.textContent)).toEqual([
-      'Light output',
-      'Input power',
-      'Efficacy',
+      'Output',
       'Peak intensity',
+      'Power',
+      'Beam angle',
+      'Source',
     ]);
-    expect(overview.textContent).toContain('1,257');
-    expect(overview.textContent).toContain('Integrated estimate');
-    expect(overview.textContent).toContain('Declared in source');
-    expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('3000K');
-    expect(disclosure(host, 'Light source').open).toBe(true);
+    expect(overview.textContent).toContain('1.257 klm');
+    expect(overview.textContent).toContain('Integrated luminaire output');
+    expect(overview.textContent).toContain('Declared input power');
+    expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('3,000 K');
+    expect(disclosure(host, 'Light source').open).toBe(false);
     expect(disclosure(host, 'Beam & field').open).toBe(false);
     for (const title of ['Flux & efficiency', 'Distribution', 'Zonal lumens', 'File & geometry', 'Raw metadata']) {
       const details = disclosure(host, title);
@@ -55,6 +56,42 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     }
     expect(disclosure(host, 'Lamp configurations (1)')).toBeUndefined();
   });
+  it('keeps the five primary specifications above validation and technical disclosures', () => {
+    const host = inspect(
+      iesSource({ metadata: '[LAMP] LED module', vertical: [0, 10, 20, 90], values: [[100, 100, 0, 0]] }),
+    );
+    const overview = host.querySelector('section[aria-label="Lighting overview"]')!;
+    expect(rowValue(overview as HTMLElement, 'Source')).toContain('LED module');
+    expect(rowValue(overview as HTMLElement, 'Beam angle')).toContain('30°');
+    expect(rowValue(overview as HTMLElement, 'Beam angle')).toContain('C0°–C180°');
+    expect(
+      overview.compareDocumentPosition(disclosure(host, 'Validation')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const info = inspectPhotometry(iesSource(), 'ies');
+    const missing = panel({ inspection: { ...info, inputWatts: null } });
+    expect(rowValue(missing, 'Power')).toBeUndefined();
+    const zero = panel({ inspection: { ...info, inputWatts: 0 } });
+    expect(rowValue(zero, 'Power')).toContain('0 W');
+  });
+  it('formats secondary measurements and preserves source geometry units', () => {
+    const info = inspectPhotometry(iesSource({ metadata: '[COLORTEMP] 3000', lamps: 2, lumens: 1000 }), 'ies');
+    const host = panel({
+      inspection: {
+        ...info,
+        units: 'feet',
+        dimensions: { width: 0.25, length: 2, height: 0 },
+        peakCandela: 12500,
+        luminousEfficacyLumensPerWatt: 125.6,
+      },
+      fileSize: 12345,
+    });
+    expect(rowValue(host, 'Peak intensity')).toContain('12.5 kcd');
+    expect(rowValue(host, 'Integrated efficacy')).toBe('125.6 lm/W');
+    expect(rowValue(host, 'Width')).toBe('0.25 ft');
+    expect(rowValue(host, 'Height')).toBe('0 ft');
+    expect(rowValue(host, 'Source size')).toBe('12.35 kB (UTF-8)');
+    expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('3,000 K');
+  });
   it('omits absent source color rather than inventing the renderer fallback', () => {
     const host = inspect(iesSource());
     const source = disclosure(host, 'Light source');
@@ -62,24 +99,24 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     expect(rowValue(source, 'Color rendering')).toBeUndefined();
     expect(host.textContent).not.toContain('6500');
     const declared = inspect(iesSource({ metadata: '[COLORTEMP] 6500K' }));
-    expect(rowValue(disclosure(declared, 'Light source'), 'Color')).toBe('6500K');
+    expect(rowValue(disclosure(declared, 'Light source'), 'Color')).toBe('6,500 K');
   });
   it('shows explicitly declared custom color keywords without inferring from descriptions', () => {
     const declared = inspect(iesSource({ metadata: '[_TEMPCOLOR] 3000K\n[_CRI] 90' }));
-    expect(rowValue(disclosure(declared, 'Light source'), 'Color')).toBe('3000K');
+    expect(rowValue(disclosure(declared, 'Light source'), 'Color')).toBe('3,000 K');
     expect(rowValue(disclosure(declared, 'Light source'), 'Color rendering')).toBe('90');
     const described = inspect(iesSource({ metadata: '[LAMP] LED 2700K' }));
     expect(rowValue(disclosure(described, 'Light source'), 'Color')).toBeUndefined();
     expect(disclosure(described, 'Light source').textContent).toContain('LED 2700K');
     const conflicting = inspect(iesSource({ metadata: '[_TEMPCOLOR] 3000K\n[_CCT] 4000K' }));
-    expect(rowValue(disclosure(conflicting, 'Light source'), 'Color')).toBe('4000K / 3000K');
+    expect(rowValue(disclosure(conflicting, 'Light source'), 'Color')).toBe('4,000 K / 3,000 K');
     expect(conflicting.textContent).not.toContain('6500');
   });
   it('preserves declared versus integrated flux, ratios, CIE codes, directions and zonal data', () => {
     const host = inspect(iesSource({ lamps: 2, lumens: 1000, vertical: [0, 180] }));
-    expect(rowValue(host, 'Declared lamp flux')).toBe('2,000 lm');
-    expect(rowValue(host, 'Integrated luminaire flux')).toBe('1,257 lm');
-    expect(rowValue(host, 'Downward flux fraction')).toBe('50.0 %');
+    expect(rowValue(host, 'Declared lamp flux')).toBe('2 klm');
+    expect(rowValue(host, 'Integrated luminaire flux')).toBe('1.257 klm');
+    expect(rowValue(host, 'Downward flux fraction')).toBe('50 %');
     expect(rowValue(host, 'Light output ratio')).toBe('0.628 (DLOR 0.314 / ULOR 0.314)');
     expect(rowValue(host, 'CIE flux code')).toBe('25 50 75 31 63');
     expect(rowValue(host, 'Peak intensity (tilt applied)')).toBe('100 cd at C0° γ0°');
@@ -87,7 +124,7 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     const zonal = disclosure(host, 'Zonal lumens');
     expect(zonal.open).toBe(false);
     expect(tableRows(zonal)).toHaveLength(9);
-    expect(tableRows(zonal)).toContainEqual(['90–180°', '628.3', '31.4', '50.0']);
+    expect(tableRows(zonal)).toContainEqual(['90°–180°', '628.3 lm', '31.42 %', '50 %']);
     expect(zonal.querySelector('th[scope="row"]')).not.toBeNull();
   });
   it('marks lamp-relative values unavailable for absolute photometry', () => {
@@ -95,7 +132,7 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     expect(rowValue(host, 'Light output ratio')).toBe('Not available (no declared lamp flux)');
     expect(rowValue(host, 'Lumens per lamp')).toBe('Not specified (absolute photometry)');
     expect(rowValue(host, 'CIE flux code')).toBe('25 50 75 — —');
-    expect(tableRows(disclosure(host, 'Zonal lumens'))).toContainEqual(['0–180°', '1256.6', '—', '100.0']);
+    expect(tableRows(disclosure(host, 'Zonal lumens'))).toContainEqual(['0°–180°', '1.257 klm', '—', '100 %']);
   });
   it('explains unsupported coordinates without suggesting zero calculated output', () => {
     const host = inspect(iesSource({ type: 2, vertical: [-90, 0, 90] }));
@@ -105,7 +142,7 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     const overview = host.querySelector('section[aria-label="Lighting overview"]')!;
     expect(overview.querySelectorAll('[aria-label="Not available"]')).toHaveLength(2);
     expect(overview.textContent).toContain('Type C');
-    expect(rowValue(overview as HTMLElement, 'Input power')).toContain('10');
+    expect(rowValue(overview as HTMLElement, 'Power')).toContain('10');
   });
   it('keeps null and zero measurements distinct', () => {
     const inspection = inspectPhotometry(iesSource({ values: [[0, 0, 0]] }), 'ies');
@@ -115,7 +152,7 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     for (const label of ['CIE flux code', 'Peak intensity (tilt applied)', 'Downward flux fraction'])
       expect(rowValue(host, label)).toBe('Not available');
     expect(rowValue(host, 'Integrated luminaire flux')).toBe('0 lm');
-    expect(tableRows(disclosure(host, 'Zonal lumens'))).toContainEqual(['0–180°', '0.0', '—', '—']);
+    expect(tableRows(disclosure(host, 'Zonal lumens'))).toContainEqual(['0°–180°', '0 lm', '—', '—']);
   });
   it('distinguishes unselected LDT alternatives from the selected source color and output', () => {
     const text = ldtSource({ alternatives: true });
@@ -131,10 +168,10 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
     const selected = panel({ inspection: inspectPhotometry(text, 'ldt', 1) });
     expect(disclosure(selected, 'Lamp configurations (2)').open).toBe(false);
     expect(selected.textContent).toContain('Second configuration (selected)');
-    expect(rowValue(disclosure(selected, 'Light source'), 'Color')).toBe('4000K');
+    expect(rowValue(disclosure(selected, 'Light source'), 'Color')).toBe('4,000 K');
     expect(rowValue(selected, 'Light output ratio')).toBe('0.628 (DLOR 0.314 / ULOR 0.314)');
     const absolute = panel({ inspection: inspectPhotometry(ldtSource({ absolute: true }), 'ldt') });
-    expect(rowValue(absolute, 'Declared luminaire flux')).toBe('2,000 lm');
+    expect(rowValue(absolute, 'Declared luminaire flux')).toBe('2 klm');
     expect(rowValue(disclosure(absolute, 'Light source'), 'Lamp count')).toBe('1');
     expect(rowValue(absolute, 'Light output ratio')).toBe('Not available (no declared lamp flux)');
   });
@@ -187,7 +224,7 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
       'Beam angle (50%)',
     ])
       expect(host.textContent).toContain(fragment);
-    expect(rowValue(host, 'Source size')).toBe('42 bytes (UTF-8)');
+    expect(rowValue(host, 'Source size')).toBe('42 B (UTF-8)');
     expect(host.querySelector('table[aria-label="Beam and field angles"]')).not.toBeNull();
     expect(disclosure(host, 'Beam & field').open).toBe(true);
     expect(host.textContent).not.toContain('Not available (no-crossing)');
@@ -234,7 +271,7 @@ describe('PhotometryInfoPanel hierarchy and source honesty', () => {
       expect(validation.open).toBe(true);
       await act(() => (validation.querySelector('input') as HTMLInputElement).click());
       expect(strict).toBe(true);
-      expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('4000K');
+      expect(rowValue(disclosure(host, 'Light source'), 'Color')).toBe('4,000 K');
     } finally {
       await act(() => root.unmount());
       host.remove();

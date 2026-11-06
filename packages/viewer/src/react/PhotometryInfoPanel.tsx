@@ -1,4 +1,12 @@
 import type { ReactNode } from 'react';
+import {
+  humanizeUnit,
+  humanizeBytes,
+  humanizeLuminousFlux,
+  humanizeLuminousIntensity,
+  humanizeLuminousEfficacy,
+  humanizePower,
+} from 'humanize-units';
 import type { PhotometryDiagnostic, PhotometryInspection } from '@ies-tools/core';
 import { declaredColorTemperatures } from '../colorMetadata.js';
 
@@ -25,12 +33,31 @@ export interface PhotometryInfoPanelProps {
   /** Shows a strict-validation checkbox when provided. */
   onStrictChange?: (value: boolean) => void;
 }
-const numberFormat = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 4 });
 const countLabel = (count: number, noun: string): string => `${count} ${noun}${count === 1 ? '' : 's'}`;
-const value = (number: number | null | undefined, unit = ''): string =>
-  number === null || number === undefined ? 'Not available' : `${numberFormat.format(number)}${unit ? ` ${unit}` : ''}`;
-const percent = (fraction: number | null): string =>
-  fraction === null ? 'Not available' : `${(fraction * 100).toFixed(1)} %`;
+const formatOptions = { significantDigits: 4, unitSeparator: ' ', emptyValue: 'Not available' };
+const formatters = {
+  lm: humanizeLuminousFlux,
+  cd: humanizeLuminousIntensity,
+  'lm/W': humanizeLuminousEfficacy,
+  W: humanizePower,
+};
+const value = (number: number | null | undefined, unit = ''): string => {
+  if (unit in formatters) return formatters[unit as keyof typeof formatters](number, formatOptions);
+  return humanizeUnit(number, {
+    ...formatOptions,
+    units: [{ value: 1, unit }],
+    unitSeparator: unit === '°' ? '' : ' ',
+    useGrouping: true,
+  });
+};
+const percent = (fraction: number | null): string => value(fraction === null ? null : fraction * 100, '%');
+const bytes = (size: number): string => `${humanizeBytes(size, formatOptions)} (UTF-8)`;
+// Format numeric temperature declarations while retaining descriptive source text verbatim.
+const sourceColor = (text: string): string =>
+  /^\d+(?:\.\d+)?$/.test(text.trim())
+    ? value(Number(text), 'K')
+    : text.replace(/(\d+(?:\.\d+)?)\s*K\b/gi, (_, temperature: string) => value(Number(temperature), 'K'));
+const plane = (degrees: number): string => `C${value(degrees, '°')}–C${value((degrees + 180) % 360, '°')}`;
 const specified = (text: string | null | undefined): text is string =>
   Boolean(text?.trim() && !/^not specified$/i.test(text.trim()));
 
@@ -86,13 +113,22 @@ function Rows({ rows, stacked = false }: { rows: [string, ReactNode][]; stacked?
     </dl>
   );
 }
-function Metric({ label, number, unit, note }: { label: string; number: number | null; unit: string; note: string }) {
+function Metric({
+  label,
+  content,
+  note,
+  wide = false,
+}: {
+  label: string;
+  content: ReactNode;
+  note: string;
+  wide?: boolean;
+}) {
   return (
-    <div className="min-w-0 rounded-lg border border-border/60 bg-muted/30 px-3 py-3">
+    <div className={`${wide ? 'col-span-2 ' : ''}min-w-0 rounded-lg border border-border/60 bg-muted/30 px-3 py-3`}>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1 mb-0 text-xl leading-tight font-semibold tracking-tight tabular-nums">
-        {number === null ? <span aria-label="Not available">—</span> : numberFormat.format(number)}
-        {number !== null && <span className="text-xs font-normal tracking-normal text-muted-foreground"> {unit}</span>}
+        {content}
         <span className="mt-1 block text-[11px] leading-snug font-normal tracking-normal text-muted-foreground">
           {note}
         </span>
@@ -100,6 +136,8 @@ function Metric({ label, number, unit, note }: { label: string; number: number |
     </div>
   );
 }
+const measurement = (number: number | null, unit: string): ReactNode =>
+  number === null ? <span aria-label="Not available">—</span> : value(number, unit);
 function validationSummary(validation: PhotometryValidation, strict: boolean) {
   const counts = { error: 0, warning: 0, info: 0 };
   for (const diagnostic of validation.diagnostics) counts[diagnostic.severity]++;
@@ -197,9 +235,7 @@ export function PhotometryInfoPanel({
         </h2>
         {specified(info?.manufacturer) && <p className="m-0 text-xs text-muted-foreground">{info.manufacturer}</p>}
         {fileName && title !== fileName && <p className="m-0 text-xs text-muted-foreground">{fileName}</p>}
-        {!info && fileSize !== undefined && (
-          <p className="m-0 text-xs text-muted-foreground">{fileSize.toLocaleString('en-US')} bytes (UTF-8)</p>
-        )}
+        {!info && fileSize !== undefined && <p className="m-0 text-xs text-muted-foreground">{bytes(fileSize)}</p>}
         {info && (
           <div className="flex flex-wrap gap-1.5 pt-1 text-[11px] text-muted-foreground">
             {[
@@ -235,43 +271,6 @@ export function PhotometryInfoPanel({
           {check!.status}. Review the validation details below.
         </p>
       )}
-      <Details
-        title="Validation"
-        open={Boolean(validation && !validation.valid)}
-        hint={
-          check && (
-            <span className={validation!.valid ? '' : 'text-destructive'}>
-              {check.status}
-              {check.counts.error > 0
-                ? ` · ${countLabel(check.counts.error, 'error')}`
-                : check.counts.warning > 0
-                  ? ` · ${countLabel(check.counts.warning, 'warning')}`
-                  : check.counts.info > 0
-                    ? ` · ${countLabel(check.counts.info, 'note')}`
-                    : ''}
-            </span>
-          )
-        }
-      >
-        {onStrictChange && (
-          <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={strict}
-              className="size-3.5 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
-              onChange={(event) => onStrictChange(event.target.checked)}
-            />
-            Strict validation
-          </label>
-        )}
-        {validation ? (
-          <ValidationChecks validation={validation} strict={strict} />
-        ) : (
-          <p className="m-0 text-muted-foreground">
-            {info ? 'Validation results not provided.' : 'Waiting for a photometric file.'}
-          </p>
-        )}
-      </Details>
       {info ? (
         <>
           {configurationsUnselected && (
@@ -284,29 +283,56 @@ export function PhotometryInfoPanel({
               <section aria-label="Lighting overview">
                 <dl className="m-0 grid grid-cols-2 gap-2">
                   <Metric
-                    label="Light output"
-                    number={info.integratedFluxLumens}
-                    unit="lm"
-                    note="Integrated estimate"
+                    label="Output"
+                    content={measurement(info.integratedFluxLumens, 'lm')}
+                    note="Integrated luminaire output"
                   />
-                  <Metric label="Input power" number={info.inputWatts} unit="W" note="Declared in source" />
                   <Metric
-                    label="Efficacy"
-                    number={info.luminousEfficacyLumensPerWatt}
-                    unit="lm/W"
-                    note="Output per watt"
+                    label="Peak intensity"
+                    content={measurement(info.peakCandela, 'cd')}
+                    note="Source distribution"
                   />
-                  <Metric label="Peak intensity" number={info.peakCandela} unit="cd" note="Source distribution" />
+                  {info.inputWatts !== null && (
+                    <Metric label="Power" content={measurement(info.inputWatts, 'W')} note="Declared input power" />
+                  )}
+                  <Metric
+                    label="Beam angle"
+                    content={
+                      info.beamAngles.some((cut) => cut.beamAngleDegrees !== null) ? (
+                        info.beamAngles.map((cut) => (
+                          <span key={cut.horizontalDegrees} className="block">
+                            {measurement(cut.beamAngleDegrees, '°')}{' '}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {plane(cut.horizontalDegrees)}
+                            </span>
+                          </span>
+                        ))
+                      ) : (
+                        <span aria-label="Not available">—</span>
+                      )
+                    }
+                    note="Full angles at 50% of each principal plane’s peak"
+                  />
+                  <Metric
+                    wide
+                    label="Source"
+                    content={
+                      <span className="block text-base leading-snug">
+                        {specified(info.lightSource) ? info.lightSource : 'Not specified'}
+                      </span>
+                    }
+                    note="Declared light source"
+                  />
                 </dl>
                 {info.metricsUnsupportedReason && (
                   <p className="mt-2 mb-0 text-xs text-muted-foreground">{info.metricsUnsupportedReason}</p>
                 )}
               </section>
-              <Details title="Light source" open>
+              <Details title="Light source">
                 {specified(info.lightSource) && <p className="mt-0 mb-3">{info.lightSource}</p>}
                 <Rows
                   rows={[
-                    ...(specified(color) ? [['Color', color] as [string, ReactNode]] : []),
+                    ...(specified(color) ? [['Color', sourceColor(color)] as [string, ReactNode]] : []),
                     ...(specified(colorRendering) ? [['Color rendering', colorRendering] as [string, ReactNode]] : []),
                     ...(info.lampCount !== null ? [['Lamp count', value(info.lampCount)] as [string, ReactNode]] : []),
                     ...(specified(info.lampCatalog) ? [['Lamp catalog', info.lampCatalog] as [string, ReactNode]] : []),
@@ -354,7 +380,7 @@ export function PhotometryInfoPanel({
                     {info.beamAngles.map((cut) => (
                       <tr key={cut.horizontalDegrees} className="border-t border-border/50">
                         <th scope="row" className="py-2 text-left font-normal">
-                          C{cut.horizontalDegrees}–C{(cut.horizontalDegrees + 180) % 360}
+                          {plane(cut.horizontalDegrees)}
                         </th>
                         <td className="py-2 pl-2">
                           {cut.beamAngleDegrees === null ? '—' : value(cut.beamAngleDegrees, '°')}
@@ -379,6 +405,43 @@ export function PhotometryInfoPanel({
           No current inspection data. Correct the source to display its details.
         </p>
       )}
+      <Details
+        title="Validation"
+        open={Boolean(validation && !validation.valid)}
+        hint={
+          check && (
+            <span className={validation!.valid ? '' : 'text-destructive'}>
+              {check.status}
+              {check.counts.error > 0
+                ? ` · ${countLabel(check.counts.error, 'error')}`
+                : check.counts.warning > 0
+                  ? ` · ${countLabel(check.counts.warning, 'warning')}`
+                  : check.counts.info > 0
+                    ? ` · ${countLabel(check.counts.info, 'note')}`
+                    : ''}
+            </span>
+          )
+        }
+      >
+        {onStrictChange && (
+          <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={strict}
+              className="size-3.5 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => onStrictChange(event.target.checked)}
+            />
+            Strict validation
+          </label>
+        )}
+        {validation ? (
+          <ValidationChecks validation={validation} strict={strict} />
+        ) : (
+          <p className="m-0 text-muted-foreground">
+            {info ? 'Validation results not provided.' : 'Waiting for a photometric file.'}
+          </p>
+        )}
+      </Details>
       {advisories.length > 0 && (
         <Details
           title="Inspection advisories"
@@ -425,7 +488,7 @@ export function PhotometryInfoPanel({
                         ],
                         ['Power', value(set.watts, 'W')],
                         ...(specified(set.colorTemperature)
-                          ? [['Color', set.colorTemperature] as [string, ReactNode]]
+                          ? [['Color', sourceColor(set.colorTemperature)] as [string, ReactNode]]
                           : []),
                         ...(specified(set.colorRendering)
                           ? [['Color rendering', set.colorRendering] as [string, ReactNode]]
@@ -475,7 +538,7 @@ export function PhotometryInfoPanel({
                   [
                     'Peak intensity (tilt applied)',
                     info.peakDirection
-                      ? `${value(info.peakIntensityCandela, 'cd')} at C${info.peakDirection.horizontalDegrees}° γ${info.peakDirection.verticalDegrees}°`
+                      ? `${value(info.peakIntensityCandela, 'cd')} at C${value(info.peakDirection.horizontalDegrees, '°')} γ${value(info.peakDirection.verticalDegrees, '°')}`
                       : 'Not available',
                   ],
                   ['Nadir intensity', value(info.nadirCandela, 'cd')],
@@ -484,9 +547,7 @@ export function PhotometryInfoPanel({
               />
               {info.beamAngles.map((cut) => (
                 <div key={cut.horizontalDegrees} className="mt-4 space-y-3">
-                  <h3 className="m-0 text-xs font-medium">
-                    C{cut.horizontalDegrees}–C{(cut.horizontalDegrees + 180) % 360} estimates
-                  </h3>
+                  <h3 className="m-0 text-xs font-medium">{plane(cut.horizontalDegrees)} estimates</h3>
                   <Rows
                     rows={[
                       [
@@ -533,14 +594,14 @@ export function PhotometryInfoPanel({
                     {info.zonalLumens.map((zone) => (
                       <tr key={`${zone.fromDegrees}-${zone.toDegrees}`} className="border-t border-border/50">
                         <th scope="row" className="py-2 text-left font-normal">
-                          {zone.fromDegrees}–{zone.toDegrees}°
+                          {value(zone.fromDegrees, '°')}–{value(zone.toDegrees, '°')}
                         </th>
-                        <td className="py-2 pl-2">{zone.lumens.toFixed(1)}</td>
+                        <td className="py-2 pl-2">{value(zone.lumens, 'lm')}</td>
                         <td className="py-2 pl-2">
-                          {zone.percentOfLamp === null ? '—' : zone.percentOfLamp.toFixed(1)}
+                          {zone.percentOfLamp === null ? '—' : value(zone.percentOfLamp, '%')}
                         </td>
                         <td className="py-2 pl-2">
-                          {zone.percentOfLuminaire === null ? '—' : zone.percentOfLuminaire.toFixed(1)}
+                          {zone.percentOfLuminaire === null ? '—' : value(zone.percentOfLuminaire, '%')}
                         </td>
                       </tr>
                     ))}
@@ -553,18 +614,16 @@ export function PhotometryInfoPanel({
             <Rows
               rows={[
                 ...(fileName ? [['File', fileName] as [string, ReactNode]] : []),
-                ...(fileSize !== undefined
-                  ? [['Source size', `${fileSize.toLocaleString('en-US')} bytes (UTF-8)`] as [string, ReactNode]]
-                  : []),
+                ...(fileSize !== undefined ? [['Source size', bytes(fileSize)] as [string, ReactNode]] : []),
                 ['Format', info.format],
                 ['Version', info.version],
                 ['Coordinates', `Type ${info.photometricTypeName} (${info.photometricType})`],
                 ['Photometry', info.photometry],
                 ['Vertical angles', info.verticalAngles],
                 ['Horizontal angles', info.horizontalAngles],
-                ['Width', value(info.dimensions.width, info.units)],
-                ['Length', value(info.dimensions.length, info.units)],
-                ['Height', value(info.dimensions.height, info.units)],
+                ['Width', value(info.dimensions.width, info.units === 'feet' ? 'ft' : 'm')],
+                ['Length', value(info.dimensions.length, info.units === 'feet' ? 'ft' : 'm')],
+                ['Height', value(info.dimensions.height, info.units === 'feet' ? 'ft' : 'm')],
                 ['Lamp TILT correction', info.hasTilt ? 'Embedded curve' : 'None'],
                 [
                   'File generation type',
