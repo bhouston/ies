@@ -89,7 +89,11 @@ pnpm build
 pnpm dev
 ```
 
-[Coverage reports](https://ies-tools.ben3d.ca/coverage/) describe the tests at the latest release tag; see the [coverage policy](CONTRIBUTING.md#coverage). [GitHub Releases](https://github.com/bhouston/ies-tools/releases) record published changes. Maintainers use [RELEASING.md](RELEASING.md) to publish separately from merging. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for fixture attribution and licenses.
+[Coverage reports](https://ies-tools.ben3d.ca/coverage/) describe the tests at the latest release tag; see the [coverage policy](CONTRIBUTING.md#coverage). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for fixture attribution and licenses.
+
+## Releases
+
+See [RELEASING.md](RELEASING.md) for how releases are published and [GitHub Releases](https://github.com/bhouston/ies-tools/releases) for changes.
 
 ## Contribution
 

@@ -1,23 +1,71 @@
-# Releases
+# Releasing
 
-Releases follow the mtlx workflow: merge reviewed changes with green CI, then manually dispatch `release.yml` against `main`. Merging never publishes packages or deploys the documentation site.
+Releases are manual and maintainer-only. Merging to `main` never publishes.
+
+## Running a Release
 
 ```sh
-gh workflow run release.yml --ref main -f dry_run=true
-gh workflow run release.yml --ref main
+gh workflow run release.yml --ref main                  # release
+gh workflow run release.yml --ref main -f dry_run=true  # preview only, publishes nothing
 ```
 
-Semantic-release determines a shared version from Conventional Commits, publishes `@ies-tools/core`, `@ies-tools/viewer`, and `@ies-tools/cli` in dependency order, creates a GitHub Release with package tarballs, and publishes the extension to VS Code Marketplace and Open VSX. After a real release (not a dry run), the `website` job calls `docs.yml` to build and deploy the documentation from the new `v*` tag. To redeploy the latest release, run `gh workflow run docs.yml --ref main` (optionally `-f ref=v<version>`).
+When there are no release-worthy commits since the last `v*` tag, the run is a no-op.
 
-## One-time registry setup
+## What the Workflow Does
 
-1. Create the npm organization `ies-tools` (https://www.npmjs.com/org/create) and claim the package names `@ies-tools/core`, `@ies-tools/viewer`, and `@ies-tools/cli` under the intended npm account. npm only lets a trusted publisher be attached to an existing package, so publish the current `0.1.0` of each by hand once: `npm login`, `pnpm build`, then `pnpm --dir packages/<dir> publish --no-git-checks` for `core`, `viewer`, `cli` in that order. Later versions come from the release workflow. The root `ies-monorepo` package is `private` and never published.
-2. Configure npm trusted publishing for each package: GitHub owner `bhouston`, repository `ies-tools`, workflow `release.yml`, environment `npm`. Create the repository's `npm` environment and configure any desired reviewers. First publication may require registry-side setup or an initial authenticated publication before trusted publishing can be registered.
-3. Ensure the VS Code Marketplace publisher `benhouston3d` and matching Open VSX namespace permit this extension. Add `VSCE_PAT` and `OVSX_PAT` repository secrets. Tokens are never stored in source.
-4. Enable GitHub Pages with source **GitHub Actions** for documentation, and set the custom domain to `ies-tools.ben3d.ca` (Settings → Pages, then **Enforce HTTPS**). Add a DNS `CNAME` record `ies-tools.ben3d.ca → bhouston.github.io`. With Actions-based Pages, the domain lives in repository settings, not a `CNAME` file. Builds are also uploaded as GitHub artifacts in CI.
+1. Refuses any ref other than `main`.
+2. Runs the full CI workflow on the dispatched commit.
+3. Stops if `main` has moved since the dispatch.
+4. Installs, builds, and runs `pnpm release`, which is semantic-release.
+5. semantic-release computes the next version, creates the `v<version>` tag and GitHub Release, and publishes.
 
-The release workflow validates its ref, reruns CI and refuses a stale `main` dispatch. It needs `contents: write` and `id-token: write` for GitHub releases and npm OIDC. Node 24 and the pinned pnpm version are installed by Actions.
+Releases run one at a time and never cancel a publish in progress. npm packages publish through npm trusted publishing (GitHub OIDC), so no `NPM_TOKEN` is stored.
 
-Run `pnpm check:release` to pack production tarballs and exercise them in a clean temporary Node consumer. Run `pnpm --filter ies-vscode-extension exec vsce package --no-dependencies` to verify extension packaging. Run `pnpm docs:build` to verify documentation links.
+## Versioning
 
-Do not manually edit versions, changelogs or release tags. A dry run publishes nothing. Registry credentials and trusted publishing must be configured before the first real release.
+The version comes from the Conventional Commits since the last `v*` tag. The highest change wins:
+
+- `feat` produces a minor release.
+- `fix` and `perf` produce a patch release.
+- `!` or a `BREAKING CHANGE:` footer produces a major release.
+- Other types do not trigger a release.
+
+Everything this repository publishes shares one version. `package.json` versions in source are development snapshots; the Git tag and the registry hold the released version. [GitHub Releases](https://github.com/bhouston/ies-tools/releases) is the changelog of record.
+
+## One-Time Setup
+
+1. On npmjs.com, open each package's Trusted Publisher settings, choose GitHub Actions, and enter organization or user `bhouston`, repository `ies-tools`, workflow filename `release.yml`, and environment name `npm`.
+2. Protect `main`: require pull requests and the CI checks, allow merge commits, and block force pushes and deletion.
+3. If the repository uploads coverage to Codecov, add the `CODECOV_TOKEN` repository secret.
+
+## Recovery
+
+Publishing is not atomic. If a run fails part way, compare the registry versions, the `v<version>` tag, and the workflow log, then finish what is missing from the same release commit. If publishing succeeded but the GitHub Release failed, create the release from the existing tag. Never republish a version, delete a published version, or move a release tag. Resolve the failure before dispatching another release.
+
+## Repository Specifics
+
+### Published Artifacts
+
+- npm: `@ies-tools/core`, `@ies-tools/viewer`, and `@ies-tools/cli`, published in that order with `pnpm publish`. Each GitHub Release attaches their tarballs.
+- VS Code Marketplace and Open VSX: `ies-vscode-extension` (`packages/vscode-extension`), published by `benhouston3d`.
+
+The root `ies-monorepo` package is private and never published. Add each npm package's Trusted Publisher in One-Time Setup step 1. npm only attaches a trusted publisher to an existing package, so a new package needs one authenticated first publish.
+
+### VS Code Extension
+
+The extension shares the release version, which `release.config.js` pins in its `package.json`, but it is never published to npm. `scripts/release-vscode-extension.mjs` builds it, packages it with `vsce`, and publishes it to both registries. Add these repository secrets:
+
+- `VSCE_PAT`: Azure DevOps personal access token for the `benhouston3d` publisher.
+- `OVSX_PAT`: Open VSX access token.
+
+### Website
+
+After a real release (not a dry run), the `website` job calls `docs.yml` to build and deploy the documentation from the new `v*` tag. To redeploy the latest release, run `gh workflow run docs.yml --ref main` (optionally with `-f ref=v<version>`).
+
+Enable GitHub Pages with source **GitHub Actions**, set the custom domain `ies-tools.ben3d.ca` in Settings, then Pages, and enforce HTTPS. Add a DNS `CNAME` record from `ies-tools.ben3d.ca` to `bhouston.github.io`. With Actions-based Pages the domain lives in repository settings, not a `CNAME` file.
+
+### Local Validation
+
+- `pnpm check:release` packs the production tarballs and exercises them in a clean temporary Node consumer.
+- `pnpm --filter ies-vscode-extension exec vsce package --no-dependencies` verifies extension packaging.
+- `pnpm docs:build` verifies documentation links.
