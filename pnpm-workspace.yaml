@@ -12,3 +12,8 @@ minimumReleaseAgeExclude:
   - '@clidoc/yargs@1.1.2'
   - '@clidoc/docusaurus@1.1.2'
   - humanize-units@2.1.0
+
+overrides:
+  serialize-javascript: ^7.0.3
+  source-map-js: ^1.2.2
+  tinypool: ^2.1.2
