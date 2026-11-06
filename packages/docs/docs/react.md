@@ -151,7 +151,7 @@ See [Charts](./graphs.md) for what each one shows and its props.
 
 ## File information panel
 
-`PhotometryInfoPanel` and `ValidationChecks` show a file's properties and validation results, the same as the VS Code information panel. They take the inspection and validation results from `@ies-tools/core`.
+`PhotometryInfoPanel` and `ValidationChecks` show a file's properties and validation results, the same as the VS Code information panel. They take the inspection and validation results from `@ies-tools/core`. The overview highlights integrated luminaire output, peak intensity, declared input power when available, principal-plane full beam angles at 50% peak, and the declared light source. Measurements use `humanize-units`; field angles at 10% peak and other technical data remain available in the details.
 
 The panel leads with the luminaire identity and a compact overview of light output, input power, efficacy, and peak intensity. Light source characteristics and available beam widths are expanded; flux accounting, distribution ratios, zonal lumens, file geometry, and raw metadata are collapsed. Successful validation stays compact with visible issue counts, while failures expand automatically. Alternative LDT configurations expand when a selection is needed, and calculated summary cards stay hidden until a configuration is selected.
 

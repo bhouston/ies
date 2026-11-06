@@ -11,3 +11,4 @@ minimumReleaseAgeExclude:
   - '@clidoc/core@1.1.2'
   - '@clidoc/yargs@1.1.2'
   - '@clidoc/docusaurus@1.1.2'
+  - humanize-units@2.1.0

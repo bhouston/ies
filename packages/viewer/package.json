@@ -67,7 +67,8 @@
     "build": "tsc -p . && node scripts/build-element.mjs"
   },
   "dependencies": {
-    "@ies-tools/core": "workspace:*"
+    "@ies-tools/core": "workspace:*",
+    "humanize-units": "^2.1.0"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.18",
