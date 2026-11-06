@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://npmjs.com/package/@ies-tools/core"><img src="https://img.shields.io/npm/v/@ies-tools/core.svg" alt="npm package"></a>
   <a href="https://www.npmtrends.com/@ies-tools/core"><img src="https://img.shields.io/npm/dw/@ies-tools/core.svg" alt="npm downloads"></a>
+  <a href="https://ies-tools.ben3d.ca/coverage/"><img src="https://ies-tools.ben3d.ca/coverage/packages/core.svg" alt="coverage"></a>
   <a href="https://discord.gg/fwupDN493R"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
   <a href="https://ies-tools.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
 </p>
@@ -66,9 +67,11 @@ You should see the manufacturer's metadata and photometric statistics, a polar c
 To embed the viewer in HTML, place an IES file at `/lights/luminaire.ies` on your web server:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer@1.2.0/dist/light-viewer.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ies-tools/viewer/dist/light-viewer.js"></script>
 <light-viewer src="/lights/luminaire.ies" charts="true" style="height: 600px"></light-viewer>
 ```
+
+This URL follows the latest published release. Add an exact version to pin one.
 
 ## Compatibility and Limits
 
@@ -86,7 +89,7 @@ pnpm build
 pnpm dev
 ```
 
-[Coverage reports](https://ies-tools.ben3d.ca/coverage/) are generated from tests on `main`; see the [coverage policy](CONTRIBUTING.md#coverage). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for fixture attribution and licenses.
+[Coverage reports](https://ies-tools.ben3d.ca/coverage/) describe the tests at the latest release tag; see the [coverage policy](CONTRIBUTING.md#coverage). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for fixture attribution and licenses.
 
 ## Releases
 
