@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://npmjs.com/package/@ies-tools/cli"><img src="https://img.shields.io/npm/v/@ies-tools/cli.svg" alt="npm package"></a>
   <a href="https://www.npmtrends.com/@ies-tools/cli"><img src="https://img.shields.io/npm/dw/@ies-tools/cli.svg" alt="npm downloads"></a>
+  <a href="https://ies-tools.ben3d.ca/coverage/"><img src="https://ies-tools.ben3d.ca/coverage/packages/cli.svg" alt="coverage"></a>
   <a href="https://discord.gg/fwupDN493R"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
   <a href="https://ies-tools.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
 </p>
