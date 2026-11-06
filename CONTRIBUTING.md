@@ -51,7 +51,7 @@ It needs an installed Chrome or Edge (set `IES_BROWSER` to another executable) a
 
 ## Releases
 
-Merging to `main` never publishes. A release is a separate, deliberate step that the maintainer triggers whenever the changes accumulated on `main` should ship:
+Merging to `main` never publishes or deploys the documentation. A release is a separate, deliberate step that the maintainer triggers whenever the changes accumulated on `main` should ship:
 
 ```sh
 gh workflow run release.yml --ref main                  # release
@@ -82,7 +82,7 @@ Report vulnerabilities privately through GitHub's private vulnerability reportin
 
 Use the root and published-package READMEs to help developers evaluate and install the tools. Keep Docusaurus guides focused on user tasks; generate API and CLI reference from source comments and command definitions. Put contributor setup here and registry administration in RELEASING.md.
 
-Run `pnpm docs:build` to generate reference pages and check documentation links. The Documentation workflow deploys the site on pushes to `main`. Its live viewer demos use the standalone viewer built from the same commit, copied into the documentation static assets during generation. Run `pnpm build` before starting or building the docs. This deployment does not publish npm packages; those still require the Release workflow. Representative fixtures and their licenses are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Run `pnpm docs:build` to generate reference pages and check documentation links. The Documentation workflow deploys the site from the release tag as the last step of the Release workflow (or on manual dispatch, which redeploys the latest release); merging to `main` never deploys it. Its live viewer demos use the standalone viewer built from the same commit, copied into the documentation static assets during generation. Run `pnpm build` before starting or building the docs. Deploying the site does not publish npm packages; the Release workflow does both. Representative fixtures and their licenses are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Regenerate chart screenshots with `pnpm build && pnpm docs:charts`; this is not run in CI. To try the extension from source, run `pnpm --filter ies-vscode-extension package` after building, then install the resulting VSIX from `packages/vscode-extension/` using VS Code's **Install from VSIX** action.
 
@@ -102,8 +102,8 @@ Regenerate chart screenshots with `pnpm build && pnpm docs:charts`; this is not 
 
 ## Coverage
 
-Run `pnpm test --coverage && pnpm coverage:report`. Open `coverage/index.html` for file-level HTML and `coverage/packages/summary.md` for package-level statements, branches, functions and lines. CI uploads the full report as the `coverage` artifact and adds the package table to its job summary. The Documentation workflow publishes the same reports at `/coverage/`, with package statement badges under `/coverage/packages/`.
+Run `pnpm test --coverage && pnpm coverage:report`. Open `coverage/index.html` for file-level HTML and `coverage/packages/summary.md` for package-level statements, branches, functions and lines. CI uploads the full report as the `coverage` artifact and adds the package table to its job summary. The Documentation workflow publishes the same reports from the release tag at `/coverage/`, with package statement badges under `/coverage/packages/`.
 
-The report counts all included package source, including untested files, and aggregates covered/total counters rather than averaging percentages. Badges describe the current deployed `main` tests, not necessarily the latest published npm version. They measure code execution, not visual correctness or photometric accuracy. Monthly npm downloads include automation and dependencies and should not be described as user counts.
+The report counts all included package source, including untested files, and aggregates covered/total counters rather than averaging percentages. Badges describe the tests at the latest release tag, not necessarily the latest published npm version. They measure code execution, not visual correctness or photometric accuracy. Monthly npm downloads include automation and dependencies and should not be described as user counts.
 
 `scripts/coverage-thresholds.json` is the only source of package floors; the report prints each floor beside the measured value and exits nonzero when any package falls below one. The floors started about two percentage points below the initial Node 24 baseline, rounded down to whole percentages for platform differences (for example, the CLI baseline of 61.74% statements became a 59% floor). The website has no tests and is reported at zero with zero floors until coverage is introduced. Raise floors as coverage improves; explain any reduction in the PR. Missing package coverage fails the reporting step.
