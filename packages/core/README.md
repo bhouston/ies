@@ -1,12 +1,31 @@
+<p align="center">
+  <a href="https://ies-tools.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="@ies-tools/core logo" src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/icon.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://npmjs.com/package/@ies-tools/core"><img src="https://img.shields.io/npm/v/@ies-tools/core.svg" alt="npm package"></a>
+  <a href="https://www.npmtrends.com/@ies-tools/core"><img src="https://img.shields.io/npm/dw/@ies-tools/core.svg" alt="npm downloads"></a>
+  <a href="https://discord.gg/fwupDN493R"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://ies-tools.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # @ies-tools/core
 
-[![npm version](https://img.shields.io/npm/v/@ies-tools/core)](https://www.npmjs.com/package/@ies-tools/core)
-[![npm downloads per month](https://img.shields.io/npm/dm/@ies-tools/core)](https://www.npmjs.com/package/@ies-tools/core)
-[![Statement coverage](https://ies-tools.ben3d.ca/coverage/packages/core.svg)](https://ies-tools.ben3d.ca/coverage/)
+> Dependency-free parsing and validation for IES and EULUMDAT files.
 
-[Documentation](https://ies-tools.ben3d.ca/docs/core) · [npm](https://www.npmjs.com/package/@ies-tools/core) · [Issues](https://github.com/bhouston/ies-tools/issues)
+- 📦 Dependency-Free TypeScript
+- 🌐 Browsers and Node.js
+- 📄 IES LM-63 and EULUMDAT
+- ✅ Structured Validation Diagnostics
+- 🔄 IES, LDT, and JSON Conversion
+- 📐 Photometric Calculations
 
 Dependency-free TypeScript tools to parse, validate, convert and measure IES LM-63 and EULUMDAT photometry in browsers and Node.
+
+[Read the Docs to Learn More](https://ies-tools.ben3d.ca/docs/core).
 
 ```sh
 npm install @ies-tools/core
@@ -70,3 +89,15 @@ A missing downward hemisphere remains dark. When IES starts above zero, LDT expo
 This implementation follows [DIAL's EULUMDAT description](https://evo.support-en.dial.de/support/solutions/articles/9000074164-description-of-the-eulumdat-format) and the [DIAL/Lighting Analysts absolute-photometry interpretation](https://www.agi32.com/Downloads/PressReleases/EULUMDAT_Absolute_Photometry.pdf). No AGPL implementation code was copied or ported.
 
 `inspectPhotometry(text, format, lampSetIndex?)` and `validatePhotometry(text, format, strict?, lampSetIndex?)` expose the same IES/LDT models used by the CLI and VS Code extension. `inspectParsedPhotometry(profile, lampSetIndex?)` accepts a validated native profile, avoiding a second parse in live integrations. Inspection preserves all metadata and alternative lamp configurations. Validation returns codes, severity and fields without requiring a renderer.
+
+## Contribution
+
+See [Contributing Guide](https://github.com/bhouston/ies-tools/blob/main/CONTRIBUTING.md).
+
+## License
+
+MIT
+
+## Author
+
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).

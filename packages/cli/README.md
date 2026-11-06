@@ -1,12 +1,31 @@
+<p align="center">
+  <a href="https://ies-tools.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="@ies-tools/cli logo" src="https://raw.githubusercontent.com/bhouston/ies-tools/main/packages/docs/static/img/icon.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://npmjs.com/package/@ies-tools/cli"><img src="https://img.shields.io/npm/v/@ies-tools/cli.svg" alt="npm package"></a>
+  <a href="https://www.npmtrends.com/@ies-tools/cli"><img src="https://img.shields.io/npm/dw/@ies-tools/cli.svg" alt="npm downloads"></a>
+  <a href="https://discord.gg/fwupDN493R"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://ies-tools.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # @ies-tools/cli
 
-[![npm version](https://img.shields.io/npm/v/@ies-tools/cli)](https://www.npmjs.com/package/@ies-tools/cli)
-[![npm downloads per month](https://img.shields.io/npm/dm/@ies-tools/cli)](https://www.npmjs.com/package/@ies-tools/cli)
-[![Statement coverage](https://ies-tools.ben3d.ca/coverage/packages/cli.svg)](https://ies-tools.ben3d.ca/coverage/)
+> Inspect, validate, convert and chart IES and EULUMDAT files.
 
-[Documentation](https://ies-tools.ben3d.ca/docs/cli) · [npm](https://www.npmjs.com/package/@ies-tools/cli) · [Issues](https://github.com/bhouston/ies-tools/issues)
+- 🔍 Inspect Photometric Metrics
+- ✅ Validate Files in CI
+- 🔄 Convert IES, LDT, and JSON
+- 📊 Export SVG and PNG Charts
+- 💡 Local 3D Preview Server
+- 🔒 Files Stay Local
 
 Inspect, validate and convert IES/EULUMDAT photometry, export charts, and preview measured light from your terminal. Requires Node.js 22+.
+
+[Read the Docs to Learn More](https://ies-tools.ben3d.ca/docs/cli).
 
 Try the [sample-file quick start](https://ies-tools.ben3d.ca/docs/quick-start#inspect-and-chart-a-file), or follow the [CI validation guide](https://ies-tools.ben3d.ca/docs/automation).
 
@@ -60,3 +79,15 @@ Charts of an asymmetric BEGA luminaire, exported with `ies chart --type <type> -
 `chart` reuses the shared React photometric diagrams and exports SVG or PNG. Types are `polar`, `cartesian`, `topology`, `isolux`, `cone`, `luminance` and `intensity-table`. Default vertical polar/Cartesian plots include the principal planes. Use `--axis vertical|horizontal --angle <degrees>` for an explicit slice, or `--up-axis x|y|z` for topology. `--log-scale` plots polar and Cartesian intensity over three decades on a log scale. Polar and Cartesian charts mark the beam (50 %) and field (10 %) crossings of each vertical cut. Isolux accepts mounting height and square ground extent in meters, plus grid resolution. Contours default to a labelled 1-2-5 lux series (1, 2, 5, 10, 20, 50, …) from `--min-contour` (default 1 lx) up to the grid peak, capped at 10 levels by dropping the lowest; `--contours 1,2,5,10` sets explicit levels. `--color-scale log|linear` picks the heatmap mapping (default `log`, so low-light spill stays visible). The stats line reports uniformity U0 = Emin / Eavg. `cone` tabulates centre illuminance and beam/field diameters at 1…`--max-distance` meters (default 5). `luminance` tabulates glare-angle average luminance (γ 45–85°, C 0–315°) over the declared luminous opening. `intensity-table` shows the measured candela grid in `--unit cd|cd/klm`; `--max-columns` and `--max-rows` thin large grids to evenly spaced angles for fixed-size images. With `--json`, these three types add a `values` object with the tabulated data. Chart PNGs use Sharp to rasterize SVG; this 2D operation does not require a GPU.
 
 Image dimensions are positive integers up to 8192 pixels per side. Render defaults to 1024×768; charts default to 900×700. `--timeout` controls browser startup/loading in seconds (default 60, maximum 600). `--format ies|ldt` overrides input format detection. `--lamp-set` selects an LDT lamp configuration using a one-based index. Outputs are created exclusively; existing files are never overwritten, and a failed export removes its own incomplete output.
+
+## Contribution
+
+See [Contributing Guide](https://github.com/bhouston/ies-tools/blob/main/CONTRIBUTING.md).
+
+## License
+
+MIT
+
+## Author
+
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
